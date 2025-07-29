@@ -31,11 +31,11 @@ export default defineConfig({
     }
   },
 
-  // Build configuration
+  // Build configuration for production
   build: {
     target: 'esnext',
     minify: 'terser',
-    sourcemap: true,
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: {

@@ -31,17 +31,28 @@ def create_app(config_name='development'):
         'DEBUG': config_name == 'development'
     })
     
-    # CORS configuration
+    # CORS configuration - Allow Render.com domains
+    allowed_origins = os.getenv('ALLOWED_ORIGINS', '*')
+    if allowed_origins == '*':
+        cors_origins = "*"
+    else:
+        cors_origins = allowed_origins.split(',')
+    
     CORS(app, resources={
         r"/api/*": {
-            "origins": "*",
+            "origins": cors_origins,
             "methods": ["POST", "GET", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"]
         },
         r"/admin/*": {
-            "origins": ["http://localhost:3000", "https://passive-captcha.vercel.app"],
+            "origins": cors_origins,
             "methods": ["GET", "POST", "PUT", "DELETE"],
             "allow_headers": ["Content-Type", "Authorization"]
+        },
+        r"/health": {
+            "origins": cors_origins,
+            "methods": ["GET"],
+            "allow_headers": ["Content-Type"]
         }
     })
     
@@ -72,19 +83,17 @@ def create_app(config_name='development'):
     # Health check endpoint
     @app.route('/health')
     def health_check():
-        """System health check endpoint"""
-        from datetime import datetime
-        from app.database import get_last_verification_time
-        from app.ml import is_model_loaded
-        
-        return {
-            'status': 'healthy',
-            'modelLoaded': is_model_loaded(),
-            'dbConnection': True,
-            'lastVerification': get_last_verification_time(),
-            'timestamp': datetime.utcnow().isoformat(),
-            'uptime': 'healthy'
-        }
+        """Health check endpoint for monitoring"""
+        try:
+            from app.ml import model_loaded
+            return {
+                'status': 'healthy',
+                'timestamp': int(time.time()) if 'time' in globals() else 'unknown',
+                'version': '1.0.0',
+                'model_loaded': model_loaded
+            }
+        except Exception as e:
+            return {'status': 'unhealthy', 'error': str(e)}, 500
     
     return app
 
