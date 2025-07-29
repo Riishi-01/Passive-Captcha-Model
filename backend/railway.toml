@@ -1,0 +1,13 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+
+[variables]
+MODEL_PATH = "models/passive_captcha_rf.pkl"
+DATABASE_URL = "sqlite:///passive_captcha.db"
+CONFIDENCE_THRESHOLD = "0.6"
+ADMIN_SECRET = "change-this-in-production"
+RATE_LIMIT_REQUESTS = "100"
+ALLOWED_ORIGINS = "*" 

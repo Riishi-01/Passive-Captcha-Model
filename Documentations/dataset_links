@@ -1,0 +1,106 @@
+# **Dataset Download Links for Passive CAPTCHA Training Data**
+
+Here are the direct download links for the key datasets mentioned in our conversation for training your passive CAPTCHA ML model:
+
+## **Primary Behavioral Biometrics Datasets**
+
+### **1. BeCAPTCHA-Mouse Benchmark** ⭐ **HIGHLY RECOMMENDED**
+- **GitHub Repository**: https://github.com/BiDAlab/BeCAPTCHA-Mouse[1]
+- **Dataset Size**: 15,000 mouse trajectories from 58 users[2]
+- **Features**: Real human mouse movements + synthetic bot trajectories
+- **Labels**: Human/Bot classifications with 93% proven accuracy[2]
+- **Format**: Mouse coordinates, timestamps, user sessions
+- **Research Paper**: Available on arXiv[3] and Pattern Recognition journal[4]
+
+### **2. Behaviour Biometrics Dataset (Mendeley)**
+- **Direct Download**: https://data.mendeley.com/datasets/fnf8b85kr6/1[5]
+- **Dataset Size**: 1,760 instances from 88 users[5]
+- **Features**: Keyboard, Mouse, and Touchscreen (KMT) dynamics[5]
+- **Labels**: 10 legitimate + 10 illegitimate samples per user[5]
+- **Format**: JSON files with processed features[5]
+- **Perfect for**: Device fingerprinting and behavioral analysis
+
+### **3. CMU Keystroke Dynamics Benchmark**
+- **Official Site**: https://www.cs.cmu.edu/~keystroke/[6]
+- **Kaggle Mirror**: https://www.kaggle.com/datasets/carnegiecylab/keystroke-dynamics-benchmark-data-set[7]
+- **Dataset Size**: 51 users × 400 samples each = 20,400 keystroke samples[8]
+- **Password**: All users typed ".tie5Roanl"[8]
+- **Features**: Hold time, Down-Down time, Up-Down time[8]
+- **Format**: CSV with timing features
+
+## **Additional Useful Datasets**
+
+### **4. Behavioral Biometrics for Authentication (Zenodo)**
+- **Download Link**: https://zenodo.org/records/2598135[9]
+- **Dataset Size**: 2,000+ users with gesture and sensor data[9]
+- **File Size**: 3.5 GB total[9]
+- **Features**: Touch gestures, device sensors, mobile interactions[9]
+- **Use Case**: Mobile device behavioral patterns
+
+### **5. ReMouse Dataset**
+- **Research Paper**: Available in MDPI Digital journal[10]
+- **Focus**: Session-replay bot detection using mouse dynamics[10]
+- **Relevance**: Specifically designed for bot detection research[10]
+
+## **GitHub Implementation Repositories**
+## **Quick Download Commands**
+
+### **For BeCAPTCHA-Mouse (Git LFS required)**
+```bash
+git clone https://github.com/BiDAlab/BeCAPTCHA-Mouse.git
+cd BeCAPTCHA-Mouse
+git lfs pull  # Download large dataset files
+```
+
+### **For Mendeley Dataset**
+```bash
+# Direct download (requires registration)
+wget https://data.mendeley.com/public-files/datasets/fnf8b85kr6/files/behaviour_biometrics_dataset.zip
+```
+
+### **For CMU Keystroke Dataset**
+```bash
+# Via Kaggle (requires API key)
+kaggle datasets download -d carnegiecylab/keystroke-dynamics-benchmark-data-set
+```
+
+## **Dataset Summary for Your 2,000 Sample Requirement**
+
+| Dataset | Samples | Human | Bot | Download Size | Format |
+|---------|---------|-------|-----|---------------|---------|
+| **BeCAPTCHA-Mouse**[1][2] | 15,000 | ✅ | ✅ | ~100MB | JSON |
+| **Mendeley KMT**[5] | 1,760 | ✅ | ✅ | ~50MB | JSON |
+| **CMU Keystroke**[6][7] | 20,400 | ✅ | ❌ | ~10MB | CSV |
+| **Zenodo Behavioral**[9] | 2,000+ | ✅ | ❌ | 3.5GB | ZIP |
+
+## **Recommended Download Strategy**
+
+**For your 3-day development timeline:**
+
+1. **Start with BeCAPTCHA-Mouse**[1] - It's the most relevant with pre-labeled human/bot data
+2. **Add Mendeley KMT dataset**[5] - Provides device fingerprinting features
+3. **Use CMU Keystroke**[6] for additional keystroke dynamics data
+4. **Supplement with synthetic generation** using the code from previous conversations
+
+This combination will give you **17,000+ real samples** plus synthetic data, far exceeding your 2,000 sample requirement while providing diverse behavioral patterns for robust ML training.
+
+[1] https://github.com/BiDAlab/BeCAPTCHA-Mouse
+[2] https://www.sciencedirect.com/science/article/abs/pii/S0031320322001248
+[3] https://arxiv.org/pdf/2005.00890.pdf
+[4] https://repositorio.uam.es/bitstream/handle/10486/711222/BeCAPTCHA_acien_pattern_recognition_2022_ps.pdf;jsessionid=53C1F5055A5A7B7C06F75CD98A0A8AB4?sequence=1
+[5] https://data.mendeley.com/datasets/fnf8b85kr6/1
+[6] https://www.cs.cmu.edu/~keystroke/
+[7] https://www.kaggle.com/datasets/carnegiecylab/keystroke-dynamics-benchmark-data-set
+[8] https://github.com/rakshithca/KeyStroke-Dynamics
+[9] https://zenodo.org/records/2598135
+[10] https://www.mdpi.com/2624-800X/3/1/7
+[11] https://github.com/BiDAlab
+[12] https://aythami.me/publications/research-resources/
+[13] https://data.mendeley.com/datasets/xh9pgb3w8c/1
+[14] https://www.ecs.csun.edu/~av884538/publication/2017BIO15.pdf
+[15] https://www.sciencedirect.com/science/article/abs/pii/S0952197620303274
+[16] https://data.mendeley.com/datasets/xh9pgb3w8c
+[17] https://riverml.xyz/dev/api/datasets/Keystroke/
+[18] https://arxiv.org/html/2208.09061v2
+[19] https://dl.acm.org/doi/abs/10.1145/3640311
+[20] https://www.sciencedirect.com/science/article/pii/S2352340922009325

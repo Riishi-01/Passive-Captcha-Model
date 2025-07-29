@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passive CAPTCHA Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .demo-section h2 {
+            color: #2563eb;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+
+        .btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 0.5rem;
+        }
+
+        .btn:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .result-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9rem;
+        }
+
+        .success {
+            border-color: #10b981;
+            background: #ecfdf5;
+            color: #065f46;
+        }
+
+        .error {
+            border-color: #ef4444;
+            background: #fef2f2;
+            color: #991b1b;
+        }
+
+        .warning {
+            border-color: #f59e0b;
+            background: #fffbeb;
+            color: #92400e;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .code-block .comment {
+            color: #64748b;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat {
+            text-align: center;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2563eb;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+
+        .protected-content {
+            display: none;
+            background: #ecfdf5;
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .protected-content h3 {
+            color: #065f46;
+            margin-bottom: 1rem;
+        }
+
+        .typing-area {
+            width: 100%;
+            height: 120px;
+            padding: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: inherit;
+            resize: vertical;
+            margin-top: 1rem;
+        }
+
+        .typing-area:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
+        .info-badge {
+            display: inline-block;
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Passive CAPTCHA Demo</h1>
+            <p>Experience invisible bot detection through behavioral biometrics</p>
+        </div>
+
+        <!-- Live Demo Section -->
+        <div class="demo-section">
+            <h2>🤖 Live Demo - Protected Action</h2>
+            <p>Click the button below. The system will analyze your behavioral patterns in real-time to determine if you're human.</p>
+            
+            <button id="protected-button" class="btn">Access Protected Content</button>
+            
+            <div id="protected-content" class="protected-content">
+                <h3>✅ Verification Successful!</h3>
+                <p>Congratulations! You've been verified as a human based on your behavioral patterns.</p>
+                <div class="info-badge">Mouse Movements Analyzed</div>
+                <div class="info-badge">Keystroke Patterns Verified</div>
+                <div class="info-badge">Device Fingerprint Checked</div>
+            </div>
+
+            <div id="verification-result" class="result-box" style="display: none;"></div>
+        </div>
+
+        <!-- Interactive Training Section -->
+        <div class="demo-section">
+            <h2>🎯 Interactive Training Area</h2>
+            <p>Move your mouse around and type in the area below to generate training data for the ML model.</p>
+            
+            <textarea class="typing-area" placeholder="Start typing here to generate keystroke patterns... The system is learning your typing rhythm, mouse movements, and behavioral biometrics in real-time."></textarea>
+            
+            <div class="stats" id="training-stats">
+                <div class="stat">
+                    <div class="stat-value" id="mouse-count">0</div>
+                    <div class="stat-label">Mouse Events</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="keystroke-count">0</div>
+                    <div class="stat-label">Keystrokes</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="session-time">0s</div>
+                    <div class="stat-label">Session Time</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="confidence-score">--</div>
+                    <div class="stat-label">Confidence</div>
+                </div>
+            </div>
+
+            <button id="manual-verify" class="btn">Manual Verification Test</button>
+            <button id="reset-session" class="btn">Reset Session</button>
+        </div>
+
+        <!-- Code Examples -->
+        <div class="grid">
+            <div class="demo-section">
+                <h2>📝 Basic Integration</h2>
+                <p>Integrate passive CAPTCHA with just a few lines of code:</p>
+                
+                <div class="code-block">
+<span class="comment">&lt;!-- Include the script --&gt;</span>
+&lt;script src="https://passive-captcha.vercel.app/passive-captcha.js"&gt;&lt;/script&gt;
+
+<span class="comment">&lt;!-- Initialize with your button --&gt;</span>
+&lt;script&gt;
+PassiveCaptcha.init({
+    element: '#my-button',
+    onVerified: (result) =&gt; {
+        if (result.isHuman &amp;&amp; result.confidence &gt; 0.7) {
+            <span class="comment">// Allow action</span>
+            submitForm();
+        } else {
+            <span class="comment">// Show fallback</span>
+            showTraditionalCaptcha();
+        }
+    }
+});
+&lt;/script&gt;
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h2>⚙️ Advanced Configuration</h2>
+                <p>Customize the behavior and thresholds:</p>
+                
+                <div class="code-block">
+PassiveCaptcha.init({
+    element: '#protected-form',
+    API_URL: 'https://your-api.com',
+    CONFIDENCE_THRESHOLD: 0.8,
+    onVerified: (result) =&gt; {
+        console.log('Verification:', result);
+        <span class="comment">// Handle success</span>
+    },
+    onError: (error) =&gt; {
+        console.log('Error:', error);
+        <span class="comment">// Handle failure</span>
+    }
+});
+
+<span class="comment">// Manual verification</span>
+const result = await PassiveCaptcha.verify();
+
+<span class="comment">// Get session data</span>
+const data = PassiveCaptcha.getSessionData();
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical Details -->
+        <div class="demo-section">
+            <h2>🔬 How It Works</h2>
+            <div class="grid">
+                <div>
+                    <h3>Behavioral Biometrics (70% weight)</h3>
+                    <ul style="margin-left: 2rem; margin-top: 1rem;">
+                        <li><strong>Mouse Movement Analysis:</strong> Velocity, acceleration, and path patterns</li>
+                        <li><strong>Keystroke Dynamics:</strong> Timing intervals and rhythm consistency</li>
+                        <li><strong>Scroll Patterns:</strong> Natural vs mechanical scrolling behavior</li>
+                        <li><strong>Session Duration:</strong> Time spent interacting with the page</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Device Fingerprinting (30% weight)</h3>
+                    <ul style="margin-left: 2rem; margin-top: 1rem;">
+                        <li><strong>WebGL Support:</strong> Graphics capabilities and vendor detection</li>
+                        <li><strong>Canvas Fingerprint:</strong> Unique rendering characteristics</li>
+                        <li><strong>Hardware Legitimacy:</strong> CPU cores, memory, screen resolution</li>
+                        <li><strong>Browser Consistency:</strong> User agent vs actual capabilities</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Testing -->
+        <div class="demo-section">
+            <h2>🔗 API Testing</h2>
+            <p>Test the verification API directly:</p>
+            
+            <button id="test-api" class="btn">Test API Endpoint</button>
+            <button id="get-status" class="btn">Get API Status</button>
+            
+            <div id="api-result" class="result-box" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Include the Passive CAPTCHA script -->
+    <script src="../src/passive-captcha.js"></script>
+    
+    <script>
+        // Initialize Passive CAPTCHA
+        PassiveCaptcha.init({
+            element: '#protected-button',
+            API_URL: 'http://localhost:5000', // Use local backend for demo
+            onVerified: (result) => {
+                console.log('Verification result:', result);
+                
+                const resultDiv = document.getElementById('verification-result');
+                const protectedContent = document.getElementById('protected-content');
+                
+                resultDiv.style.display = 'block';
+                
+                if (result.isHuman && result.confidence >= 0.7) {
+                    resultDiv.className = 'result-box success';
+                    resultDiv.innerHTML = `
+                        <strong>✅ Human Verified!</strong><br>
+                        Confidence: ${(result.confidence * 100).toFixed(1)}%<br>
+                        Response Time: ${result.responseTime}ms<br>
+                        Session ID: ${result.sessionId}
+                    `;
+                    protectedContent.style.display = 'block';
+                } else {
+                    resultDiv.className = 'result-box warning';
+                    resultDiv.innerHTML = `
+                        <strong>⚠️ Verification Uncertain</strong><br>
+                        Confidence: ${(result.confidence * 100).toFixed(1)}%<br>
+                        ${result.error ? `Error: ${result.error}` : 'Please try again or complete additional verification.'}
+                    `;
+                }
+            },
+            onError: (error) => {
+                console.error('Verification error:', error);
+                
+                const resultDiv = document.getElementById('verification-result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result-box error';
+                resultDiv.innerHTML = `
+                    <strong>❌ Verification Failed</strong><br>
+                    Error: ${error.message || 'Unknown error occurred'}
+                `;
+            }
+        });
+
+        // Update stats in real-time
+        function updateStats() {
+            const sessionData = PassiveCaptcha.getSessionData();
+            
+            document.getElementById('mouse-count').textContent = sessionData.mouseMovements.length;
+            document.getElementById('keystroke-count').textContent = sessionData.keystrokes.length;
+            document.getElementById('session-time').textContent = Math.floor(sessionData.sessionDuration / 1000) + 's';
+        }
+
+        // Manual verification test
+        document.getElementById('manual-verify').addEventListener('click', async () => {
+            const button = document.getElementById('manual-verify');
+            button.disabled = true;
+            button.textContent = 'Verifying...';
+            
+            try {
+                const result = await PassiveCaptcha.verify();
+                
+                document.getElementById('confidence-score').textContent = (result.confidence * 100).toFixed(1) + '%';
+                
+                const resultDiv = document.getElementById('verification-result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = result.isHuman ? 'result-box success' : 'result-box warning';
+                resultDiv.innerHTML = `
+                    <strong>Manual Verification Result:</strong><br>
+                    Classification: ${result.isHuman ? 'Human' : 'Bot'}<br>
+                    Confidence: ${(result.confidence * 100).toFixed(1)}%<br>
+                    Response Time: ${result.responseTime || 'N/A'}ms
+                `;
+            } catch (error) {
+                console.error('Manual verification failed:', error);
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Manual Verification Test';
+            }
+        });
+
+        // Reset session
+        document.getElementById('reset-session').addEventListener('click', () => {
+            PassiveCaptcha.reset();
+            updateStats();
+            
+            document.getElementById('protected-content').style.display = 'none';
+            document.getElementById('verification-result').style.display = 'none';
+            document.getElementById('confidence-score').textContent = '--';
+        });
+
+        // API Testing
+        document.getElementById('test-api').addEventListener('click', async () => {
+            const button = document.getElementById('test-api');
+            button.disabled = true;
+            button.textContent = 'Testing...';
+            
+            try {
+                const sessionData = PassiveCaptcha.getSessionData();
+                
+                const response = await fetch('http://localhost:5000/api/verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(sessionData)
+                });
+                
+                const result = await response.json();
+                
+                const resultDiv = document.getElementById('api-result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result-box success';
+                resultDiv.innerHTML = `
+                    <strong>Direct API Test Result:</strong><br>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+            } catch (error) {
+                const resultDiv = document.getElementById('api-result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result-box error';
+                resultDiv.innerHTML = `<strong>API Test Failed:</strong><br>${error.message}`;
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Test API Endpoint';
+            }
+        });
+
+        // Get API status
+        document.getElementById('get-status').addEventListener('click', async () => {
+            try {
+                const response = await fetch('http://localhost:5000/health');
+                const status = await response.json();
+                
+                const resultDiv = document.getElementById('api-result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result-box success';
+                resultDiv.innerHTML = `
+                    <strong>API Status:</strong><br>
+                    <pre>${JSON.stringify(status, null, 2)}</pre>
+                `;
+            } catch (error) {
+                const resultDiv = document.getElementById('api-result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result-box error';
+                resultDiv.innerHTML = `<strong>Status Check Failed:</strong><br>${error.message}`;
+            }
+        });
+
+        // Update stats every second
+        setInterval(updateStats, 1000);
+        updateStats();
+
+        // Add some interactive elements
+        document.querySelector('.typing-area').addEventListener('input', () => {
+            updateStats();
+        });
+    </script>
+</body>
+</html> 
