@@ -13,6 +13,7 @@ import pandas as pd
 from datetime import datetime
 import joblib
 from pathlib import Path
+import pytest
 
 # Performance tracking
 performance_results = {
@@ -21,6 +22,31 @@ performance_results = {
     'edge_case_results': [],
     'stress_test_results': []
 }
+
+@pytest.fixture(scope="session")
+def model():
+    """Load the trained model"""
+    model_path = "models/passive_captcha_rf.pkl"
+    if not os.path.exists(model_path):
+        pytest.skip("Model file not found")
+    return joblib.load(model_path)
+
+@pytest.fixture(scope="session") 
+def scaler():
+    """Load the trained scaler"""
+    scaler_path = "models/passive_captcha_rf_scaler.pkl"
+    if not os.path.exists(scaler_path):
+        pytest.skip("Scaler file not found")
+    return joblib.load(scaler_path)
+
+@pytest.fixture(scope="session")
+def metadata():
+    """Load the model metadata"""
+    metadata_path = "models/passive_captcha_rf_metadata.json"
+    if not os.path.exists(metadata_path):
+        return {}
+    with open(metadata_path, 'r') as f:
+        return json.load(f)
 
 def test_model_loading():
     """Test model loading and initialization"""

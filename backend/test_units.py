@@ -226,13 +226,14 @@ class TestDatabaseModule(unittest.TestCase):
                 
                 # Validate structure
                 self.assertIsInstance(analytics, dict)
-                self.assertIn('stats', analytics)
+                self.assertIn('totalVerifications', analytics)
                 self.assertIn('trends', analytics)
                 self.assertIn('topOrigins', analytics)
                 
-                # Validate stats
-                stats = analytics['stats']
-                self.assertGreaterEqual(stats['totalVerifications'], 2)
+                # Validate data
+                self.assertGreaterEqual(analytics['totalVerifications'], 2)
+                self.assertIsInstance(analytics['trends'], list)
+                self.assertIsInstance(analytics['topOrigins'], list)
                 
         except ImportError:
             self.skipTest("Database module not available")
