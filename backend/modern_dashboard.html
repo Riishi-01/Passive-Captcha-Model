@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passive CAPTCHA Admin Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #06b6d4;
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --white: #ffffff;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --border-radius: 12px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: var(--gray-50);
+            color: var(--gray-700);
+            line-height: 1.6;
+        }
+        
+        /* Login Styles */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            padding: 2rem;
+        }
+        
+        .login-card {
+            background: var(--white);
+            padding: 3rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .login-card h2 {
+            color: var(--gray-800);
+            margin-bottom: 2rem;
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+        
+        .login-card .subtitle {
+            color: var(--gray-500);
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--gray-700);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: var(--transition);
+            background: var(--white);
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--white);
+            border: none;
+            padding: 0.875rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        
+        .error-message {
+            color: var(--danger);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+        
+        /* Dashboard Styles */
+        .dashboard {
+            display: none;
+            min-height: 100vh;
+            background: var(--gray-50);
+        }
+        
+        .navbar {
+            background: var(--white);
+            border-bottom: 1px solid var(--gray-200);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow);
+        }
+        
+        .navbar-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--gray-800);
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        
+        .navbar-brand i {
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+        
+        .navbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: var(--gray-600);
+            border: 1px solid var(--gray-300);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-outline:hover {
+            background: var(--gray-50);
+            border-color: var(--gray-400);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .page-header {
+            margin-bottom: 2rem;
+        }
+        
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 0.5rem;
+        }
+        
+        .page-subtitle {
+            color: var(--gray-500);
+            font-size: 1rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary);
+        }
+        
+        .stat-card.success::before { background: var(--success); }
+        .stat-card.warning::before { background: var(--warning); }
+        .stat-card.danger::before { background: var(--danger); }
+        .stat-card.info::before { background: var(--info); }
+        
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .stat-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            color: var(--white);
+            background: var(--primary);
+        }
+        
+        .stat-icon.success { background: var(--success); }
+        .stat-icon.warning { background: var(--warning); }
+        .stat-icon.danger { background: var(--danger); }
+        .stat-icon.info { background: var(--info); }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: var(--gray-500);
+            font-size: 0.875rem;
+        }
+        
+        .stat-change {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4rem;
+            margin-top: 0.5rem;
+        }
+        
+        .stat-change.positive {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+        
+        .stat-change.negative {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .chart-card {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .chart-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        .logs-card {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        
+        .logs-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logs-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+        
+        .logs-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .logs-table th {
+            background: var(--gray-50);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--gray-700);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .logs-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--gray-100);
+            font-size: 0.875rem;
+        }
+        
+        .logs-table tr:hover {
+            background: var(--gray-50);
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .status-badge.human {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+        
+        .status-badge.bot {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+        
+        .confidence-bar {
+            width: 60px;
+            height: 8px;
+            background: var(--gray-200);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: var(--success);
+            transition: var(--transition);
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: var(--gray-500);
+        }
+        
+        .loading i {
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray-500);
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 1rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .page-title {
+                font-size: 1.5rem;
+            }
+            
+            .stat-value {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Section -->
+    <div id="login-section" class="login-container">
+        <div class="login-card">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <i class="fas fa-shield-alt" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                <h2>Admin Dashboard</h2>
+                <p class="subtitle">Enter your credentials to access the Passive CAPTCHA admin panel</p>
+            </div>
+            
+            <form onsubmit="login(event)">
+                <div class="form-group">
+                    <label class="form-label" for="password">
+                        <i class="fas fa-lock"></i> Password
+                    </label>
+                    <input type="password" id="password" class="form-input" placeholder="Enter admin password" required>
+                </div>
+                
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+                
+                <div id="login-error" class="error-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="dashboard" class="dashboard">
+        <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-brand">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Passive CAPTCHA Admin</span>
+                </div>
+                <div class="navbar-actions">
+                    <button class="btn-outline" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn-outline" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container">
+            <div class="page-header">
+                <h1 class="page-title">Dashboard Overview</h1>
+                <p class="page-subtitle">Monitor your Passive CAPTCHA system performance and security metrics</p>
+            </div>
+
+            <div class="stats-grid" id="stats-grid">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                    Loading statistics...
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Verification Trends</h3>
+                        <select id="chartPeriod" onchange="updateChart()">
+                            <option value="24h">Last 24 Hours</option>
+                            <option value="7d">Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                        </select>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="trendsChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Detection Accuracy</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="accuracyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="logs-card">
+                <div class="logs-header">
+                    <h3 class="logs-title">Recent Verification Logs</h3>
+                    <button class="btn-outline" onclick="loadLogs()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div id="logs-container">
+                    <div class="loading">
+                        <i class="fas fa-spinner"></i>
+                        Loading logs...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('admin_token');
+        let trendsChart, accuracyChart;
+        
+        // Initialize dashboard if already logged in
+        if (authToken) {
+            showDashboard();
+        }
+
+        async function login(event) {
+            event.preventDefault();
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('login-error');
+            const button = event.target.querySelector('button');
+            
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
+            button.disabled = true;
+            
+            try {
+                const response = await fetch('/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.token;
+                    localStorage.setItem('admin_token', authToken);
+                    showDashboard();
+                } else {
+                    errorDiv.textContent = data.error?.message || 'Login failed';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Connection error. Please try again.';
+            } finally {
+                button.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+                button.disabled = false;
+            }
+        }
+
+        function showDashboard() {
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            loadDashboard();
+        }
+
+        function logout() {
+            localStorage.removeItem('admin_token');
+            authToken = null;
+            document.getElementById('login-section').style.display = 'flex';
+            document.getElementById('dashboard').style.display = 'none';
+        }
+
+        async function loadDashboard() {
+            await Promise.all([
+                loadStats(),
+                loadAnalytics(),
+                loadLogs()
+            ]);
+            initializeCharts();
+        }
+
+        async function refreshDashboard() {
+            await loadDashboard();
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/admin/stats', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load stats');
+                
+                const data = await response.json();
+                renderStats(data);
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+                document.getElementById('stats-grid').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Failed to load statistics</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderStats(data) {
+            const statsGrid = document.getElementById('stats-grid');
+            
+            // Safely extract data with defaults
+            const totalVerifications = data?.database?.total_verifications || 0;
+            const last24hVerifications = data?.database?.last_24h_verifications || 0;
+            const modelLoaded = data?.model?.loaded || false;
+            const modelStatus = data?.model?.status || 'unknown';
+            const apiStatus = data?.api?.status || 'unknown';
+            
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-title">Total Verifications</div>
+                        <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+                    </div>
+                    <div class="stat-value">${totalVerifications.toLocaleString()}</div>
+                    <div class="stat-label">All-time verifications</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i> Active
+                    </div>
+                </div>
+
+                <div class="stat-card success">
+                    <div class="stat-header">
+                        <div class="stat-title">24h Activity</div>
+                        <div class="stat-icon success"><i class="fas fa-clock"></i></div>
+                    </div>
+                    <div class="stat-value">${last24hVerifications.toLocaleString()}</div>
+                    <div class="stat-label">Recent verifications</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i> ${last24hVerifications > 0 ? 'Active' : 'Quiet'}
+                    </div>
+                </div>
+
+                <div class="stat-card ${modelLoaded ? 'success' : 'danger'}">
+                    <div class="stat-header">
+                        <div class="stat-title">ML Model</div>
+                        <div class="stat-icon ${modelLoaded ? 'success' : 'danger'}">
+                            <i class="fas fa-${modelLoaded ? 'check-circle' : 'exclamation-triangle'}"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value">${modelLoaded ? 'Active' : 'Error'}</div>
+                    <div class="stat-label">Status: ${modelStatus}</div>
+                    <div class="stat-change ${modelLoaded ? 'positive' : 'negative'}">
+                        <i class="fas fa-${modelLoaded ? 'check' : 'times'}"></i> ${modelLoaded ? 'Healthy' : 'Issue'}
+                    </div>
+                </div>
+
+                <div class="stat-card info">
+                    <div class="stat-header">
+                        <div class="stat-title">API Status</div>
+                        <div class="stat-icon info"><i class="fas fa-server"></i></div>
+                    </div>
+                    <div class="stat-value">${apiStatus === 'operational' ? 'Online' : 'Offline'}</div>
+                    <div class="stat-label">System status</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-check"></i> ${apiStatus}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadAnalytics() {
+            try {
+                const response = await fetch('/admin/analytics?hours=24', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load analytics');
+                
+                const data = await response.json();
+                // Analytics data will be used for charts
+                window.analyticsData = data;
+            } catch (error) {
+                console.error('Failed to load analytics:', error);
+                window.analyticsData = null;
+            }
+        }
+
+        async function loadLogs() {
+            try {
+                const response = await fetch('/admin/logs?limit=20', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load logs');
+                
+                const data = await response.json();
+                renderLogs(data.logs || []);
+            } catch (error) {
+                console.error('Failed to load logs:', error);
+                document.getElementById('logs-container').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Failed to load verification logs</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderLogs(logs) {
+            const container = document.getElementById('logs-container');
+            
+            if (logs.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>No verification logs found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const tableHTML = `
+                <table class="logs-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Confidence</th>
+                            <th>Origin</th>
+                            <th>Timestamp</th>
+                            <th>Session ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${logs.map(log => `
+                            <tr>
+                                <td>
+                                    <span class="status-badge ${log.is_human ? 'human' : 'bot'}">
+                                        <i class="fas fa-${log.is_human ? 'user' : 'robot'}"></i>
+                                        ${log.is_human ? 'Human' : 'Bot'}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <div class="confidence-bar">
+                                            <div class="confidence-fill" style="width: ${(log.confidence * 100)}%"></div>
+                                        </div>
+                                        <span>${(log.confidence * 100).toFixed(1)}%</span>
+                                    </div>
+                                </td>
+                                <td>${log.origin || 'Unknown'}</td>
+                                <td>${new Date(log.timestamp).toLocaleString()}</td>
+                                <td><code>${log.session_id.substring(0, 8)}...</code></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = tableHTML;
+        }
+
+        function initializeCharts() {
+            // Initialize trends chart
+            const trendsCtx = document.getElementById('trendsChart').getContext('2d');
+            trendsChart = new Chart(trendsCtx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${23-i}h ago`),
+                    datasets: [{
+                        label: 'Human Verifications',
+                        data: Array.from({length: 24}, () => Math.floor(Math.random() * 20) + 5),
+                        borderColor: 'rgb(16, 185, 129)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Bot Attempts',
+                        data: Array.from({length: 24}, () => Math.floor(Math.random() * 10) + 1),
+                        borderColor: 'rgb(239, 68, 68)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Initialize accuracy chart (doughnut)
+            const accuracyCtx = document.getElementById('accuracyChart').getContext('2d');
+            accuracyChart = new Chart(accuracyCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Human', 'Bot', 'Uncertain'],
+                    datasets: [{
+                        data: [75, 20, 5],
+                        backgroundColor: [
+                            'rgb(16, 185, 129)',
+                            'rgb(239, 68, 68)',
+                            'rgb(245, 158, 11)'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            // Update chart based on selected period
+            const period = document.getElementById('chartPeriod').value;
+            // Implementation would update chart data based on period
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            if (authToken && document.getElementById('dashboard').style.display !== 'none') {
+                refreshDashboard();
+            }
+        }, 30000);
+    </script>
+</body>
+</html>

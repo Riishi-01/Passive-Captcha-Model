@@ -1,4 +1,4 @@
-#!/bin/bash
+ #!/bin/bash
 
 # Deploy Passive CAPTCHA Backend to Render.com using CLI
 # This script provides deployment instructions after successful testing

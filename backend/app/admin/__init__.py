@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, current_app, render_template_string
 import jwt
 
-from app.database import get_analytics_data, cleanup_old_data, db_session, VerificationLog
+from app.database import get_analytics_data, cleanup_old_data, get_db_session, VerificationLog
 
 # Create admin blueprint
 admin_bp = Blueprint('admin', __name__)
@@ -165,7 +165,8 @@ def get_verification_logs():
         hours = int(request.args.get('hours', 24))
         
         # Build query
-        query = db_session.query(VerificationLog)
+        session = get_db_session()
+        query = session.query(VerificationLog)
         
         # Apply time filter
         since = datetime.utcnow() - timedelta(hours=hours)
@@ -187,6 +188,9 @@ def get_verification_logs():
         
         # Convert to dictionaries
         logs_data = [log.to_dict() for log in logs]
+        
+        # Close session
+        session.close()
         
         return jsonify({
             'logs': logs_data,
@@ -232,10 +236,12 @@ def get_system_stats():
         from app.database import get_last_verification_time
         
         # Database statistics
-        total_verifications = db_session.query(VerificationLog).count()
-        last_24h_count = db_session.query(VerificationLog).filter(
+        session = get_db_session()
+        total_verifications = session.query(VerificationLog).count()
+        last_24h_count = session.query(VerificationLog).filter(
             VerificationLog.timestamp >= datetime.utcnow() - timedelta(hours=24)
         ).count()
+        session.close()
         
         # Model information
         model_info = get_model_info()
@@ -321,9 +327,18 @@ def cleanup_data():
 @admin_bp.route('/dashboard', methods=['GET'])
 def admin_dashboard():
     """
-    Serve admin dashboard HTML page
+    Serve modern admin dashboard HTML page
     """
-    dashboard_html = """
+    import os
+    dashboard_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'modern_dashboard.html')
+    
+    try:
+        with open(dashboard_path, 'r', encoding='utf-8') as f:
+            dashboard_html = f.read()
+        return dashboard_html
+    except FileNotFoundError:
+        # Fallback to basic dashboard
+        dashboard_html = """
 <!DOCTYPE html>
 <html lang="en">
 <head>

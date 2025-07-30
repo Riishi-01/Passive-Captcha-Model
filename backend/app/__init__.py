@@ -73,12 +73,23 @@ def create_app(config_name='development'):
     with app.app_context():
         load_model()
     
+    # Initialize multi-tenant components
+    from app.token_manager import init_token_management
+    from app.script_generator import init_script_generator
+    from app.dashboard_manager import init_dashboard_manager
+    
+    init_token_management(app)
+    init_script_generator(app)
+    init_dashboard_manager(app)
+    
     # Register blueprints
     from app.api import api_bp
     from app.admin import admin_bp
+    from app.website_api import website_bp
     
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(website_bp, url_prefix='/api/v1/websites')
     
     # Health check endpoint
     @app.route('/health')
@@ -86,9 +97,10 @@ def create_app(config_name='development'):
         """Health check endpoint for monitoring"""
         try:
             from app.ml import model_loaded
+            import time
             return {
                 'status': 'healthy',
-                'timestamp': int(time.time()) if 'time' in globals() else 'unknown',
+                'timestamp': int(time.time()),
                 'version': '1.0.0',
                 'model_loaded': model_loaded
             }

@@ -18,6 +18,41 @@ Base = declarative_base()
 SessionLocal = None
 
 
+class Website(Base):
+    """
+    Table for storing registered websites and their tokens
+    """
+    __tablename__ = 'websites'
+    
+    website_id = Column(String(36), primary_key=True)  # UUID
+    website_name = Column(String(255), nullable=False)
+    website_url = Column(String(500), nullable=False)
+    admin_email = Column(String(255), nullable=False)
+    api_key = Column(String(255), unique=True, nullable=False)
+    secret_key = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    status = Column(String(20), default='active')  # active, suspended, revoked
+    
+    # JSON fields for flexible configuration
+    permissions = Column(Text, nullable=True)  # JSON string
+    rate_limits = Column(Text, nullable=True)  # JSON string
+    
+    def to_dict(self):
+        """Convert to dictionary for JSON serialization"""
+        return {
+            'website_id': self.website_id,
+            'website_name': self.website_name,
+            'website_url': self.website_url,
+            'admin_email': self.admin_email,
+            'api_key': self.api_key,
+            'secret_key': self.secret_key,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'status': self.status,
+            'permissions': json.loads(self.permissions) if self.permissions else [],
+            'rate_limits': json.loads(self.rate_limits) if self.rate_limits else {}
+        }
+
+
 class VerificationLog(Base):
     """
     Table for storing verification attempts and results
@@ -25,6 +60,7 @@ class VerificationLog(Base):
     __tablename__ = 'verification_logs'
     
     id = Column(Integer, primary_key=True)
+    website_id = Column(String(36), nullable=False, index=True)  # Foreign key to websites
     session_id = Column(String(255), nullable=False)
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(Text, nullable=True)
@@ -467,4 +503,240 @@ def scheduled_cleanup():
         
     except Exception as e:
         print(f"Error in scheduled cleanup: {e}")
-        return False 
+        return False
+
+
+# Multi-tenant database functions
+
+def store_website_registration(website_data):
+    """Store website registration in database"""
+    try:
+        session = get_db_session()
+        
+        website = Website(
+            website_id=website_data['website_id'],
+            website_name=website_data['website_name'],
+            website_url=website_data['website_url'],
+            admin_email=website_data['admin_email'],
+            api_key=website_data['api_key'],
+            secret_key=website_data['secret_key'],
+            created_at=datetime.fromisoformat(website_data['created_at']),
+            status=website_data.get('status', 'active'),
+            permissions=json.dumps(website_data.get('permissions', [])),
+            rate_limits=json.dumps(website_data.get('rate_limits', {}))
+        )
+        
+        session.add(website)
+        session.commit()
+        session.close()
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error storing website registration: {e}")
+        return False
+
+
+def get_website_by_api_key(api_key):
+    """Get website information by API key"""
+    try:
+        session = get_db_session()
+        website = session.query(Website).filter(Website.api_key == api_key).first()
+        
+        if website:
+            result = website.to_dict()
+            session.close()
+            return result
+        
+        session.close()
+        return None
+        
+    except Exception as e:
+        print(f"Error retrieving website by API key: {e}")
+        return None
+
+
+def get_website_by_id(website_id):
+    """Get website information by ID"""
+    try:
+        session = get_db_session()
+        website = session.query(Website).filter(Website.website_id == website_id).first()
+        
+        if website:
+            result = website.to_dict()
+            session.close()
+            return result
+        
+        session.close()
+        return None
+        
+    except Exception as e:
+        print(f"Error retrieving website by ID: {e}")
+        return None
+
+
+def get_websites_by_admin(admin_email):
+    """Get all websites registered by an admin"""
+    try:
+        session = get_db_session()
+        websites = session.query(Website).filter(Website.admin_email == admin_email).all()
+        
+        results = [website.to_dict() for website in websites]
+        session.close()
+        
+        return results
+        
+    except Exception as e:
+        print(f"Error retrieving websites by admin: {e}")
+        return []
+
+
+def update_website_status(website_id, status):
+    """Update website status"""
+    try:
+        session = get_db_session()
+        website = session.query(Website).filter(Website.website_id == website_id).first()
+        
+        if website:
+            website.status = status
+            session.commit()
+            session.close()
+            return True
+        
+        session.close()
+        return False
+        
+    except Exception as e:
+        print(f"Error updating website status: {e}")
+        return False
+
+
+def log_verification_with_website(website_id, session_id, ip_address, user_agent, origin, 
+                                is_human, confidence, features, response_time):
+    """
+    Log a verification attempt with website isolation
+    """
+    try:
+        session = get_db_session()
+        
+        # Extract individual features from the features list/dict
+        if isinstance(features, list) and len(features) >= 11:
+            # Features are in a list format
+            feature_values = {
+                'mouse_movement_count': int(features[0]) if features[0] is not None else None,
+                'avg_mouse_velocity': float(features[1]) if features[1] is not None else None,
+                'mouse_acceleration_variance': float(features[2]) if features[2] is not None else None,
+                'keystroke_count': int(features[3]) if features[3] is not None else None,
+                'avg_keystroke_interval': float(features[4]) if features[4] is not None else None,
+                'typing_rhythm_consistency': float(features[5]) if features[5] is not None else None,
+                'session_duration_normalized': float(features[6]) if features[6] is not None else None,
+                'webgl_support_score': float(features[7]) if features[7] is not None else None,
+                'canvas_uniqueness_score': float(features[8]) if features[8] is not None else None,
+                'hardware_legitimacy_score': float(features[9]) if features[9] is not None else None,
+                'browser_consistency_score': float(features[10]) if features[10] is not None else None
+            }
+        elif isinstance(features, dict):
+            # Features are in dictionary format
+            feature_values = {
+                'mouse_movement_count': features.get('mouse_movement_count'),
+                'avg_mouse_velocity': features.get('avg_mouse_velocity'),
+                'mouse_acceleration_variance': features.get('mouse_acceleration_variance'),
+                'keystroke_count': features.get('keystroke_count'),
+                'avg_keystroke_interval': features.get('avg_keystroke_interval'),
+                'typing_rhythm_consistency': features.get('typing_rhythm_consistency'),
+                'session_duration_normalized': features.get('session_duration_normalized'),
+                'webgl_support_score': features.get('webgl_support_score'),
+                'canvas_uniqueness_score': features.get('canvas_uniqueness_score'),
+                'hardware_legitimacy_score': features.get('hardware_legitimacy_score'),
+                'browser_consistency_score': features.get('browser_consistency_score')
+            }
+        else:
+            # Default empty values
+            feature_values = {
+                'mouse_movement_count': None,
+                'avg_mouse_velocity': None,
+                'mouse_acceleration_variance': None,
+                'keystroke_count': None,
+                'avg_keystroke_interval': None,
+                'typing_rhythm_consistency': None,
+                'session_duration_normalized': None,
+                'webgl_support_score': None,
+                'canvas_uniqueness_score': None,
+                'hardware_legitimacy_score': None,
+                'browser_consistency_score': None
+            }
+        
+        verification = VerificationLog(
+            website_id=website_id,
+            session_id=session_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            origin=origin,
+            is_human=is_human,
+            confidence=confidence,
+            response_time=response_time,
+            **feature_values
+        )
+        
+        session.add(verification)
+        session.commit()
+        session.close()
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error logging verification: {e}")
+        return False
+
+
+def get_analytics_data_for_website(website_id, hours=24):
+    """
+    Get analytics data for a specific website
+    """
+    try:
+        session = get_db_session()
+        
+        # Calculate time range
+        since = datetime.utcnow() - timedelta(hours=hours)
+        
+        # Get all verifications for this website in the time range
+        verifications = session.query(VerificationLog).filter(
+            VerificationLog.website_id == website_id,
+            VerificationLog.timestamp >= since
+        ).all()
+        
+        # Calculate analytics
+        total_verifications = len(verifications)
+        human_count = sum(1 for v in verifications if v.is_human)
+        bot_count = total_verifications - human_count
+        
+        avg_confidence = sum(v.confidence for v in verifications) / total_verifications if total_verifications > 0 else 0
+        avg_response_time = sum(v.response_time for v in verifications if v.response_time) / total_verifications if total_verifications > 0 else 0
+        
+        # Get unique sessions and origins
+        unique_sessions = len(set(v.session_id for v in verifications))
+        unique_origins = len(set(v.origin for v in verifications if v.origin))
+        
+        session.close()
+        
+        return {
+            'website_id': website_id,
+            'time_range_hours': hours,
+            'total_verifications': total_verifications,
+            'human_detections': human_count,
+            'bot_detections': bot_count,
+            'human_percentage': (human_count / total_verifications * 100) if total_verifications > 0 else 0,
+            'average_confidence': round(avg_confidence, 3),
+            'average_response_time_ms': round(avg_response_time, 2),
+            'unique_sessions': unique_sessions,
+            'unique_origins': unique_origins,
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }
+        
+    except Exception as e:
+        print(f"Error getting analytics data for website {website_id}: {e}")
+        return {
+            'website_id': website_id,
+            'error': 'Failed to retrieve analytics data',
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        } 
