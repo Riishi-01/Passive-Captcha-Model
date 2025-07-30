@@ -88,11 +88,13 @@ class TokenManager:
     
     def _generate_secure_api_key(self) -> str:
         """Generate cryptographically secure API key"""
-        return f"pc_{secrets.token_urlsafe(32)}"
+        from app.utils import generate_api_key
+        return generate_api_key("pc")
     
     def _generate_secret_key(self) -> str:
         """Generate secret key for JWT signing"""
-        return secrets.token_urlsafe(64)
+        from app.utils import generate_secure_token
+        return generate_secure_token(64)
     
     def _store_website_token(self, token: WebsiteToken):
         """Store website token in persistent storage"""

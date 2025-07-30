@@ -73,7 +73,15 @@ def verify_captcha():
                 }
             }), 400
         
-        data = request.get_json()
+        try:
+            data = request.get_json(force=True)
+        except Exception as e:
+            return jsonify({
+                'error': {
+                    'code': 'INVALID_JSON',
+                    'message': 'Invalid JSON format in request body'
+                }
+            }), 400
         
         if not data:
             return jsonify({
@@ -137,8 +145,9 @@ def verify_captcha():
                     response_time=response_time
                 )
             else:
-                # Fallback to legacy logging for backward compatibility
-                log_verification(
+                # Use generic website ID for legacy requests
+                log_verification_with_website(
+                    website_id='legacy-requests',
                     session_id=session_id,
                     ip_address=request.remote_addr,
                     user_agent=request.headers.get('User-Agent'),
