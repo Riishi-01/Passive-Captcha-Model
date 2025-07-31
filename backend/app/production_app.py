@@ -209,21 +209,21 @@ def create_production_app(config_name='production'):
         init_script_management(redis_client)
         app.logger.info("All endpoint modules initialized with Redis caching")
     
-    # Register blueprints
+    # Register blueprints (avoid duplicates)
     from app.api import api_bp
-    from app.admin import admin_bp
-    from app.admin.ml_endpoints import ml_bp
-    from app.admin.dashboard_endpoints import dashboard_bp
-    from app.admin.config_endpoints import config_bp
-    from app.admin.script_management import script_mgmt_bp
-    from app.api.script_endpoints import script_bp
     from app.api.admin_endpoints import admin_bp as admin_api_bp
+    from app.api.script_endpoints import script_bp
     
-    # Register main admin API endpoints (always available)
+    # Register main API endpoints
+    app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(script_bp)
+    app.logger.info("Core API endpoints registered")
+    
+    # Register modern admin API endpoints (primary)
     app.register_blueprint(admin_api_bp, url_prefix='/admin')
     app.logger.info("Admin API endpoints registered")
     
-    # Register analytics endpoints
+    # Register supporting analytics endpoints (non-conflicting)
     from app.admin.analytics_endpoints import analytics_bp
     from app.admin.alerts_endpoints import alerts_bp
     from app.admin.logs_endpoints import logs_bp
@@ -232,14 +232,11 @@ def create_production_app(config_name='production'):
     app.register_blueprint(alerts_bp)
     app.register_blueprint(logs_bp)
     app.register_blueprint(ml_metrics_bp)
+    app.logger.info("Analytics and monitoring endpoints registered")
     
-    # Register legacy endpoints for backward compatibility
-    app.register_blueprint(api_bp, url_prefix='/api')
-    app.register_blueprint(ml_bp)
-    app.register_blueprint(dashboard_bp)
-    app.register_blueprint(config_bp)
-    app.register_blueprint(script_mgmt_bp)
-    app.register_blueprint(script_bp)
+    # Skip legacy endpoints that conflict with modern admin API
+    # (ml_bp, dashboard_bp, config_bp, script_mgmt_bp have duplicate routes with admin_api_bp)
+    app.logger.info("Skipped legacy conflicting blueprints to avoid route conflicts")
     
     # Register temporary endpoint fixes for testing
     try:

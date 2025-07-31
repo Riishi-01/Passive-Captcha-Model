@@ -30,6 +30,7 @@ loguru==0.7.2
 # WebSocket Support
 flask-socketio>=5.3.0
 python-socketio>=5.8.0
+eventlet>=0.33.3
 
 # Redis (optional for caching)
 redis>=5.0.0
