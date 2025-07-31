@@ -40,6 +40,7 @@ def start_application():
         host = os.environ.get('HOST', '0.0.0.0')
         
         print(f"🌐 Starting server on {host}:{port}")
+        print(f"📡 Server will be accessible on port {port}")
         
         # Use Gunicorn if available, otherwise Flask dev server
         try:
@@ -67,7 +68,9 @@ def start_application():
                 'keepalive': 5,
                 'max_requests': 1000,
                 'max_requests_jitter': 100,
-                'loglevel': 'info'
+                'loglevel': 'info',
+                'preload_app': True,
+                'worker_class': 'sync'
             }
             
             StandaloneApplication(app, options).run()

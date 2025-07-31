@@ -567,15 +567,14 @@ def parse_user_agent(user_agent_string):
             pass
     
     # Fallback when user-agents library is not available
-    try:
-        return {
-            'browser': 'Unknown',
-            'browser_version': 'Unknown',
-            'os': 'Unknown',
-            'os_version': 'Unknown',
-            'device': 'Unknown',
-            'is_mobile': False,
-            'is_tablet': False,
-            'is_pc': True,
-            'is_bot': False
-        }
+    return {
+        'browser': 'Unknown',
+        'browser_version': 'Unknown',
+        'os': 'Unknown',
+        'os_version': 'Unknown',
+        'device': 'Unknown',
+        'is_mobile': False,
+        'is_tablet': False,
+        'is_pc': True,
+        'is_bot': False
+    }
