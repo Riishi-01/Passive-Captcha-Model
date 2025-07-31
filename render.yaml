@@ -2,9 +2,10 @@ services:
   - type: web
     name: passive-captcha
     env: python
-    buildCommand: "./render-build-enhanced.sh"
+    buildCommand: "npm run build && pip install -r backend/requirements-render.txt"
     startCommand: "cd backend && python render_start.py"
     plan: free
+    runtime: python3.11
     envVars:
       - key: FLASK_ENV
         value: production
@@ -16,8 +17,4 @@ services:
         fromGroup: 5003
       - key: NODE_VERSION
         value: "18"
-      - key: NPM_CONFIG_PRODUCTION
-        value: "false"
-      - key: PYTHON_VERSION
-        value: "3.11"
     healthCheckPath: /health
