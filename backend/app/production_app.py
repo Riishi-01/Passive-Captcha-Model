@@ -37,9 +37,34 @@ def create_production_app(config_name='production'):
     print(f"Static folder: {static_folder}")
     print(f"Static folder exists: {os.path.exists(static_folder)}")
     
+    # Additional path checking for Render environment
     if not os.path.exists(static_folder):
-        static_folder = None
-        print("Static folder not found, serving without frontend")
+        # Try alternative paths for Render deployment
+        alternative_paths = [
+            os.path.join(backend_dir, '..', 'frontend', 'dist'),
+            os.path.join(os.getcwd(), 'frontend', 'dist'),
+            os.path.join(os.path.dirname(os.getcwd()), 'frontend', 'dist'),
+            '/opt/render/project/src/frontend/dist'
+        ]
+        
+        for alt_path in alternative_paths:
+            abs_alt_path = os.path.abspath(alt_path)
+            print(f"Checking alternative path: {abs_alt_path}")
+            if os.path.exists(abs_alt_path):
+                static_folder = abs_alt_path
+                print(f"Found frontend at alternative path: {static_folder}")
+                break
+        else:
+            static_folder = None
+            print("Static folder not found in any location, serving without frontend")
+    
+    # Log static folder contents if found
+    if static_folder and os.path.exists(static_folder):
+        try:
+            files = os.listdir(static_folder)
+            print(f"Static folder contains {len(files)} files: {files[:5]}{'...' if len(files) > 5 else ''}")
+        except Exception as e:
+            print(f"Could not list static folder contents: {e}")
     
     app = Flask(__name__, static_folder=static_folder, static_url_path='')
     
@@ -324,30 +349,57 @@ def create_production_app(config_name='production'):
         def serve_root():
             """Serve Vue.js frontend root"""
             if static_folder and os.path.exists(static_folder):
-                return app.send_static_file('index.html')
-            else:
-                # Development fallback
-                return '''
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Passive CAPTCHA Admin</title>
-                    <meta charset="utf-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1">
-                </head>
-                <body>
-                    <h1>Passive CAPTCHA Admin Dashboard</h1>
-                    <p>Frontend not built. Build the frontend first.</p>
-                    <p>API endpoints available at /admin/* and /api/*</p>
-                    <ul>
-                        <li><a href="/health">System Health</a></li>
-                        <li><a href="/admin/analytics/summary">Analytics Summary</a></li>
-                        <li><a href="/admin/ml/metrics">ML Metrics</a></li>
-                        <li><a href="/admin/websites">Websites</a></li>
-                    </ul>
-                </body>
-                </html>
-                '''
+                try:
+                    return app.send_static_file('index.html')
+                except Exception as e:
+                    app.logger.error(f"Failed to serve index.html: {e}")
+                    # Fallback to reading file directly
+                    try:
+                        index_path = os.path.join(static_folder, 'index.html')
+                        if os.path.exists(index_path):
+                            with open(index_path, 'r', encoding='utf-8') as f:
+                                return f.read()
+                    except Exception as e2:
+                        app.logger.error(f"Failed to read index.html directly: {e2}")
+            
+            # Fallback HTML with better styling
+            return '''
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <title>Passive CAPTCHA Admin</title>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+                    .api-link { display: inline-block; margin: 10px; padding: 10px 20px; background: #007cba; color: white; text-decoration: none; border-radius: 5px; }
+                    .api-link:hover { background: #005a85; }
+                    .status { background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                </style>
+            </head>
+            <body>
+                <h1>🔐 Passive CAPTCHA Admin Dashboard</h1>
+                <div class="status">
+                    <p><strong>✅ API Server Running</strong></p>
+                    <p>Frontend build pending or failed. API endpoints are fully functional:</p>
+                </div>
+                <div>
+                    <a href="/login" class="api-link">🔑 Login API</a>
+                    <a href="/health" class="api-link">❤️ Health Check</a>
+                    <a href="/admin" class="api-link">⚙️ Admin API</a>
+                </div>
+                <h3>Quick Test:</h3>
+                <pre>curl -X POST /login -H "Content-Type: application/json" -d '{"password": "Admin123"}'</pre>
+                <h3>Available Endpoints:</h3>
+                <ul>
+                    <li><a href="/health">System Health</a></li>
+                    <li><a href="/admin/analytics/summary">Analytics Summary</a></li>
+                    <li><a href="/admin/ml/metrics">ML Metrics</a></li>
+                    <li><a href="/admin/websites">Websites</a></li>
+                </ul>
+            </body>
+            </html>
+            '''
         
         @app.route('/login', methods=['GET', 'POST'])
         def login_unified():
@@ -394,15 +446,31 @@ def create_production_app(config_name='production'):
         def serve_static_files(path):
             """Serve static assets or fallback to index.html for SPA routing"""
             if static_folder and os.path.exists(static_folder):
-                file_path = os.path.join(static_folder, path)
-                if os.path.exists(file_path) and os.path.isfile(file_path):
-                    return app.send_static_file(path)
-                else:
-                    # For Vue.js router - serve index.html for all routes
-                    return app.send_static_file('index.html')
+                try:
+                    file_path = os.path.join(static_folder, path)
+                    if os.path.exists(file_path) and os.path.isfile(file_path):
+                        return app.send_static_file(path)
+                    else:
+                        # For Vue.js router - serve index.html for all routes
+                        # But only for routes that look like frontend routes
+                        if not path.startswith(('api', 'admin', 'health', 'login')):
+                            try:
+                                return app.send_static_file('index.html')
+                            except Exception as e:
+                                app.logger.error(f"Failed to serve index.html for SPA route {path}: {e}")
+                                # Try reading file directly
+                                index_path = os.path.join(static_folder, 'index.html')
+                                if os.path.exists(index_path):
+                                    with open(index_path, 'r', encoding='utf-8') as f:
+                                        return f.read()
+                        # Return 404 for API-like routes
+                        return {'error': {'code': 'NOT_FOUND', 'message': f'Endpoint /{path} not found'}, 'success': False}, 404
+                except Exception as e:
+                    app.logger.error(f"Error serving static file {path}: {e}")
+                    return {'error': {'code': 'SERVER_ERROR', 'message': 'Static file serving error'}, 'success': False}, 500
             else:
                 # Return 404 for unknown routes when frontend not available
-                return {'error': {'code': 'NOT_FOUND', 'message': 'Endpoint not found'}, 'success': False}, 404
+                return {'error': {'code': 'NOT_FOUND', 'message': f'Endpoint /{path} not found (frontend not available)'}, 'success': False}, 404
     
     # Error handlers
     @app.errorhandler(400)
