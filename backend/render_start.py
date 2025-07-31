@@ -35,7 +35,7 @@ def start_application():
     try:
         from app.production_app import create_production_app
         
-        app = create_production_app()
+        app, socketio = create_production_app()
         port = int(os.environ.get('PORT', 5003))
         host = os.environ.get('HOST', '0.0.0.0')
         
