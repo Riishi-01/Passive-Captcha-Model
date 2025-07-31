@@ -100,8 +100,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Frontend build files
-frontend/dist/
+# Frontend build files (keep dist for deployment)
+# frontend/dist/ (commented out - keep for Render deployment)
 frontend/build/
 frontend/.next/
 

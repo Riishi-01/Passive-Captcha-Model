@@ -2,7 +2,7 @@ services:
   - type: web
     name: passive-captcha
     env: python
-    buildCommand: "npm run build && pip install -r backend/requirements-render.txt"
+    buildCommand: "pip install -r backend/requirements-render.txt"
     startCommand: "cd backend && python render_start.py"
     plan: free
     runtime: python3.11
@@ -15,6 +15,4 @@ services:
         value: 0.0.0.0
       - key: PORT
         fromGroup: 5003
-      - key: NODE_VERSION
-        value: "18"
     healthCheckPath: /health
