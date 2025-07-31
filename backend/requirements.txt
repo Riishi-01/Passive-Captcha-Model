@@ -48,8 +48,8 @@ python-dateutil==2.8.2
 # HTTP Client (for external API calls)
 requests==2.31.0
 
-# Data Processing
-scipy==1.12.0
+# Data Processing (remove scipy for Render compatibility)
+# scipy==1.12.0  # Disabled for cloud deployment - requires Fortran compiler
 
 # Development & Testing
 pytest==7.4.2

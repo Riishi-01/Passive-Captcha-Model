@@ -7,7 +7,7 @@ A production-ready passive CAPTCHA system that uses machine learning to distingu
 - **Frontend**: JavaScript widget for universal website integration
 - **Backend**: ML inference API with admin dashboard  
 - **Database**: Verification logs and analytics storage
-- **Deployment**: Cloud-native architecture (Railway/Vercel/Heroku)
+- **Deployment**: Cloud-native architecture (Render/Railway/Vercel/Heroku)
 - **Admin Panel**: Real-time monitoring, analytics, and system management
 
 ## Architecture
@@ -183,6 +183,32 @@ CONFIDENCE_THRESHOLD=0.6
 # Frontend
 REACT_APP_API_URL=https://your-api.railway.app
 ```
+
+## 🚀 Cloud Deployment
+
+### Render.com Deployment
+```bash
+# 1. Build Command:
+./render-build.sh
+
+# 2. Start Command:
+cd backend && python render_start.py
+
+# 3. Environment Variables:
+FLASK_ENV=production
+ADMIN_SECRET=Admin123
+HOST=0.0.0.0
+```
+
+### Quick Deploy to Render
+1. Connect your GitHub repository to Render
+2. Select "Web Service" 
+3. Set build command: `./render-build.sh`
+4. Set start command: `cd backend && python render_start.py`
+5. Add environment variables as listed above
+6. Deploy!
+
+Your app will be available at: `https://your-app-name.onrender.com/login`
 
 ## Performance Requirements
 

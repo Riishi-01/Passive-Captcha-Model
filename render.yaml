@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: passive-captcha
+    env: python
+    buildCommand: "./render-build.sh"
+    startCommand: "cd backend && python render_start.py"
+    plan: free
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: ADMIN_SECRET
+        value: Admin123
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        fromGroup: 5003
+    healthCheckPath: /health
