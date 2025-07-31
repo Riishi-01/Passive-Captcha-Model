@@ -13,9 +13,21 @@ from app.script_token_manager import get_script_token_manager
 from app.logs_pipeline import logs_pipeline, LogType, LogLevel
 from app.database import log_verification
 from app.ml import predict_human_probability
-import geoip2.database
-import geoip2.errors
-from user_agents import parse
+# Optional GeoIP functionality
+try:
+    import geoip2.database
+    import geoip2.errors
+    GEOIP_AVAILABLE = True
+except ImportError:
+    print("⚠️ GeoIP2 not available - geographic features disabled")
+    GEOIP_AVAILABLE = False
+
+try:
+    from user_agents import parse
+    USER_AGENTS_AVAILABLE = True
+except ImportError:
+    print("⚠️ User-agents library not available - user agent parsing disabled")
+    USER_AGENTS_AVAILABLE = False
 
 script_bp = Blueprint('script', __name__, url_prefix='/api/script')
 
@@ -511,15 +523,16 @@ def get_country_from_ip(ip_address):
     """
     Get country code from IP address using GeoIP
     """
-    try:
-        # Try to use GeoIP database if available
-        geoip_path = current_app.config.get('GEOIP_DATABASE_PATH')
-        if geoip_path and os.path.exists(geoip_path):
-            with geoip2.database.Reader(geoip_path) as reader:
-                response = reader.country(ip_address)
-                return response.country.iso_code
-    except Exception:
-        pass
+    if GEOIP_AVAILABLE:
+        try:
+            # Try to use GeoIP database if available
+            geoip_path = current_app.config.get('GEOIP_DATABASE_PATH')
+            if geoip_path and os.path.exists(geoip_path):
+                with geoip2.database.Reader(geoip_path) as reader:
+                    response = reader.country(ip_address)
+                    return response.country.iso_code
+        except Exception:
+            pass
     
     # Fallback to simple IP-based country detection (for demo)
     if ip_address.startswith('127.') or ip_address.startswith('192.168.') or ip_address.startswith('10.'):
@@ -536,20 +549,25 @@ def parse_user_agent(user_agent_string):
     """
     Parse user agent string to extract browser and OS information
     """
+    if USER_AGENTS_AVAILABLE:
+        try:
+            user_agent = parse(user_agent_string)
+            return {
+                'browser': user_agent.browser.family,
+                'browser_version': user_agent.browser.version_string,
+                'os': user_agent.os.family,
+                'os_version': user_agent.os.version_string,
+                'device': user_agent.device.family,
+                'is_mobile': user_agent.is_mobile,
+                'is_tablet': user_agent.is_tablet,
+                'is_pc': user_agent.is_pc,
+                'is_bot': user_agent.is_bot
+            }
+        except Exception:
+            pass
+    
+    # Fallback when user-agents library is not available
     try:
-        user_agent = parse(user_agent_string)
-        return {
-            'browser': user_agent.browser.family,
-            'browser_version': user_agent.browser.version_string,
-            'os': user_agent.os.family,
-            'os_version': user_agent.os.version_string,
-            'device': user_agent.device.family,
-            'is_mobile': user_agent.is_mobile,
-            'is_tablet': user_agent.is_tablet,
-            'is_pc': user_agent.is_pc,
-            'is_bot': user_agent.is_bot
-        }
-    except Exception:
         return {
             'browser': 'Unknown',
             'browser_version': 'Unknown',
