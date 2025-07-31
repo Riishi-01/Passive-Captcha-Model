@@ -1,27 +1,9 @@
 <template>
-  <div id="app" class="min-h-screen bg-gray-50 dark:bg-gray-900">
-    <!-- Toast Container -->
-    <div id="toast-container"></div>
-    
-    <!-- Main Router View -->
-    <RouterView />
-    
-    <!-- Global Loading Indicator -->
-    <LoadingOverlay v-if="isLoading" />
-  </div>
+  <RouterView />
 </template>
 
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
-import { computed } from 'vue'
-import { useAppStore } from '@/stores/app'
-import LoadingOverlay from '@/components/ui/LoadingOverlay.vue'
-
-// Store
-const appStore = useAppStore()
-
-// Computed
-const isLoading = computed(() => appStore.isLoading)
 </script>
 
 <style>

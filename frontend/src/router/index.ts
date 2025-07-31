@@ -1,103 +1,129 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
-// Lazy load components for better performance
-const Dashboard = () => import('@/views/Dashboard.vue')
-const Login = () => import('@/views/auth/Login.vue')
-const Websites = () => import('@/views/websites/Websites.vue')
-const WebsiteDetail = () => import('@/views/websites/WebsiteDetail.vue')
-const Analytics = () => import('@/views/analytics/Analytics.vue')
-const Logs = () => import('@/views/logs/Logs.vue')
-const Settings = () => import('@/views/settings/Settings.vue')
-const Profile = () => import('@/views/profile/Profile.vue')
-const NotFound = () => import('@/views/errors/NotFound.vue')
+// Lazy load layouts and pages
+const RootLayout = () => import('@/app/layout.vue')
+const AuthLayout = () => import('@/app/auth/layout.vue')
+const DashboardLayout = () => import('@/app/dashboard/layout.vue')
+
+// Auth pages
+const LoginPage = () => import('@/app/auth/login/page.vue')
+
+// Dashboard pages
+const DashboardPage = () => import('@/app/dashboard/page.vue')
+const WebsitesPage = () => import('@/app/dashboard/websites/page.vue')
+const WebsiteDetailPage = () => import('@/app/dashboard/websites/[id]/page.vue')
+const AnalyticsPage = () => import('@/app/dashboard/analytics/page.vue')
+const LogsPage = () => import('@/app/dashboard/logs/page.vue')
+const SettingsPage = () => import('@/app/dashboard/settings/page.vue')
+const ProfilePage = () => import('@/app/dashboard/profile/page.vue')
+
+// Error pages
+const NotFoundPage = () => import('@/app/errors/404/page.vue')
 
 // Define routes
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/dashboard'
-  },
-  {
-    path: '/login',
-    name: 'Login',
-    component: Login,
-    meta: {
-      requiresAuth: false,
-      title: 'Login - Passive CAPTCHA Admin'
-    }
-  },
-  {
-    path: '/dashboard',
-    name: 'Dashboard',
-    component: Dashboard,
-    meta: {
-      requiresAuth: true,
-      title: 'Dashboard - Passive CAPTCHA Admin'
-    }
-  },
-  {
-    path: '/websites',
-    name: 'Websites',
-    component: Websites,
-    meta: {
-      requiresAuth: true,
-      title: 'Websites - Passive CAPTCHA Admin'
-    }
-  },
-  {
-    path: '/websites/:id',
-    name: 'WebsiteDetail',
-    component: WebsiteDetail,
-    meta: {
-      requiresAuth: true,
-      title: 'Website Details - Passive CAPTCHA Admin'
-    }
-  },
-  {
-    path: '/analytics',
-    name: 'Analytics',
-    component: Analytics,
-    meta: {
-      requiresAuth: true,
-      title: 'Analytics - Passive CAPTCHA Admin'
-    }
-  },
-  {
-    path: '/logs',
-    name: 'Logs',
-    component: Logs,
-    meta: {
-      requiresAuth: true,
-      title: 'Logs - Passive CAPTCHA Admin'
-    }
-  },
-  {
-    path: '/settings',
-    name: 'Settings',
-    component: Settings,
-    meta: {
-      requiresAuth: true,
-      title: 'Settings - Passive CAPTCHA Admin'
-    }
-  },
-  {
-    path: '/profile',
-    name: 'Profile',
-    component: Profile,
-    meta: {
-      requiresAuth: true,
-      title: 'Profile - Passive CAPTCHA Admin'
-    }
-  },
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'NotFound',
-    component: NotFound,
-    meta: {
-      requiresAuth: false,
-      title: 'Page Not Found - Passive CAPTCHA Admin'
-    }
+    component: RootLayout,
+    children: [
+      {
+        path: '',
+        redirect: '/dashboard'
+      },
+      // Auth routes
+      {
+        path: 'login',
+        component: AuthLayout,
+        children: [
+          {
+            path: '',
+            name: 'Login',
+            component: LoginPage,
+            meta: {
+              requiresAuth: false,
+              title: 'Login - Passive CAPTCHA Admin'
+            }
+          }
+        ]
+      },
+      // Dashboard routes
+      {
+        path: 'dashboard',
+        component: DashboardLayout,
+        meta: {
+          requiresAuth: true
+        },
+        children: [
+          {
+            path: '',
+            name: 'Dashboard',
+            component: DashboardPage,
+            meta: {
+              title: 'Dashboard - Passive CAPTCHA Admin'
+            }
+          },
+          {
+            path: 'websites',
+            name: 'Websites',
+            component: WebsitesPage,
+            meta: {
+              title: 'Websites - Passive CAPTCHA Admin'
+            }
+          },
+          {
+            path: 'websites/:id',
+            name: 'WebsiteDetail',
+            component: WebsiteDetailPage,
+            meta: {
+              title: 'Website Details - Passive CAPTCHA Admin'
+            }
+          },
+          {
+            path: 'analytics',
+            name: 'Analytics',
+            component: AnalyticsPage,
+            meta: {
+              title: 'Analytics - Passive CAPTCHA Admin'
+            }
+          },
+          {
+            path: 'logs',
+            name: 'Logs',
+            component: LogsPage,
+            meta: {
+              title: 'Logs - Passive CAPTCHA Admin'
+            }
+          },
+          {
+            path: 'settings',
+            name: 'Settings',
+            component: SettingsPage,
+            meta: {
+              title: 'Settings - Passive CAPTCHA Admin'
+            }
+          },
+          {
+            path: 'profile',
+            name: 'Profile',
+            component: ProfilePage,
+            meta: {
+              title: 'Profile - Passive CAPTCHA Admin'
+            }
+          }
+        ]
+      },
+      // 404 fallback
+      {
+        path: '/:pathMatch(.*)*',
+        name: 'NotFound',
+        component: NotFoundPage,
+        meta: {
+          requiresAuth: false,
+          title: 'Page Not Found - Passive CAPTCHA Admin'
+        }
+      }
+    ]
   }
 ]
 
@@ -118,36 +144,29 @@ const router = createRouter({
 
 // Global navigation guards
 router.beforeEach(async (to, from, next) => {
-  const authStore = useAuthStore()
-  
   // Update page title
   document.title = to.meta?.title as string || 'Passive CAPTCHA Admin'
   
-  // Check if route requires authentication
-  if (to.meta?.requiresAuth) {
-    // Check if user is authenticated
-    if (!authStore.isAuthenticated) {
-      // Try to restore session from localStorage
-      await authStore.restoreSession()
-      
-      if (!authStore.isAuthenticated) {
-        // Redirect to login with return URL
-        next({
-          name: 'Login',
-          query: { redirect: to.fullPath }
-        })
-        return
-      }
-    }
+  // Check authentication
+  const authStore = useAuthStore()
+  
+  // Initialize auth store if not done yet
+  if (!authStore.initialized) {
+    await authStore.restoreSession()
   }
   
-  // If user is authenticated and trying to access login page
-  if (to.name === 'Login' && authStore.isAuthenticated) {
-    next({ name: 'Dashboard' })
-    return
-  }
+  const requiresAuth = to.meta?.requiresAuth
+  const isAuthenticated = authStore.isAuthenticated
   
-  next()
+  if (requiresAuth && !isAuthenticated) {
+    // Redirect to login if authentication is required but user is not authenticated
+    next('/login')
+  } else if (to.path === '/login' && isAuthenticated) {
+    // Redirect to dashboard if user is already authenticated and tries to access login
+    next('/dashboard')
+  } else {
+    next()
+  }
 })
 
 // Global after navigation hook

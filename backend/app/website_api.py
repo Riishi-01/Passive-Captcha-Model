@@ -12,15 +12,28 @@ import re
 from app.token_manager import token_manager, security_manager
 from app.script_generator import script_generator
 from app.database import get_website_by_id, get_websites_by_admin, get_analytics_data_for_website
-from app.utils import (
-    validate_email, validate_url, sanitize_string, create_error_response, 
-    create_success_response, extract_bearer_token, safe_get, format_timestamp
-)
 
 # Create website API blueprint
 website_bp = Blueprint('website', __name__)
 
+# Initialize rate limiter for website endpoints
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["50 per hour"]
+)
+
+def validate_email(email):
+    """Validate email format"""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+def validate_url(url):
+    """Validate URL format"""
+    pattern = r'^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}.*$'
+    return re.match(pattern, url) is not None
+
 @website_bp.route('/register', methods=['POST'])
+@limiter.limit("5 per hour")
 def register_website():
     """
     Register new website and generate tokens
@@ -29,7 +42,12 @@ def register_website():
         data = request.get_json()
         
         if not data:
-            return jsonify(create_error_response('MISSING_DATA', 'Request body is required'))
+            return jsonify({
+                'error': {
+                    'code': 'MISSING_DATA',
+                    'message': 'Request body is required'
+                }
+            }), 400
         
         # Validate required fields
         required_fields = ['name', 'url', 'admin_email']
@@ -42,10 +60,9 @@ def register_website():
                     }
                 }), 400
         
-        # Extract and sanitize required fields
-        website_name = sanitize_string(data['name'], 100)
-        website_url = sanitize_string(data['url'], 500)
-        admin_email = sanitize_string(data['admin_email'].lower(), 255)
+        website_name = data['name'].strip()
+        website_url = data['url'].strip()
+        admin_email = data['admin_email'].strip().lower()
         
         # Validate inputs
         if len(website_name) < 2 or len(website_name) > 100:
@@ -352,6 +369,7 @@ def get_website_analytics(website_id):
 
 
 @website_bp.route('/admin/<admin_email>/websites', methods=['GET'])
+@limiter.limit("20 per hour")
 def get_admin_websites(admin_email):
     """
     Get all websites registered by an admin
@@ -453,6 +471,7 @@ def get_website_status(website_id):
 
 # Enhanced verify endpoint with website isolation
 @website_bp.route('/<website_id>/verify', methods=['POST', 'OPTIONS'])
+@limiter.limit("100 per minute")
 def verify_with_website(website_id):
     """
     Enhanced verification endpoint with website isolation
@@ -513,6 +532,16 @@ def verify_with_website(website_id):
 
 
 # Error handlers for website blueprint
+@website_bp.errorhandler(429)
+def website_ratelimit_handler(e):
+    """Handle rate limit exceeded for website endpoints"""
+    return jsonify({
+        'error': {
+            'code': 'RATE_LIMIT_EXCEEDED',
+            'message': 'Too many requests. Please try again later.',
+            'retry_after': 3600
+        }
+    }), 429
 
 
 @website_bp.errorhandler(404)

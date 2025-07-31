@@ -10,8 +10,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 from app.ml import predict_human_probability, extract_features, is_model_loaded, get_model_info
-from app.database import log_verification, log_verification_with_website, get_db_session
-from app.token_manager import token_manager, security_manager
+from app.database import log_verification, get_db_session
 
 # Create API blueprint
 api_bp = Blueprint('api', __name__)
@@ -27,43 +26,13 @@ limiter = Limiter(
 def verify_captcha():
     """
     Main verification endpoint - analyzes behavioral data to determine human vs bot
-    Enhanced with website isolation support
     """
     if request.method == 'OPTIONS':
         return '', 200
     
     start_time = time.time()
-    website_id = None
     
     try:
-        # Check for website token for multi-tenant support
-        website_token_header = request.headers.get('X-Website-Token')
-        
-        if website_token_header:
-            # Multi-tenant mode: validate website token
-            website_token = token_manager.get_website_by_api_key(website_token_header)
-            
-            if not website_token:
-                return jsonify({
-                    'error': {
-                        'code': 'INVALID_WEBSITE_TOKEN',
-                        'message': 'Invalid website token'
-                    }
-                }), 401
-            
-            website_id = website_token.website_id
-            
-            # Apply website-specific rate limiting
-            if not security_manager.apply_rate_limit(website_id, 'verify'):
-                rate_limit_info = security_manager.get_rate_limit_info(website_id, 'verify')
-                return jsonify({
-                    'error': {
-                        'code': 'RATE_LIMIT_EXCEEDED',
-                        'message': 'Website verification rate limit exceeded',
-                        'rate_limit': rate_limit_info
-                    }
-                }), 429
-        
         # Validate request
         if not request.is_json:
             return jsonify({
@@ -73,15 +42,7 @@ def verify_captcha():
                 }
             }), 400
         
-        try:
-            data = request.get_json(force=True)
-        except Exception as e:
-            return jsonify({
-                'error': {
-                    'code': 'INVALID_JSON',
-                    'message': 'Invalid JSON format in request body'
-                }
-            }), 400
+        data = request.get_json()
         
         if not data:
             return jsonify({
@@ -129,34 +90,18 @@ def verify_captcha():
             'responseTime': response_time
         }
         
-        # Log verification (with website isolation if available)
+        # Log verification
         try:
-            if website_id:
-                # Use website-specific logging for multi-tenant mode
-                log_verification_with_website(
-                    website_id=website_id,
-                    session_id=session_id,
-                    ip_address=request.remote_addr,
-                    user_agent=request.headers.get('User-Agent'),
-                    origin=origin,
-                    is_human=prediction['isHuman'],
-                    confidence=prediction['confidence'],
-                    features=features,
-                    response_time=response_time
-                )
-            else:
-                # Use generic website ID for legacy requests
-                log_verification_with_website(
-                    website_id='legacy-requests',
-                    session_id=session_id,
-                    ip_address=request.remote_addr,
-                    user_agent=request.headers.get('User-Agent'),
-                    origin=origin,
-                    is_human=prediction['isHuman'],
-                    confidence=prediction['confidence'],
-                    features=features,
-                    response_time=response_time
-                )
+            log_verification(
+                session_id=session_id,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent'),
+                origin=origin,
+                is_human=prediction['isHuman'],
+                confidence=prediction['confidence'],
+                features=features,
+                response_time=response_time
+            )
         except Exception as e:
             print(f"Warning: Failed to log verification: {e}")
         

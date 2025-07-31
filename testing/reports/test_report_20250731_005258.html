@@ -1,0 +1,238 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Passive CAPTCHA Test Results</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background: #2563eb; color: white; padding: 20px; border-radius: 8px; }
+        .summary { display: flex; gap: 20px; margin: 20px 0; }
+        .stat { background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center; }
+        .success { background: #10b981; color: white; }
+        .warning { background: #f59e0b; color: white; }
+        .error { background: #ef4444; color: white; }
+        .suite { margin: 20px 0; border: 1px solid #e5e7eb; border-radius: 8px; }
+        .suite-header { background: #f9fafb; padding: 15px; font-weight: bold; }
+        .test-result { padding: 10px 15px; border-bottom: 1px solid #e5e7eb; }
+        .passed { color: #10b981; }
+        .failed { color: #ef4444; }
+        .skipped { color: #6b7280; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧪 Passive CAPTCHA System - Test Results</h1>
+        <p>Generated: 2025-07-31 00:52:58</p>
+    </div>
+    
+    <div class="summary">
+        <div class="stat success">
+            <h3>✅ Passed</h3>
+            <p>13</p>
+        </div>
+        <div class="stat error">
+            <h3>❌ Failed</h3>
+            <p>12</p>
+        </div>
+        <div class="stat">
+            <h3>📊 Total</h3>
+            <p>25</p>
+        </div>
+        <div class="stat">
+            <h3>⏱️ Duration</h3>
+            <p>1.63s</p>
+        </div>
+    </div>
+
+    <div class="suite">
+        <div class="suite-header">Unit Tests</div>
+
+        <div class="test-result">
+            <span class="failed">❌ auth_service</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                No module named 'redis'
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="failed">❌ website_service</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                No module named 'redis'
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="failed">❌ script_token_manager</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                No module named 'redis'
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="failed">❌ logs_pipeline</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                No module named 'redis'
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="failed">❌ websocket_server</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                No module named 'flask_socketio'
+            </div>
+        </div>
+</div>
+    <div class="suite">
+        <div class="suite-header">Model Tests</div>
+
+        <div class="test-result">
+            <span class="failed">❌ model_loading</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Failed to load passive_captcha_rf.pkl: invalid load key, '\x03'.
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="failed">❌ model_inference</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                invalid load key, '\x03'.
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="passed">✅ model_accuracy</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                No validation data available, skipping accuracy test
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="failed">❌ model_performance</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                invalid load key, '\x03'.
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="passed">✅ feature_extraction</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                No feature extraction utils found, using direct model input
+            </div>
+        </div>
+</div>
+    <div class="suite">
+        <div class="suite-header">API Tests</div>
+
+        <div class="test-result">
+            <span class="passed">✅ auth_endpoints</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Authentication endpoints working
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="failed">❌ website_endpoints</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Website listing failed: 404
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="failed">❌ script_endpoints</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Script health check failed: 404
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="failed">❌ admin_endpoints</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Admin health check failed: 404
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="passed">✅ health_endpoints</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Health endpoints working
+            </div>
+        </div>
+</div>
+    <div class="suite">
+        <div class="suite-header">Component Tests</div>
+
+        <div class="test-result">
+            <span class="passed">✅ frontend_build</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Frontend structure valid
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="passed">✅ vue_components</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Key Vue components found
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="passed">✅ pinia_stores</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Key Pinia stores found
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="passed">✅ router_configuration</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Router configuration found
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="passed">✅ api_integration</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Axios configured for API integration
+            </div>
+        </div>
+</div>
+    <div class="suite">
+        <div class="suite-header">Deployment Tests</div>
+
+        <div class="test-result">
+            <span class="passed">✅ docker_configuration</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Docker configuration files present
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="passed">✅ environment_setup</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Environment configuration files present
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="passed">✅ database_connectivity</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Database connected, 2 tables found
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="skipped">⏭️ redis_connectivity</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Redis not available (optional for development)
+            </div>
+        </div>
+
+        <div class="test-result">
+            <span class="passed">✅ full_integration</span>
+            <div style="margin-left: 20px; font-size: 0.9em; color: #6b7280;">
+                Frontend and backend both accessible
+            </div>
+        </div>
+</div>
+</body>
+</html>

@@ -13,10 +13,12 @@ interface User {
 
 interface JWTPayload {
   exp: number
-  sub: string
-  email: string
-  name: string
-  role: string
+  iat: number
+  admin?: boolean
+  sub?: string
+  email?: string
+  name?: string
+  role?: string
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -24,18 +26,20 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(null)
   const user = ref<User | null>(null)
   const isLoading = ref(false)
+  const initialized = ref(false)
 
   // Getters
   const isAuthenticated = computed(() => !!token.value && !!user.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
 
   // Actions
-  async function login(email: string, password: string) {
+  async function login(password: string) {
     try {
       isLoading.value = true
       
-      const response = await axios.post('/api/admin/login', {
-        email,
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5003'
+      
+      const response = await axios.post(`${API_BASE}/admin/login`, {
         password
       })
 
@@ -52,7 +56,7 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('Login error:', error)
       return { 
         success: false, 
-        error: error.response?.data?.message || 'Login failed' 
+        error: error.response?.data?.error?.message || 'Login failed' 
       }
     } finally {
       isLoading.value = false
@@ -77,7 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   function setToken(authToken: string) {
     token.value = authToken
-    localStorage.setItem('auth_token', authToken)
+    localStorage.setItem('admin_token', authToken)
     
     // Set default authorization header
     axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`
@@ -86,7 +90,7 @@ export const useAuthStore = defineStore('auth', () => {
   function clearAuth() {
     token.value = null
     user.value = null
-    localStorage.removeItem('auth_token')
+    localStorage.removeItem('admin_token')
     
     // Remove authorization header
     delete axios.defaults.headers.common['Authorization']
@@ -104,11 +108,25 @@ export const useAuthStore = defineStore('auth', () => {
         return
       }
 
-      user.value = {
-        id: decoded.sub,
-        email: decoded.email,
-        name: decoded.name,
-        role: decoded.role
+      // For the simple admin system, create a basic user object
+      // Check if this is an admin token
+      if (decoded.admin) {
+        user.value = {
+          id: 'admin',
+          email: 'admin@passivecaptcha.com',
+          name: 'Administrator',
+          role: 'admin',
+          lastLogin: new Date()
+        }
+      } else {
+        // Fallback for other token formats
+        user.value = {
+          id: decoded.sub || 'user',
+          email: decoded.email || 'user@passivecaptcha.com',
+          name: decoded.name || 'User',
+          role: decoded.role || 'user',
+          lastLogin: new Date()
+        }
       }
     } catch (error) {
       console.error('Failed to decode token:', error)
@@ -117,12 +135,14 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function restoreSession() {
-    const savedToken = localStorage.getItem('auth_token')
+    const savedToken = localStorage.getItem('admin_token')
     
     if (savedToken) {
       setToken(savedToken)
       await fetchUser()
     }
+    
+    initialized.value = true
   }
 
   function isTokenExpired(): boolean {
@@ -164,6 +184,7 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     user,
     isLoading,
+    initialized,
     
     // Getters
     isAuthenticated,

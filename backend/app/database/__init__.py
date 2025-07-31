@@ -6,7 +6,7 @@ Handles verification logs, analytics, and data persistence
 import os
 import sqlite3
 from datetime import datetime, timedelta
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, func, text
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 from flask import current_app
@@ -117,7 +117,7 @@ class VerificationLog(Base):
 
 def init_db():
     """
-    Initialize database connection and create tables with migrations
+    Initialize database connection and create tables
     """
     try:
         database_url = current_app.config.get('DATABASE_URL', 'sqlite:///passive_captcha.db')
@@ -131,9 +131,6 @@ def init_db():
         # Create tables
         Base.metadata.create_all(engine)
         
-        # Run migrations for existing databases
-        _run_database_migrations(engine)
-        
         # Create session maker
         global SessionLocal
         SessionLocal = sessionmaker(bind=engine)
@@ -144,38 +141,6 @@ def init_db():
     except Exception as e:
         current_app.logger.error(f"Database initialization failed: {str(e)}")
         return False
-
-
-def _run_database_migrations(engine):
-    """
-    Run database migrations for existing databases
-    """
-    try:
-        # Check if website_id column exists in verification_logs
-        with engine.connect() as conn:
-            try:
-                # Try to query website_id column
-                result = conn.execute(text("SELECT website_id FROM verification_logs LIMIT 1"))
-                print("✅ Database schema is up to date")
-            except Exception:
-                # Column doesn't exist, add it
-                print("🔄 Adding website_id column to verification_logs...")
-                
-                if 'sqlite' in str(engine.url):
-                    # SQLite migration
-                    conn.execute(text("ALTER TABLE verification_logs ADD COLUMN website_id VARCHAR(36)"))
-                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_verification_website ON verification_logs(website_id, timestamp)"))
-                else:
-                    # PostgreSQL migration
-                    conn.execute(text("ALTER TABLE verification_logs ADD COLUMN IF NOT EXISTS website_id VARCHAR(36)"))
-                    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_verification_website ON verification_logs(website_id, timestamp)"))
-                
-                conn.commit()
-                print("✅ Database migration completed")
-                
-    except Exception as e:
-        print(f"⚠️  Migration warning: {e}")
-        # Not critical if migration fails, new databases will have correct schema
 
 
 def get_db_session():

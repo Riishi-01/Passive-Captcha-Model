@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
+import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -8,13 +9,7 @@ export default defineConfig({
   
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
-      '@components': resolve(__dirname, 'src/components'),
-      '@views': resolve(__dirname, 'src/views'),
-      '@stores': resolve(__dirname, 'src/stores'),
-      '@utils': resolve(__dirname, 'src/utils'),
-      '@types': resolve(__dirname, 'src/types'),
-      '@assets': resolve(__dirname, 'src/assets')
+      '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
 
@@ -24,7 +19,12 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5003',
+        changeOrigin: true,
+        secure: false
+      },
+      '/admin': {
+        target: 'http://localhost:5003',
         changeOrigin: true,
         secure: false
       }
@@ -47,23 +47,6 @@ export default defineConfig({
       }
     },
     chunkSizeWarningLimit: 1000
-  },
-
-  // Testing configuration
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['src/test/setup.ts']
-  },
-
-  // CSS configuration
-  css: {
-    postcss: {
-      plugins: [
-        require('tailwindcss'),
-        require('autoprefixer')
-      ]
-    }
   },
 
   // Environment variables

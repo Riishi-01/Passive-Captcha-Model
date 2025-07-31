@@ -30,30 +30,33 @@ A production-ready passive CAPTCHA system that uses machine learning to distingu
 
 ```
 passive-captcha/
-├── frontend/                 # JavaScript widget & demo site
+├── 📄 README.md                          # This file - project overview
+├── 📄 UI_DOCUMENTATION.md                # Complete UI component documentation
+├── 🎨 frontend/                          # Vue.js Admin Dashboard
 │   ├── src/
-│   │   ├── passive-captcha.js    # Main widget script
-│   │   ├── feature-extractor.js  # Behavioral analysis
-│   │   └── device-fingerprint.js # Hardware fingerprinting
-│   ├── demo/                     # Integration examples
-│   └── dist/                     # Built files for CDN
-├── backend/                  # ML API & admin dashboard
+│   │   ├── app/                         # Route-based components
+│   │   │   ├── auth/login/              # Authentication pages
+│   │   │   └── dashboard/               # Dashboard & components
+│   │   ├── stores/                      # Pinia state management
+│   │   └── services/                    # API integration
+│   └── package.json                     # Dependencies & scripts
+├── ⚙️ backend/                           # Flask API & ML Engine
 │   ├── app/
-│   │   ├── api/                  # REST API endpoints
-│   │   ├── ml/                   # Machine learning model
-│   │   ├── admin/                # Admin dashboard
-│   │   └── database/             # Database models
-│   ├── models/                   # Trained ML models
-│   └── requirements.txt          # Python dependencies
-├── dataset/                  # Training data management
-│   ├── raw/                      # Original datasets
-│   ├── processed/                # Feature-engineered data
-│   └── scripts/                  # Data processing pipeline
-└── docs/                     # Documentation
-    ├── api.md                    # API documentation
-    ├── integration.md            # Integration guide
-    └── deployment.md             # Deployment instructions
+│   │   ├── services/                    # Business logic services
+│   │   ├── api/                         # Modern REST API endpoints
+│   │   ├── static/                      # Client-side scripts
+│   │   ├── production_app.py            # Production application
+│   │   └── script_token_manager.py      # Script token management
+│   ├── models/                          # ML models & training data
+│   ├── run_server.py                    # Production server entry
+│   └── requirements.txt                 # Python dependencies
+├── 📚 Documentations/                    # Requirements & specifications
+├── 📊 dataset/                          # Training data & processing
+├── 🗄️ archive/                          # Archived legacy files
+└── 📖 docs/                             # Additional documentation
 ```
+
+> 🧹 **Project Cleanup**: This structure reflects the cleaned and organized codebase. See `PROJECT_STRUCTURE_CLEAN.md` for cleanup details and `archive/` for historical files.
 
 ## ML Model Specifications
 

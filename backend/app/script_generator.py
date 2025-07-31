@@ -547,5 +547,3 @@ def init_script_generator(app):
     
     with app.app_context():
         script_generator = ScriptGenerator()
-        
-    print("✅ Script generator initialized")

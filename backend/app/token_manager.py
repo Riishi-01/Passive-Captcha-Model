@@ -12,13 +12,8 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from flask import current_app
+import redis
 import json
-
-# Optional Redis import for development
-try:
-    import redis
-except ImportError:
-    redis = None
 
 @dataclass
 class WebsiteToken:
@@ -46,15 +41,11 @@ class TokenManager:
         
     def _get_redis_client(self):
         """Initialize Redis client for token storage"""
-        if redis is None:
-            print("⚠️  Redis not available, using fallback storage")
-            return None
-        
         try:
             redis_url = current_app.config.get('REDIS_URL', 'redis://localhost:6379')
             return redis.from_url(redis_url)
-        except Exception as e:
-            print(f"⚠️  Redis connection failed: {e}, using fallback storage")
+        except Exception:
+            # Fallback to in-memory storage for development
             return None
     
     def generate_website_token(self, website_name: str, website_url: str, admin_email: str) -> WebsiteToken:
@@ -88,13 +79,11 @@ class TokenManager:
     
     def _generate_secure_api_key(self) -> str:
         """Generate cryptographically secure API key"""
-        from app.utils import generate_api_key
-        return generate_api_key("pc")
+        return f"pc_{secrets.token_urlsafe(32)}"
     
     def _generate_secret_key(self) -> str:
         """Generate secret key for JWT signing"""
-        from app.utils import generate_secure_token
-        return generate_secure_token(64)
+        return secrets.token_urlsafe(64)
     
     def _store_website_token(self, token: WebsiteToken):
         """Store website token in persistent storage"""
@@ -263,9 +252,6 @@ class SecurityManager:
     
     def _get_redis_client(self):
         """Initialize Redis client"""
-        if redis is None:
-            return None
-            
         try:
             redis_url = current_app.config.get('REDIS_URL', 'redis://localhost:6379')
             return redis.from_url(redis_url)
@@ -337,5 +323,3 @@ def init_token_management(app):
     with app.app_context():
         token_manager = TokenManager()
         security_manager = SecurityManager()
-        
-    print("✅ Token management initialized")

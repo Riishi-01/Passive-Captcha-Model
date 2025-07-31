@@ -828,5 +828,3 @@ def init_dashboard_manager(app):
     
     with app.app_context():
         dashboard_manager = DashboardManager()
-        
-    print("✅ Dashboard manager initialized")
