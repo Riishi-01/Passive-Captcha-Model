@@ -2,7 +2,7 @@ services:
   - type: web
     name: passive-captcha
     env: python
-    buildCommand: "pip install -r backend/requirements-render.txt"
+    buildCommand: "./build_for_render.sh"
     startCommand: "cd backend && python render_start.py"
     plan: free
     runtime: python3.11
@@ -15,4 +15,8 @@ services:
         value: 0.0.0.0
       - key: PORT
         fromGroup: 5003
+      - key: VITE_API_URL
+        value: https://passive-captcha.onrender.com
+      - key: VITE_WS_URL
+        value: wss://passive-captcha.onrender.com
     healthCheckPath: /health
