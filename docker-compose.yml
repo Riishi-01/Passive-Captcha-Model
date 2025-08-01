@@ -1,0 +1,120 @@
+# Docker Compose for Passive CAPTCHA - Development & Local Testing
+version: '3.8'
+
+services:
+  # Frontend Service (Vue.js + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+      args:
+        VITE_API_URL: http://localhost:5003
+        VITE_WS_URL: ws://localhost:5003
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - captcha_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend Service (Flask + SocketIO)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5003:5003"
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - FLASK_ENV=development
+      - ADMIN_SECRET=Admin123
+      - DATABASE_URL=postgresql://captcha_user:captcha_pass@postgres:5432/passive_captcha
+      - REDIS_URL=redis://redis:6379/0
+      - HOST=0.0.0.0
+      - PORT=5003
+    volumes:
+      - ./backend:/app
+      - ./backend/models:/app/models
+      - ./backend/logs:/app/logs
+    networks:
+      - captcha_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Service (Caching & Pub/Sub)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - captcha_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=passive_captcha
+      - POSTGRES_USER=captcha_user
+      - POSTGRES_PASSWORD=captcha_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/db_init:/docker-entrypoint-initdb.d
+    networks:
+      - captcha_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U captcha_user -d passive_captcha"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Nginx Reverse Proxy (Optional - for production-like setup)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - captcha_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  captcha_network:
+    driver: bridge
+
+volumes:
+  redis_data:
+  postgres_data:

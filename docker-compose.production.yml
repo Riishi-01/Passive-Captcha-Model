@@ -1,0 +1,130 @@
+# Docker Compose for Production Deployment
+version: '3.8'
+
+services:
+  # Frontend Service (Vue.js + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.production
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://passive-captcha.onrender.com}
+        VITE_WS_URL: ${VITE_WS_URL:-wss://passive-captcha.onrender.com}
+        VITE_APP_NAME: "Passive CAPTCHA Admin"
+        VITE_APP_VERSION: "2.0.0"
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - captcha_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Backend Service (Flask + SocketIO)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.production
+    ports:
+      - "5003:5000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      - FLASK_ENV=production
+      - ADMIN_SECRET=${ADMIN_SECRET:-Admin123}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://captcha_user:captcha_pass@postgres:5432/passive_captcha}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - HOST=0.0.0.0
+      - PORT=5000
+      - WEB_CONCURRENCY=4
+      - WORKER_TIMEOUT=120
+    restart: unless-stopped
+    volumes:
+      - ./backend/models:/app/models:ro
+      - backend_logs:/app/logs
+    networks:
+      - captcha_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis Service (Caching & Pub/Sub)
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - captcha_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-passive_captcha}
+      - POSTGRES_USER=${POSTGRES_USER:-captcha_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-captcha_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/db_init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - captcha_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-captcha_user} -d ${POSTGRES_DB:-passive_captcha}"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Nginx Load Balancer & SSL Termination
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.production.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_cache:/var/cache/nginx
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - captcha_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  captcha_network:
+    driver: bridge
+
+volumes:
+  redis_data:
+  postgres_data:
+  backend_logs:
+  nginx_cache:
