@@ -128,7 +128,7 @@ def create_production_app(config_name='production'):
         redis_client.ping()  # Test connection
         app.logger.info("Redis connection established successfully")
     except Exception as e:
-        app.logger.error(f"Redis connection failed: {e}")
+        app.logger.warning(f"Redis unavailable, using in-memory fallback: {e}")
         redis_client = None
     
     # Initialize SocketIO
@@ -384,12 +384,12 @@ def create_production_app(config_name='production'):
                     <p>Frontend build pending or failed. API endpoints are fully functional:</p>
                 </div>
                 <div>
-                    <a href="/login" class="api-link">🔑 Login API</a>
                     <a href="/health" class="api-link">❤️ Health Check</a>
-                    <a href="/admin" class="api-link">⚙️ Admin API</a>
+                    <a href="/admin/login" class="api-link">🔑 Admin Login API</a>
+                    <a href="/admin/analytics" class="api-link">📊 Analytics API</a>
                 </div>
                 <h3>Quick Test:</h3>
-                <pre>curl -X POST /login -H "Content-Type: application/json" -d '{"password": "Admin123"}'</pre>
+                <pre>curl -X POST /admin/login -H "Content-Type: application/json" -d '{"password": "Admin123"}'</pre>
                 <h3>Available Endpoints:</h3>
                 <ul>
                     <li><a href="/health">System Health</a></li>
@@ -401,46 +401,8 @@ def create_production_app(config_name='production'):
             </html>
             '''
         
-        @app.route('/login', methods=['GET', 'POST'])
-        def login_unified():
-            """Unified login endpoint"""
-            if request.method == 'GET':
-                return jsonify({
-                    'message': 'POST to this endpoint with password',
-                    'endpoint': '/login',
-                    'method': 'POST',
-                    'payload': {'password': 'Admin123'},
-                    'example': 'curl -X POST /login -H "Content-Type: application/json" -d \'{"password": "Admin123"}\''
-                }), 200
-            
-            # Handle POST login
-            try:
-                data = request.get_json()
-                if not data or 'password' not in data:
-                    return jsonify({
-                        'error': {'code': 'INVALID_INPUT', 'message': 'Password required'},
-                        'success': False
-                    }), 400
-                
-                # Use the auth service
-                from app.services.auth_service import get_auth_service
-                auth_service = get_auth_service()
-                result = auth_service.authenticate_admin(data['password'])
-                
-                if result:
-                    return jsonify(result), 200
-                else:
-                    return jsonify({
-                        'error': {'code': 'INVALID_CREDENTIALS', 'message': 'Invalid password'},
-                        'success': False
-                    }), 401
-                    
-            except Exception as e:
-                app.logger.error(f"Login error: {e}")
-                return jsonify({
-                    'error': {'code': 'SERVER_ERROR', 'message': 'Login service unavailable'},
-                    'success': False
-                }), 500
+        # Remove conflicting /login route - let Vue.js handle frontend routes
+        # API login is handled by /admin/login endpoint
         
         @app.route('/<path:path>')
         def serve_static_files(path):
@@ -452,8 +414,8 @@ def create_production_app(config_name='production'):
                         return app.send_static_file(path)
                     else:
                         # For Vue.js router - serve index.html for all routes
-                        # But only for routes that look like frontend routes
-                        if not path.startswith(('api', 'admin', 'health', 'login')):
+                        # But only for routes that look like frontend routes (not API endpoints)
+                        if not path.startswith(('api', 'admin', 'health')):
                             try:
                                 return app.send_static_file('index.html')
                             except Exception as e:
