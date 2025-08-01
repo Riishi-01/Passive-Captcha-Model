@@ -134,3 +134,6 @@ coverage.xml
 archive/
 *.log
 cloudflared.log
+
+# Commit built frontend for Render.com deployment
+!frontend/dist/
