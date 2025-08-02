@@ -2,7 +2,19 @@ services:
   - type: web
     name: passive-captcha
     env: python
-    buildCommand: "pip install -r backend/requirements-render.txt"
+    buildCommand: |
+      echo "🏗️ Building Passive CAPTCHA for Render..."
+      echo "📦 Installing Node.js dependencies..."
+      cd frontend && npm install --no-audit --no-fund
+      echo "🔨 Building frontend..."
+      npm run build
+      echo "📂 Copying frontend to backend static folder..."
+      cd ..
+      mkdir -p backend/static
+      cp -r frontend/dist/* backend/static/
+      echo "🐍 Installing Python dependencies..."
+      pip install -r backend/requirements-render.txt
+      echo "✅ Build completed successfully!"
     startCommand: "cd backend && python render_start.py"
     plan: free
     runtime: python3.11
@@ -17,4 +29,6 @@ services:
         fromGroup: 5003
       - key: RENDER_EXTERNAL_URL
         value: https://passive-captcha.onrender.com
+      - key: NODE_VERSION
+        value: "18"
     healthCheckPath: /health

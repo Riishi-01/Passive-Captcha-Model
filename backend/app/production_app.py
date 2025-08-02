@@ -39,12 +39,15 @@ def create_production_app(config_name='production'):
     
     # Additional path checking for Render environment
     if not os.path.exists(static_folder):
-        # Try alternative paths for Render deployment
+        # Try alternative paths for Render deployment (in priority order)
         alternative_paths = [
+            os.path.join(backend_dir, 'static'),  # Render build copies here
             os.path.join(backend_dir, '..', 'frontend', 'dist'),
             os.path.join(os.getcwd(), 'frontend', 'dist'),
             os.path.join(os.path.dirname(os.getcwd()), 'frontend', 'dist'),
-            '/opt/render/project/src/frontend/dist'
+            '/opt/render/project/src/frontend/dist',
+            '/opt/render/project/src/backend/static',
+            'static'  # Relative path fallback
         ]
         
         for alt_path in alternative_paths:
@@ -433,8 +436,83 @@ def create_production_app(config_name='production'):
             </html>
             '''
         
-        # Remove conflicting /login route - let Vue.js handle frontend routes
-        # API login is handled by /admin/login endpoint
+        # Add unified login endpoint that works with both API and direct access
+        @app.route('/login', methods=['GET', 'POST'])
+        def unified_login():
+            """Unified login endpoint for both API and direct access"""
+            if request.method == 'GET':
+                # Return JSON info for API calls, or simple login page for browsers
+                if request.headers.get('Accept', '').startswith('application/json'):
+                    return jsonify({
+                        'message': 'POST to this endpoint with password',
+                        'endpoint': '/login',
+                        'method': 'POST',
+                        'payload': {'password': 'Admin123'},
+                        'example': 'curl -X POST /login -H "Content-Type: application/json" -d \'{"password": "Admin123"}\''
+                    })
+                else:
+                    # Simple HTML login page
+                    return '''
+                    <!DOCTYPE html>
+                    <html><head><title>Login</title><style>
+                    body{font-family:Arial;max-width:400px;margin:100px auto;padding:20px}
+                    input,button{width:100%;padding:10px;margin:10px 0;border:1px solid #ccc;border-radius:5px}
+                    button{background:#007cba;color:white;border:none;cursor:pointer}
+                    .msg{margin:10px 0}
+                    </style></head><body>
+                    <h2>Admin Login</h2>
+                    <form id="f">
+                        <input type="password" id="p" placeholder="Password" required>
+                        <button type="submit">Login</button>
+                        <div id="msg" class="msg"></div>
+                    </form>
+                    <script>
+                    document.getElementById('f').onsubmit=async function(e){
+                        e.preventDefault();
+                        const r=await fetch('/admin/login',{
+                            method:'POST',
+                            headers:{'Content-Type':'application/json'},
+                            body:JSON.stringify({password:document.getElementById('p').value})
+                        });
+                        const d=await r.json();
+                        if(d.success){
+                            document.getElementById('msg').innerHTML='✅ Success!';
+                            localStorage.setItem('admin_token',d.data.token);
+                            setTimeout(()=>location.href='/',1000);
+                        }else{
+                            document.getElementById('msg').innerHTML='❌ '+(d.error?.message||'Failed');
+                        }
+                    }
+                    </script></body></html>
+                    '''
+            
+            # Handle POST login (same as /admin/login)
+            try:
+                data = request.get_json()
+                if not data or 'password' not in data:
+                    return jsonify({
+                        'error': {'code': 'INVALID_INPUT', 'message': 'Password required'},
+                        'success': False
+                    }), 400
+                
+                from app.services.auth_service import get_auth_service
+                auth_service = get_auth_service()
+                result = auth_service.authenticate_admin(data['password'])
+                
+                if result:
+                    return jsonify(result), 200
+                else:
+                    return jsonify({
+                        'error': {'code': 'INVALID_CREDENTIALS', 'message': 'Invalid password'},
+                        'success': False
+                    }), 401
+                    
+            except Exception as e:
+                app.logger.error(f"Login error: {e}")
+                return jsonify({
+                    'error': {'code': 'SERVER_ERROR', 'message': 'Login service unavailable'},
+                    'success': False
+                }), 500
         
         @app.route('/<path:path>')
         def serve_static_files(path):
@@ -445,19 +523,29 @@ def create_production_app(config_name='production'):
                     if os.path.exists(file_path) and os.path.isfile(file_path):
                         return app.send_static_file(path)
                     else:
-                        # For Vue.js router - serve index.html for all routes
-                        # But only for routes that look like frontend routes (not API endpoints)
-                        if not path.startswith(('api', 'admin', 'health')):
+                        # For Vue.js router - serve index.html for all frontend routes
+                        # Define what routes should NOT serve the SPA
+                        api_prefixes = ('api/', 'admin/', 'health', 'socket.io/', 'static/')
+                        
+                        # Also skip files with extensions (likely API calls)
+                        is_api_call = (path.startswith(api_prefixes) or 
+                                     ('.' in path and not path.endswith(('.html', '.htm'))))
+                        
+                        if not is_api_call:
+                            # This is likely a frontend route, serve index.html
                             try:
-                                return app.send_static_file('index.html')
-                            except Exception as e:
-                                app.logger.error(f"Failed to serve index.html for SPA route {path}: {e}")
-                                # Try reading file directly
                                 index_path = os.path.join(static_folder, 'index.html')
                                 if os.path.exists(index_path):
                                     with open(index_path, 'r', encoding='utf-8') as f:
-                                        return f.read()
-                        # Return 404 for API-like routes
+                                        return f.read(), 200, {'Content-Type': 'text/html'}
+                                else:
+                                    return app.send_static_file('index.html')
+                            except Exception as e:
+                                app.logger.error(f"Failed to serve index.html for SPA route {path}: {e}")
+                                # Fallback to serve_root logic
+                                return serve_root()
+                        
+                        # Return 404 for API-like routes that don't exist
                         return {'error': {'code': 'NOT_FOUND', 'message': f'Endpoint /{path} not found'}, 'success': False}, 404
                 except Exception as e:
                     app.logger.error(f"Error serving static file {path}: {e}")
