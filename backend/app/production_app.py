@@ -99,7 +99,8 @@ def create_production_app(config_name='production'):
     setup_logging(app)
     
     # CORS configuration for production
-    allowed_origins = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,https://yourdomain.com')
+    default_origins = 'http://localhost:3000,https://passive-captcha.onrender.com,http://frontend:80,http://localhost:5003'
+    allowed_origins = os.getenv('ALLOWED_ORIGINS', default_origins)
     cors_origins = allowed_origins.split(',') if allowed_origins != '*' else "*"
     
     CORS(app, resources={

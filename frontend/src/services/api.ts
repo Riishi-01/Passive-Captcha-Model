@@ -121,7 +121,13 @@ class ApiService {
   private baseURL: string
 
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5003'
+    // Auto-detect API URL based on environment
+    const isProduction = import.meta.env.PROD
+    const defaultUrl = isProduction 
+      ? '' // Same origin for production (served by same backend)
+      : 'http://localhost:5003'
+    
+    this.baseURL = import.meta.env.VITE_API_URL || defaultUrl
     
     this.axiosInstance = axios.create({
       baseURL: this.baseURL,
