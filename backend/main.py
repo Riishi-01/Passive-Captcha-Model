@@ -25,8 +25,20 @@ if current_dir not in sys.path:
 load_dotenv()
 
 # Load production environment if available
-if os.path.exists('config.env.production'):
-    load_dotenv('config.env.production', override=True)
+production_config_paths = [
+    'config.env.production',
+    './config.env.production', 
+    'backend/config.env.production',
+    '../config.env.production'
+]
+
+for config_path in production_config_paths:
+    if os.path.exists(config_path):
+        load_dotenv(config_path, override=True)
+        print(f"✅ Loaded production config from: {config_path}")
+        break
+else:
+    print("⚠️ No production config file found")
 
 
 def create_app(config_name='production'):
@@ -279,12 +291,18 @@ def create_app(config_name='production'):
     @app.route('/debug/env')
     def debug_env():
         """Debug endpoint to check environment variables"""
+        config_files_status = {}
+        for config_path in ['config.env.production', './config.env.production', 'backend/config.env.production', '../config.env.production']:
+            config_files_status[config_path] = os.path.exists(config_path)
+            
         return jsonify({
             'ADMIN_SECRET': os.getenv('ADMIN_SECRET', 'NOT_SET'),
             'ADMIN_SECRET_from_config': app.config.get('ADMIN_SECRET', 'NOT_SET'),
             'JWT_SECRET': os.getenv('JWT_SECRET', 'NOT_SET')[:10] + '...' if os.getenv('JWT_SECRET') else 'NOT_SET',
             'auth_service_available': app.auth_service is not None,
-            'config_loaded': os.path.exists('config.env.production')
+            'config_files_status': config_files_status,
+            'current_working_directory': os.getcwd(),
+            'render_external_url': os.getenv('RENDER_EXTERNAL_URL', 'NOT_SET')
         })
     
     # Health check endpoint
