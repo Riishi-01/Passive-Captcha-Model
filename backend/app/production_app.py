@@ -69,7 +69,10 @@ def create_production_app(config_name='production'):
         except Exception as e:
             print(f"Could not list static folder contents: {e}")
     
-    app = Flask(__name__, static_folder=static_folder, static_url_path='')
+    # Configure Flask with proper static folder and URL path for SPA
+    app = Flask(__name__, 
+                static_folder=static_folder, 
+                static_url_path='')  # This allows /assets/* to be served from static_folder/assets/*
     
     # Production Configuration
     app.config.update({
@@ -514,6 +517,43 @@ def create_production_app(config_name='production'):
                     'success': False
                 }), 500
         
+        # Add explicit asset handling for Vue.js build files
+        @app.route('/assets/<path:filename>')
+        def serve_assets(filename):
+            """Serve Vue.js build assets with proper MIME types"""
+            if static_folder and os.path.exists(static_folder):
+                try:
+                    asset_path = os.path.join(static_folder, 'assets', filename)
+                    if os.path.exists(asset_path) and os.path.isfile(asset_path):
+                        # Determine MIME type based on file extension
+                        if filename.endswith('.js'):
+                            mimetype = 'application/javascript'
+                        elif filename.endswith('.css'):
+                            mimetype = 'text/css'
+                        elif filename.endswith('.map'):
+                            mimetype = 'application/json'
+                        else:
+                            mimetype = 'application/octet-stream'
+                        
+                        with open(asset_path, 'rb') as f:
+                            response = app.response_class(
+                                f.read(),
+                                mimetype=mimetype,
+                                headers={
+                                    'Cache-Control': 'public, max-age=31536000, immutable',  # 1 year cache
+                                    'Access-Control-Allow-Origin': '*'
+                                }
+                            )
+                            return response
+                    else:
+                        app.logger.error(f"Asset not found: {asset_path}")
+                        return {'error': {'code': 'NOT_FOUND', 'message': f'Asset /assets/{filename} not found'}, 'success': False}, 404
+                except Exception as e:
+                    app.logger.error(f"Error serving asset {filename}: {e}")
+                    return {'error': {'code': 'SERVER_ERROR', 'message': 'Asset serving error'}, 'success': False}, 500
+            else:
+                return {'error': {'code': 'NOT_FOUND', 'message': 'Static folder not available'}, 'success': False}, 404
+        
         @app.route('/<path:path>')
         def serve_static_files(path):
             """Serve static assets or fallback to index.html for SPA routing"""
@@ -523,29 +563,55 @@ def create_production_app(config_name='production'):
                     if os.path.exists(file_path) and os.path.isfile(file_path):
                         return app.send_static_file(path)
                     else:
-                        # For Vue.js router - serve index.html for all frontend routes
-                        # Define what routes should NOT serve the SPA
-                        api_prefixes = ('api/', 'admin/', 'health', 'socket.io/', 'static/')
+                        # Enhanced SPA routing for Vue.js
+                        # Define routes that should NOT serve the SPA (API endpoints)
+                        api_prefixes = ('api/', 'admin/', 'health', 'socket.io/', 'static/', 'assets/')
                         
-                        # Also skip files with extensions (likely API calls)
-                        is_api_call = (path.startswith(api_prefixes) or 
-                                     ('.' in path and not path.endswith(('.html', '.htm'))))
+                        # Define frontend routes that should serve index.html
+                        frontend_routes = ('dashboard', 'login', 'websites', 'analytics', 'logs', 'settings', 'profile')
                         
-                        if not is_api_call:
+                        # Check if this is an API call or file request
+                        is_api_call = (
+                            path.startswith(api_prefixes) or 
+                            ('.' in path and not path.endswith(('.html', '.htm'))) or
+                            path in ('favicon.ico', 'robots.txt', 'sitemap.xml')
+                        )
+                        
+                        # Check if this looks like a frontend route
+                        is_frontend_route = (
+                            path in frontend_routes or 
+                            any(path.startswith(f'{route}/') for route in frontend_routes) or
+                            path == '' or
+                            '/' not in path  # Simple paths without extensions
+                        )
+                        
+                        if not is_api_call and (is_frontend_route or not ('.' in path)):
                             # This is likely a frontend route, serve index.html
+                            app.logger.info(f"Serving index.html for SPA route: /{path}")
                             try:
                                 index_path = os.path.join(static_folder, 'index.html')
                                 if os.path.exists(index_path):
                                     with open(index_path, 'r', encoding='utf-8') as f:
-                                        return f.read(), 200, {'Content-Type': 'text/html'}
+                                        content = f.read()
+                                        response = app.response_class(
+                                            content,
+                                            mimetype='text/html',
+                                            headers={
+                                                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                                                'Pragma': 'no-cache',
+                                                'Expires': '0'
+                                            }
+                                        )
+                                        return response
                                 else:
-                                    return app.send_static_file('index.html')
+                                    app.logger.error(f"index.html not found at {index_path}")
+                                    return serve_root()
                             except Exception as e:
                                 app.logger.error(f"Failed to serve index.html for SPA route {path}: {e}")
-                                # Fallback to serve_root logic
                                 return serve_root()
                         
-                        # Return 404 for API-like routes that don't exist
+                        # Return 404 for unknown API routes or file requests
+                        app.logger.warning(f"404 for unknown route: /{path}")
                         return {'error': {'code': 'NOT_FOUND', 'message': f'Endpoint /{path} not found'}, 'success': False}, 404
                 except Exception as e:
                     app.logger.error(f"Error serving static file {path}: {e}")
