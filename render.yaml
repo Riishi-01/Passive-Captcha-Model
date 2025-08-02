@@ -8,14 +8,26 @@ services:
       cd frontend && npm install --no-audit --no-fund
       echo "🔨 Building frontend..."
       npm run build
+      echo "📂 Verifying frontend build..."
+      ls -la dist/
+      echo "📄 Checking index.html..."
+      ls -la dist/index.html
+      echo "📁 Checking assets folder..."
+      ls -la dist/assets/ || echo "No assets folder found"
       echo "📂 Copying frontend to backend static folder..."
       cd ..
       mkdir -p backend/static
       cp -r frontend/dist/* backend/static/
+      echo "✅ Verifying copied files..."
+      ls -la backend/static/
+      echo "📄 Checking copied index.html..."
+      ls -la backend/static/index.html
+      echo "📁 Checking copied assets..."
+      ls -la backend/static/assets/ || echo "No assets folder copied"
       echo "🐍 Installing Python dependencies..."
       pip install -r backend/requirements-render.txt
       echo "✅ Build completed successfully!"
-    startCommand: "cd backend && python main.py --gunicorn"
+    startCommand: "cd backend && python main.py --host 0.0.0.0 --port $PORT"
     plan: free
     runtime: python3.11
     envVars:

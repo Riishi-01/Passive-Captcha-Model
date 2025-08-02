@@ -44,26 +44,61 @@ def create_app(config_name='production'):
         project_root = os.path.dirname(backend_dir)
         static_folder = os.path.join(project_root, 'frontend', 'dist')
         
-        # Check for alternative static folder locations
+        print(f"🔍 Static folder detection:")
+        print(f"   Backend dir: {backend_dir}")
+        print(f"   Project root: {project_root}")
+        print(f"   Primary static path: {static_folder}")
+        print(f"   Primary path exists: {os.path.exists(static_folder)}")
+        
+        # Check for alternative static folder locations (Render-optimized)
         if not os.path.exists(static_folder):
             alternative_paths = [
+                # Render build process copies here
                 os.path.join(backend_dir, 'static'),
+                # Alternative project structures
+                os.path.join(project_root, 'frontend', 'dist'),
+                os.path.join(os.getcwd(), 'static'),
                 os.path.join(os.getcwd(), 'frontend', 'dist'),
-                'static'
+                # Render deployment paths
+                '/opt/render/project/src/backend/static',
+                '/opt/render/project/src/frontend/dist',
+                # Relative fallbacks
+                './static',
+                './frontend/dist',
+                '../frontend/dist'
             ]
             
+            print(f"🔍 Checking alternative paths:")
             for alt_path in alternative_paths:
-                if os.path.exists(alt_path):
-                    static_folder = alt_path
+                abs_path = os.path.abspath(alt_path)
+                exists = os.path.exists(abs_path)
+                print(f"   {alt_path} -> {abs_path} (exists: {exists})")
+                if exists:
+                    static_folder = abs_path
+                    print(f"✅ Found frontend at: {static_folder}")
                     break
             else:
+                print(f"❌ No static folder found, disabling frontend serving")
                 static_folder = None
                 serve_frontend = False
+        else:
+            print(f"✅ Using primary static folder: {static_folder}")
+        
+        # Log static folder contents for debugging
+        if static_folder and os.path.exists(static_folder):
+            try:
+                files = os.listdir(static_folder)
+                print(f"📁 Static folder contains {len(files)} files: {files[:5]}{'...' if len(files) > 5 else ''}")
+                # Check for index.html specifically
+                index_path = os.path.join(static_folder, 'index.html')
+                print(f"📄 index.html exists: {os.path.exists(index_path)}")
+            except Exception as e:
+                print(f"⚠️ Could not list static folder contents: {e}")
     
     # Create Flask app
     app = Flask(__name__, 
                 static_folder=static_folder if serve_frontend else None,
-                static_url_path='' if serve_frontend else None)
+                static_url_path='/static' if serve_frontend else None)
     
     # Configuration
     app.config.update({
@@ -357,21 +392,71 @@ def register_frontend_routes(app, static_folder):
     
     @app.route('/<path:path>')
     def serve_spa(path):
-        """Serve SPA for all non-API routes"""
-        # Skip API routes
-        if path.startswith(('api/', 'admin/', 'health', 'assets/')):
+        """Enhanced SPA route handler for Vue.js application"""
+        
+        # Define API and backend routes that should NOT serve the SPA
+        api_prefixes = ('api/', 'assets/', 'static/', 'socket.io/')
+        
+        # Define specific backend endpoints that should not serve SPA
+        backend_endpoints = ('health', 'admin/login', 'admin/logout', 'admin/health', 'admin/statistics')
+        
+        # Define file extensions that should be served directly or return 404
+        file_extensions = ('.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.map', '.txt', '.xml', '.json')
+        
+        # Log the request for debugging
+        app.logger.info(f"SPA route handler: /{path}")
+        
+        # 1. Skip API routes - these should be handled by their respective blueprints
+        if path.startswith(api_prefixes) or path in backend_endpoints:
+            app.logger.info(f"Skipping API/backend route: /{path}")
             abort(404)
         
-        # Serve static files if they exist
-        file_path = os.path.join(static_folder, path)
-        if os.path.exists(file_path) and os.path.isfile(file_path):
-            return app.send_static_file(path)
+        # 2. Handle direct file requests
+        if path.endswith(file_extensions):
+            file_path = os.path.join(static_folder, path)
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                app.logger.debug(f"Serving static file: {path}")
+                return app.send_static_file(path)
+            else:
+                app.logger.debug(f"Static file not found: {path}")
+                abort(404)
         
-        # Serve index.html for SPA routes
+        # 3. Serve Vue.js SPA for all other routes (dashboard, login, websites, etc.)
+        # This includes routes like: dashboard, login, websites, analytics, settings, etc.
         try:
-            return app.send_static_file('index.html')
-        except:
-            abort(404)
+            app.logger.debug(f"Serving SPA for route: /{path}")
+            index_path = os.path.join(static_folder, 'index.html')
+            if os.path.exists(index_path):
+                with open(index_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    response = app.response_class(
+                        content,
+                        mimetype='text/html',
+                        headers={
+                            'Cache-Control': 'no-cache, no-store, must-revalidate',
+                            'Pragma': 'no-cache',
+                            'Expires': '0'
+                        }
+                    )
+                    return response
+            else:
+                app.logger.error(f"index.html not found at {index_path}")
+                abort(404)
+        except Exception as e:
+            app.logger.error(f"Error serving SPA for route /{path}: {e}")
+            # Fallback to basic error page
+            return f'''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Passive CAPTCHA</title></head>
+            <body>
+                <h1>🔐 Passive CAPTCHA</h1>
+                <p>⚠️ Frontend temporarily unavailable</p>
+                <p><a href="/admin/login">Admin API Login</a></p>
+                <p><a href="/health">System Health</a></p>
+            </body>
+            </html>
+            ''', 503
 
 
 def setup_logging(app):
