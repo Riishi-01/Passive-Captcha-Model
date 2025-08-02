@@ -389,6 +389,37 @@ def create_production_app(config_name='production'):
                     <a href="/admin/login" class="api-link">🔑 Admin Login API</a>
                     <a href="/admin/analytics" class="api-link">📊 Analytics API</a>
                 </div>
+                <h3>🔑 Login Form:</h3>
+                <form id="quickLogin" style="margin: 20px 0;">
+                    <input type="password" id="adminPassword" placeholder="Enter password (Admin123)" style="padding: 10px; width: 200px;">
+                    <button type="submit" style="padding: 10px 20px; margin-left: 10px;">Login</button>
+                    <div id="loginResult" style="margin-top: 10px;"></div>
+                </form>
+                <script>
+                document.getElementById('quickLogin').addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const password = document.getElementById('adminPassword').value;
+                    const resultDiv = document.getElementById('loginResult');
+                    
+                    try {
+                        const response = await fetch('/admin/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ password: password })
+                        });
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            resultDiv.innerHTML = '<span style="color: green;">✅ Login successful!</span>';
+                            localStorage.setItem('admin_token', data.data.token);
+                        } else {
+                            resultDiv.innerHTML = '<span style="color: red;">❌ ' + (data.error?.message || 'Login failed') + '</span>';
+                        }
+                    } catch (error) {
+                        resultDiv.innerHTML = '<span style="color: red;">❌ Error: ' + error.message + '</span>';
+                    }
+                });
+                </script>
                 <h3>Quick Test:</h3>
                 <pre>curl -X POST /admin/login -H "Content-Type: application/json" -d '{"password": "Admin123"}'</pre>
                 <h3>Available Endpoints:</h3>
