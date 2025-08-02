@@ -153,23 +153,39 @@ def create_app(config_name='production'):
     except Exception as e:
         app.logger.warning(f"SocketIO initialization failed: {e}")
     
-    # Rate limiting
+    # Rate limiting - completely disable if Redis unavailable to avoid connection issues
     try:
         if redis_client:
-            limiter = Limiter(
-                key_func=get_remote_address,
-                default_limits=[f"{app.config['RATE_LIMIT_REQUESTS']} per hour"],
-                storage_uri=app.config['REDIS_URL']
-            )
+            # Use Redis for rate limiting when available
+            try:
+                limiter = Limiter(
+                    key_func=get_remote_address,
+                    default_limits=[f"{app.config['RATE_LIMIT_REQUESTS']} per hour"],
+                    storage_uri=app.config['REDIS_URL']
+                )
+                limiter.init_app(app)
+                app.logger.info("Rate limiting initialized with Redis backend")
+            except Exception as redis_error:
+                app.logger.warning(f"Redis rate limiting failed, using in-memory: {redis_error}")
+                # Fall back to in-memory rate limiting
+                limiter = Limiter(
+                    key_func=get_remote_address,
+                    default_limits=[f"{app.config['RATE_LIMIT_REQUESTS']} per hour"]
+                )
+                limiter.init_app(app)
+                app.logger.info("Rate limiting initialized with in-memory backend")
         else:
+            # Use in-memory rate limiting when Redis unavailable
             limiter = Limiter(
                 key_func=get_remote_address,
                 default_limits=[f"{app.config['RATE_LIMIT_REQUESTS']} per hour"]
             )
-        limiter.init_app(app)
-        app.logger.info("Rate limiting initialized")
+            limiter.init_app(app)
+            app.logger.info("Rate limiting initialized with in-memory backend")
     except Exception as e:
-        app.logger.warning(f"Rate limiting initialization failed: {e}")
+        app.logger.warning(f"Rate limiting initialization completely failed, disabling: {e}")
+        # Continue without rate limiting if everything fails
+        limiter = None
     
     # Initialize database
     try:
@@ -244,9 +260,15 @@ def create_app(config_name='production'):
                 'version': '2.0.0',
                 'components': {
                     'database': 'unknown',
-                    'redis': 'available' if redis_client else 'unavailable',
+                    'redis': 'available' if redis_client else 'disabled',
                     'ml_model': 'unknown',
-                    'services': 'available' if auth_service else 'unavailable'
+                    'services': 'available' if auth_service else 'disabled',
+                    'rate_limiting': 'available' if hasattr(app, 'limiter') and app.limiter else 'disabled',
+                    'websocket': 'available' if socketio else 'disabled'
+                },
+                'metrics': {
+                    'uptime_seconds': int(__import__('time').time()) - app.start_time if hasattr(app, 'start_time') else 0,
+                    'websocket_connections': 0  # TODO: Get actual count from SocketIO
                 }
             }
             
@@ -254,18 +276,32 @@ def create_app(config_name='production'):
             try:
                 from app.database import get_db_session
                 session = get_db_session()
-                session.execute('SELECT 1')
+                # Try different SQL formats for compatibility
+                try:
+                    session.execute(__import__('sqlalchemy').text('SELECT 1'))
+                except:
+                    # Fallback for older SQLAlchemy versions
+                    session.execute('SELECT 1')
                 session.close()
-                health_status['components']['database'] = 'available'
-            except:
-                health_status['components']['database'] = 'unavailable'
+                health_status['components']['database'] = 'healthy'
+            except Exception as db_error:
+                health_status['components']['database'] = 'error'
+                health_status['status'] = 'unhealthy'
             
             # Test ML model
             try:
                 from app.ml import model_loaded
-                health_status['components']['ml_model'] = 'available' if model_loaded else 'unavailable'
-            except:
+                health_status['components']['ml_model'] = 'healthy' if model_loaded else 'unavailable'
+            except Exception:
                 health_status['components']['ml_model'] = 'unavailable'
+            
+            # Test Redis connection if client exists
+            if redis_client:
+                try:
+                    redis_client.ping()
+                    health_status['components']['redis'] = 'healthy'
+                except Exception:
+                    health_status['components']['redis'] = 'error'
             
             return jsonify(health_status)
             
@@ -285,6 +321,8 @@ def create_app(config_name='production'):
     app.socketio = socketio
     app.auth_service = auth_service
     app.website_service = website_service
+    app.limiter = limiter if 'limiter' in locals() else None
+    app.start_time = int(__import__('time').time())
     
     app.logger.info("Application created successfully")
     return app, socketio
