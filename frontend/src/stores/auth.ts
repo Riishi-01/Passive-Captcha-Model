@@ -37,13 +37,17 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       isLoading.value = true
       
-      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5003'
+      const API_BASE = import.meta.env.VITE_API_URL || (
+        window.location.hostname === 'localhost' 
+          ? 'http://localhost:5003'
+          : `${window.location.protocol}//${window.location.host}`
+      )
       
       const response = await axios.post(`${API_BASE}/admin/login`, {
         password
       })
 
-      const { token: authToken } = response.data
+      const authToken = response.data.token || response.data.data?.token
       
       if (authToken) {
         setToken(authToken)
