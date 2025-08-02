@@ -226,12 +226,23 @@ def create_app(config_name='production'):
     website_service = None
     try:
         from app.services import init_auth_service, init_website_service
+        app.logger.info("Importing services modules...")
+        
+        app.logger.info(f"Initializing auth service with Redis: {redis_client is not None}")
         auth_service = init_auth_service(redis_client)
+        app.logger.info(f"Auth service initialized: {auth_service is not None}")
+        
         if redis_client:
             website_service = init_website_service(redis_client)
+            app.logger.info(f"Website service initialized: {website_service is not None}")
+        
         app.logger.info("Services initialized successfully")
+    except ImportError as e:
+        app.logger.error(f"Service import failed: {e}")
     except Exception as e:
-        app.logger.warning(f"Service initialization failed: {e}")
+        app.logger.error(f"Service initialization failed: {e}")
+        import traceback
+        app.logger.error(f"Traceback: {traceback.format_exc()}")
     
     # Register core API blueprints
     try:
@@ -263,6 +274,18 @@ def create_app(config_name='production'):
         app.logger.info("Analytics and monitoring endpoints registered")
     except Exception as e:
         app.logger.warning(f"Failed to register analytics endpoints: {e}")
+    
+    # Debug endpoint for environment variables (temporary)
+    @app.route('/debug/env')
+    def debug_env():
+        """Debug endpoint to check environment variables"""
+        return jsonify({
+            'ADMIN_SECRET': os.getenv('ADMIN_SECRET', 'NOT_SET'),
+            'ADMIN_SECRET_from_config': app.config.get('ADMIN_SECRET', 'NOT_SET'),
+            'JWT_SECRET': os.getenv('JWT_SECRET', 'NOT_SET')[:10] + '...' if os.getenv('JWT_SECRET') else 'NOT_SET',
+            'auth_service_available': app.auth_service is not None,
+            'config_loaded': os.path.exists('config.env.production')
+        })
     
     # Health check endpoint
     @app.route('/health')
