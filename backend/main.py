@@ -287,6 +287,42 @@ def create_app(config_name='production'):
     except Exception as e:
         app.logger.warning(f"Failed to register analytics endpoints: {e}")
     
+    # Debug admin login endpoint
+    @app.route('/debug/login', methods=['POST'])
+    def debug_login():
+        """Debug endpoint to test admin login directly"""
+        try:
+            data = request.get_json()
+            password = data.get('password', '') if data else ''
+            
+            # Get auth service
+            auth_service = app.auth_service
+            if not auth_service:
+                return jsonify({'error': 'Auth service not available'}), 503
+            
+            # Check password directly
+            admin_secret = app.config.get('ADMIN_SECRET')
+            password_match = password == admin_secret
+            
+            # Try authentication
+            result = auth_service.authenticate_admin(password)
+            
+            return jsonify({
+                'received_password': password,
+                'expected_password': admin_secret,
+                'password_match': password_match,
+                'auth_result': result is not None,
+                'auth_service_admin_secret': auth_service.admin_secret,
+                'full_result': result
+            })
+            
+        except Exception as e:
+            import traceback
+            return jsonify({
+                'error': str(e),
+                'traceback': traceback.format_exc()
+            }), 500
+    
     # Debug endpoint for environment variables (temporary)
     @app.route('/debug/env')
     def debug_env():
