@@ -627,37 +627,7 @@ def revoke_script_token(website_id):
 
 # Health and Statistics Endpoints
 
-@admin_bp.route('/health', methods=['GET'])
-def health_check():
-    """Admin API health check"""
-    try:
-        auth_service = get_auth_service()
-        website_service = get_website_service()
-        token_manager = get_script_token_manager()
-        
-        services_status = {
-            'auth_service': 'healthy' if auth_service else 'unavailable',
-            'website_service': 'healthy' if website_service else 'unavailable',
-            'script_token_manager': 'healthy' if token_manager else 'unavailable'
-        }
-        
-        overall_status = 'healthy' if all(
-            status == 'healthy' for status in services_status.values()
-        ) else 'degraded'
-        
-        return jsonify({
-            'status': overall_status,
-            'services': services_status,
-            'timestamp': datetime.utcnow().isoformat()
-        })
-        
-    except Exception as e:
-        current_app.logger.error(f"Health check error: {e}")
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e),
-            'timestamp': datetime.utcnow().isoformat()
-        }), 500
+# REMOVED: Duplicate health endpoint - consolidated to main app level at /health
 
 
 @admin_bp.route('/statistics', methods=['GET'])
@@ -701,27 +671,4 @@ def get_admin_statistics():
 
 # Legacy Compatibility Endpoints
 
-@admin_bp.route('/admin/health', methods=['GET'])
-def legacy_admin_health():
-    """Legacy admin health endpoint for backward compatibility"""
-    try:
-        auth_service = get_auth_service()
-        website_service = get_website_service()
-        
-        return jsonify({
-            'status': 'healthy' if auth_service and website_service else 'degraded',
-            'service': 'admin_legacy',
-            'timestamp': datetime.now().isoformat(),
-            'version': '2.0.0',
-            'services': {
-                'auth': 'up' if auth_service else 'down',
-                'websites': 'up' if website_service else 'down'
-            }
-        })
-        
-    except Exception as e:
-        current_app.logger.error(f"Legacy health check failed: {e}")
-        return jsonify({
-            'status': 'error',
-            'error': str(e)
-        }), 500
+# REMOVED: Duplicate legacy health endpoint - consolidated to main app level at /health

@@ -117,70 +117,7 @@ def verify_captcha():
         }), 500
 
 
-@api_bp.route('/health', methods=['GET'])
-def health_check():
-    """
-    Comprehensive health check endpoint
-    """
-    try:
-        from app.database import get_last_verification_time
-        
-        # Check model status
-        model_loaded = is_model_loaded()
-        model_info = get_model_info() if model_loaded else None
-        
-        # Check database connection
-        try:
-            session = get_db_session()
-            session.execute('SELECT 1')
-            session.close()
-            db_healthy = True
-            last_verification = get_last_verification_time()
-        except Exception:
-            db_healthy = False
-            last_verification = None
-        
-        # Calculate uptime (simplified)
-        uptime = int(time.time())  # Could be enhanced with actual start time
-        
-        # Overall health status
-        overall_status = 'healthy' if (model_loaded and db_healthy) else 'degraded'
-        
-        health_data = {
-            'status': overall_status,
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
-            'checks': {
-                'modelLoaded': model_loaded,
-                'dbConnection': db_healthy,
-                'api': True  # If we're responding, API is working
-            },
-            'metrics': {
-                'lastVerification': last_verification,
-                'uptime': uptime,
-                'version': '1.0'
-            }
-        }
-        
-        if model_info:
-            health_data['model'] = {
-                'algorithm': model_info.get('algorithm', 'Random Forest'),
-                'version': model_info.get('version', '1.0'),
-                'features': model_info.get('features', 11)
-            }
-        
-        status_code = 200 if overall_status == 'healthy' else 503
-        return jsonify(health_data), status_code
-        
-    except Exception as e:
-        print(f"Error in health_check: {e}")
-        return jsonify({
-            'status': 'error',
-            'error': {
-                'code': 'HEALTH_CHECK_FAILED',
-                'message': 'Health check failed'
-            },
-            'timestamp': datetime.utcnow().isoformat() + 'Z'
-        }), 500
+# REMOVED: Duplicate health endpoint - consolidated to main app level at /health
 
 
 @api_bp.route('/validate', methods=['POST'])

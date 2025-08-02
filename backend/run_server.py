@@ -5,7 +5,7 @@ Server runner for production-grade application
 
 import os
 import sys
-from app import create_app
+from main import create_app  # Using consolidated application factory
 
 def main():
     # Set port

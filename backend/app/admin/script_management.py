@@ -14,13 +14,12 @@ import json
 
 script_mgmt_bp = Blueprint('script_mgmt', __name__, url_prefix='/admin/scripts')
 
-# Redis client for caching
-redis_client = None
+# DEPRECATED: Use centralized Redis client from Flask app context
+# Access via current_app.redis_client instead of module-level global
 
 def init_script_management(redis_client_instance):
-    """Initialize script management endpoints with Redis client"""
-    global redis_client
-    redis_client = redis_client_instance
+    """DEPRECATED: Redis client now managed centrally"""
+    pass  # No-op for backward compatibility
 
 
 @script_mgmt_bp.route('/generate', methods=['POST'])

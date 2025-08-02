@@ -16,6 +16,11 @@ load_dotenv()
 
 def create_app(config_name='development'):
     """
+    DEPRECATED: This application factory is deprecated.
+    Use main.py create_app() for all environments.
+    This factory remains for backward compatibility only.
+    """
+    """
     Application factory pattern for Flask app creation
     """
     app = Flask(__name__)
@@ -81,20 +86,7 @@ def create_app(config_name='development'):
     app.register_blueprint(admin_bp, url_prefix='/admin')
     
     # Health check endpoint
-    @app.route('/health')
-    def health_check():
-        """Health check endpoint for monitoring"""
-        try:
-            from app.ml import model_loaded
-            import time
-            return {
-                'status': 'healthy',
-                'timestamp': int(time.time()),
-                'version': '1.0.0',
-                'model_loaded': model_loaded
-            }
-        except Exception as e:
-            return {'status': 'unhealthy', 'error': str(e)}, 500
+    # REMOVED: Duplicate health endpoint - consolidated to main.py at /health
     
     return app
 

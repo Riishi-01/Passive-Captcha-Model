@@ -19,13 +19,12 @@ from sqlalchemy import func, and_, or_
 
 dashboard_bp = Blueprint('dashboard', __name__, url_prefix='/admin')
 
-# Redis client for caching
-redis_client = None
+# DEPRECATED: Use centralized Redis client from Flask app context
+# Access via current_app.redis_client instead of module-level global
 
 def init_dashboard_endpoints(redis_client_instance):
-    """Initialize dashboard endpoints with Redis client"""
-    global redis_client
-    redis_client = redis_client_instance
+    """DEPRECATED: Redis client now managed centrally"""
+    pass  # No-op for backward compatibility
 
 
 @dashboard_bp.route('/analytics/summary', methods=['GET'])

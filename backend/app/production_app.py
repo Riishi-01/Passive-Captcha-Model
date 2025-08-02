@@ -24,6 +24,11 @@ if os.path.exists('config.env.production'):
 
 def create_production_app(config_name='production'):
     """
+    DEPRECATED: This application factory is deprecated.
+    Use main.py create_app() for all environments.
+    This factory remains for backward compatibility only.
+    """
+    """
     Production application factory with all integrated components
     """
     # Configure Flask app to serve static frontend files
@@ -306,74 +311,7 @@ def create_production_app(config_name='production'):
     app.logger.info("All blueprints registered successfully")
     
     # Production health check endpoint
-    @app.route('/health')
-    def health_check():
-        """Comprehensive health check endpoint"""
-        try:
-            from app.ml import model_loaded
-            import time
-            
-            # Check database
-            db_status = 'healthy'
-            try:
-                from app.database import get_db_session
-                session = get_db_session()
-                session.execute('SELECT 1')
-                session.close()
-            except:
-                db_status = 'error'
-            
-            # Check Redis
-            redis_status = 'healthy' if redis_client else 'disabled'
-            if redis_client:
-                try:
-                    redis_client.ping()
-                except:
-                    redis_status = 'error'
-            
-            # Check WebSocket
-            ws_status = 'healthy' if websocket_manager else 'disabled'
-            if websocket_manager:
-                try:
-                    stats = websocket_manager.get_connection_stats()
-                    ws_connections = stats['total_connections']
-                except:
-                    ws_status = 'error'
-                    ws_connections = 0
-            else:
-                ws_connections = 0
-            
-            # Check logs pipeline
-            logs_status = 'healthy' if logs_pipeline else 'disabled'
-            
-            # Overall status
-            critical_components = [db_status]
-            if any(status == 'error' for status in critical_components):
-                overall_status = 'unhealthy'
-            elif any(status == 'error' for status in [redis_status, ws_status, logs_status]):
-                overall_status = 'degraded'
-            else:
-                overall_status = 'healthy'
-            
-            return {
-                'status': overall_status,
-                'timestamp': int(time.time()),
-                'version': '2.0.0',
-                'components': {
-                    'database': db_status,
-                    'ml_model': 'healthy' if model_loaded else 'error',
-                    'redis': redis_status,
-                    'websocket': ws_status,
-                    'logs_pipeline': logs_status
-                },
-                'metrics': {
-                    'websocket_connections': ws_connections,
-                    'uptime_seconds': int(time.time() - app.start_time) if hasattr(app, 'start_time') else 0
-                }
-            }
-        except Exception as e:
-            app.logger.error(f"Health check failed: {e}")
-            return {'status': 'unhealthy', 'error': str(e)}, 500
+# REMOVED: Duplicate health endpoint - consolidated to main.py at /health
     
     # Frontend serving routes (must be registered last to avoid conflicts)
     def register_frontend_routes(app):
@@ -464,83 +402,8 @@ def create_production_app(config_name='production'):
             </html>
             '''
         
-        # Add unified login endpoint that works with both API and direct access
-        @app.route('/login', methods=['GET', 'POST'])
-        def unified_login():
-            """Unified login endpoint for both API and direct access"""
-            if request.method == 'GET':
-                # Return JSON info for API calls, or simple login page for browsers
-                if request.headers.get('Accept', '').startswith('application/json'):
-                    return jsonify({
-                        'message': 'POST to this endpoint with password',
-                        'endpoint': '/login',
-                        'method': 'POST',
-                        'payload': {'password': 'Admin123'},
-                        'example': 'curl -X POST /login -H "Content-Type: application/json" -d \'{"password": "Admin123"}\''
-                    })
-                else:
-                    # Simple HTML login page
-                    return '''
-                    <!DOCTYPE html>
-                    <html><head><title>Login</title><style>
-                    body{font-family:Arial;max-width:400px;margin:100px auto;padding:20px}
-                    input,button{width:100%;padding:10px;margin:10px 0;border:1px solid #ccc;border-radius:5px}
-                    button{background:#007cba;color:white;border:none;cursor:pointer}
-                    .msg{margin:10px 0}
-                    </style></head><body>
-                    <h2>Admin Login</h2>
-                    <form id="f">
-                        <input type="password" id="p" placeholder="Password" required>
-                        <button type="submit">Login</button>
-                        <div id="msg" class="msg"></div>
-                    </form>
-                    <script>
-                    document.getElementById('f').onsubmit=async function(e){
-                        e.preventDefault();
-                        const r=await fetch('/admin/login',{
-                            method:'POST',
-                            headers:{'Content-Type':'application/json'},
-                            body:JSON.stringify({password:document.getElementById('p').value})
-                        });
-                        const d=await r.json();
-                        if(d.success){
-                            document.getElementById('msg').innerHTML='✅ Success!';
-                            localStorage.setItem('admin_token',d.data.token);
-                            setTimeout(()=>location.href='/',1000);
-                        }else{
-                            document.getElementById('msg').innerHTML='❌ '+(d.error?.message||'Failed');
-                        }
-                    }
-                    </script></body></html>
-                    '''
-            
-            # Handle POST login (same as /admin/login)
-            try:
-                data = request.get_json()
-                if not data or 'password' not in data:
-                    return jsonify({
-                        'error': {'code': 'INVALID_INPUT', 'message': 'Password required'},
-                        'success': False
-                    }), 400
-                
-                from app.services.auth_service import get_auth_service
-                auth_service = get_auth_service()
-                result = auth_service.authenticate_admin(data['password'])
-                
-                if result:
-                    return jsonify(result), 200
-                else:
-                    return jsonify({
-                        'error': {'code': 'INVALID_CREDENTIALS', 'message': 'Invalid password'},
-                        'success': False
-                    }), 401
-                    
-            except Exception as e:
-                app.logger.error(f"Login error: {e}")
-                return jsonify({
-                    'error': {'code': 'SERVER_ERROR', 'message': 'Login service unavailable'},
-                    'success': False
-                }), 500
+        # REMOVED: Duplicate login route - now handled by modern admin API at /admin/login
+        # All login functionality consolidated to app/api/admin_endpoints.py
         
         # Add explicit asset handling for Vue.js build files
         @app.route('/assets/<path:filename>')

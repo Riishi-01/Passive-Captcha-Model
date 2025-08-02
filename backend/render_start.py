@@ -33,7 +33,7 @@ def setup_environment():
 def start_application():
     """Start the Flask application"""
     try:
-        from app import create_app
+        from main import create_app  # Using consolidated application factory
         
         app, socketio = create_app('production')
         port = int(os.environ.get('PORT', 5003))

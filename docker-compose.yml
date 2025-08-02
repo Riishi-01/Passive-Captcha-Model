@@ -51,7 +51,7 @@ services:
       - ./backend/logs:/app/logs
     networks:
       - captcha_network
-    command: ["python", "app.py", "--debug"]
+    command: ["python", "main.py", "--debug"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5003/health"]
       interval: 30s

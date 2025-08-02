@@ -68,4 +68,4 @@ USER appuser
 EXPOSE 5003
 
 # Production entrypoint
-CMD ["python", "app.py"]
+CMD ["python", "main.py"]

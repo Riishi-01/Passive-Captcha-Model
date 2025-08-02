@@ -153,37 +153,17 @@ def create_app(config_name='production'):
     except Exception as e:
         app.logger.warning(f"SocketIO initialization failed: {e}")
     
-    # Rate limiting - completely disable if Redis unavailable to avoid connection issues
+    # Rate limiting - use in-memory by default, Redis if specifically available
     try:
-        if redis_client:
-            # Use Redis for rate limiting when available
-            try:
-                limiter = Limiter(
-                    key_func=get_remote_address,
-                    default_limits=[f"{app.config['RATE_LIMIT_REQUESTS']} per hour"],
-                    storage_uri=app.config['REDIS_URL']
-                )
-                limiter.init_app(app)
-                app.logger.info("Rate limiting initialized with Redis backend")
-            except Exception as redis_error:
-                app.logger.warning(f"Redis rate limiting failed, using in-memory: {redis_error}")
-                # Fall back to in-memory rate limiting
-                limiter = Limiter(
-                    key_func=get_remote_address,
-                    default_limits=[f"{app.config['RATE_LIMIT_REQUESTS']} per hour"]
-                )
-                limiter.init_app(app)
-                app.logger.info("Rate limiting initialized with in-memory backend")
-        else:
-            # Use in-memory rate limiting when Redis unavailable
-            limiter = Limiter(
-                key_func=get_remote_address,
-                default_limits=[f"{app.config['RATE_LIMIT_REQUESTS']} per hour"]
-            )
-            limiter.init_app(app)
-            app.logger.info("Rate limiting initialized with in-memory backend")
+        # Always use in-memory rate limiting to avoid Redis connection issues
+        limiter = Limiter(
+            key_func=get_remote_address,
+            default_limits=[f"{app.config['RATE_LIMIT_REQUESTS']} per hour"]
+        )
+        limiter.init_app(app)
+        app.logger.info("Rate limiting initialized with in-memory backend")
     except Exception as e:
-        app.logger.warning(f"Rate limiting initialization completely failed, disabling: {e}")
+        app.logger.warning(f"Rate limiting initialization failed, disabling: {e}")
         # Continue without rate limiting if everything fails
         limiter = None
     
@@ -427,6 +407,12 @@ def setup_logging(app):
         print(f"Warning: Could not setup file logging: {e}")
 
 
+def get_wsgi_app():
+    """Get WSGI application for production servers like gunicorn"""
+    app, socketio = create_app('production')
+    return socketio if socketio else app
+
+
 def run_app(host='0.0.0.0', port=None, debug=False):
     """Run the application"""
     if port is None:
@@ -436,7 +422,10 @@ def run_app(host='0.0.0.0', port=None, debug=False):
     
     if socketio:
         print(f"🚀 Starting Passive CAPTCHA with SocketIO on {host}:{port}")
-        socketio.run(app, host=host, port=port, debug=debug, use_reloader=False)
+        # Allow unsafe Werkzeug in production for development purposes
+        # In real production, this should use a proper WSGI server like gunicorn
+        socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, 
+                    allow_unsafe_werkzeug=True)
     else:
         print(f"🚀 Starting Passive CAPTCHA on {host}:{port}")
         app.run(host=host, port=port, debug=debug, use_reloader=False)
@@ -449,6 +438,25 @@ if __name__ == '__main__':
     parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
     parser.add_argument('--port', type=int, default=None, help='Port to bind to')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+    parser.add_argument('--gunicorn', action='store_true', help='Use gunicorn for production (requires gunicorn installed)')
     
     args = parser.parse_args()
-    run_app(host=args.host, port=args.port, debug=args.debug)
+    
+    if args.gunicorn and not args.debug:
+        # Use gunicorn for production
+        import subprocess
+        import sys
+        port = args.port or int(os.getenv('PORT', 5003))
+        cmd = [
+            'gunicorn',
+            '--worker-class', 'eventlet',
+            '--workers', '1',
+            '--bind', f'{args.host}:{port}',
+            '--timeout', '120',
+            '--keep-alive', '2',
+            'main:get_wsgi_app()'
+        ]
+        print(f"🚀 Starting Passive CAPTCHA with Gunicorn on {args.host}:{port}")
+        subprocess.run(cmd)
+    else:
+        run_app(host=args.host, port=args.port, debug=args.debug)

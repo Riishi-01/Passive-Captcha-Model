@@ -415,35 +415,7 @@ def collect_data():
         }), 500
 
 
-@script_bp.route('/health', methods=['GET'])
-def script_health():
-    """
-    Health check for script services
-    """
-    try:
-        token_manager = get_script_token_manager()
-        if not token_manager:
-            return jsonify({
-                'status': 'unhealthy',
-                'error': 'Token manager not available'
-            }), 503
-        
-        # Get token statistics
-        stats = token_manager.get_token_stats()
-        
-        return jsonify({
-            'status': 'healthy',
-            'service': 'script_integration',
-            'timestamp': datetime.utcnow().isoformat(),
-            'statistics': stats
-        })
-        
-    except Exception as e:
-        current_app.logger.error(f"Script health check failed: {e}")
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e)
-        }), 500
+# REMOVED: Duplicate health endpoint - consolidated to main app level at /health
 
 
 def extract_ml_features(behavioral_data):

@@ -57,57 +57,9 @@ def require_admin_auth(f):
     return decorated_function
 
 
-@admin_bp.route('/login', methods=['POST'])
-def admin_login():
-    """
-    Admin login endpoint
-    """
-    try:
-        data = request.get_json()
-        
-        if not data or 'password' not in data:
-            return jsonify({
-                'error': {
-                    'code': 'MISSING_PASSWORD',
-                    'message': 'Password is required'
-                }
-            }), 400
-        
-        password = data['password']
-        expected_password = current_app.config.get('ADMIN_SECRET', 'admin-secret-key')
-        
-        if password != expected_password:
-            return jsonify({
-                'error': {
-                    'code': 'INVALID_CREDENTIALS',
-                    'message': 'Invalid password'
-                }
-            }), 401
-        
-        # Generate JWT token
-        secret = current_app.config.get('ADMIN_SECRET', 'admin-secret-key')
-        payload = {
-            'admin': True,
-            'exp': datetime.utcnow() + timedelta(hours=24),
-            'iat': datetime.utcnow()
-        }
-        
-        token = jwt.encode(payload, secret, algorithm='HS256')
-        
-        return jsonify({
-            'token': token,
-            'expires_in': 86400,  # 24 hours
-            'timestamp': datetime.utcnow().isoformat() + 'Z'
-        }), 200
-        
-    except Exception as e:
-        print(f"Error in admin_login: {e}")
-        return jsonify({
-            'error': {
-                'code': 'INTERNAL_ERROR',
-                'message': 'Internal server error occurred'
-            }
-        }), 500
+# REMOVED: Duplicate login route - now handled by modern admin API
+# @admin_bp.route('/login', methods=['POST'])
+# Use app/api/admin_endpoints.py for all admin authentication
 
 
 @admin_bp.route('/analytics', methods=['GET'])

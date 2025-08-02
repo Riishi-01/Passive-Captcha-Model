@@ -17,13 +17,12 @@ from sqlalchemy import func
 
 ml_bp = Blueprint('ml', __name__, url_prefix='/admin/ml')
 
-# Redis client for caching
-redis_client = None
+# DEPRECATED: Use centralized Redis client from Flask app context
+# Access via current_app.redis_client instead of module-level global
 
 def init_ml_endpoints(redis_client_instance):
-    """Initialize ML endpoints with Redis client"""
-    global redis_client
-    redis_client = redis_client_instance
+    """DEPRECATED: Redis client now managed centrally"""
+    pass  # No-op for backward compatibility
 
 
 @ml_bp.route('/metrics', methods=['GET'])
@@ -38,6 +37,7 @@ def get_ml_metrics():
         
         # Check cache first
         cache_key = f"ml_metrics:{website_id or 'all'}:{time_range}"
+        redis_client = getattr(current_app, 'redis_client', None)
         if redis_client:
             cached_data = redis_client.get(cache_key)
             if cached_data:
@@ -52,7 +52,7 @@ def get_ml_metrics():
         
         # Cache the result
         if redis_client:
-            redis_client.setex(cache_key, 300, json.dumps(metrics, default=str))  # 5 min cache
+            if redis_client: redis_client.setex(cache_key, 300, json.dumps(metrics, default=str))  # 5 min cache
         
         return jsonify({
             'success': True,
@@ -82,6 +82,7 @@ def get_confidence_distribution():
         time_range = int(request.args.get('time_range', 24))
         
         cache_key = f"confidence_dist:{website_id or 'all'}:{time_range}"
+        redis_client = getattr(current_app, 'redis_client', None)
         if redis_client:
             cached_data = redis_client.get(cache_key)
             if cached_data:
@@ -143,7 +144,7 @@ def get_confidence_distribution():
             
             # Cache result
             if redis_client:
-                redis_client.setex(cache_key, 300, json.dumps(result, default=str))
+                if redis_client: redis_client.setex(cache_key, 300, json.dumps(result, default=str))
             
             return jsonify({
                 'success': True,
@@ -176,6 +177,7 @@ def get_accuracy_metrics():
         time_range = int(request.args.get('time_range', 24))
         
         cache_key = f"accuracy_metrics:{website_id or 'all'}:{time_range}"
+        redis_client = getattr(current_app, 'redis_client', None)
         if redis_client:
             cached_data = redis_client.get(cache_key)
             if cached_data:
@@ -245,7 +247,7 @@ def get_accuracy_metrics():
             
             # Cache result
             if redis_client:
-                redis_client.setex(cache_key, 300, json.dumps(result, default=str))
+                if redis_client: redis_client.setex(cache_key, 300, json.dumps(result, default=str))
             
             return jsonify({
                 'success': True,
@@ -278,6 +280,7 @@ def get_performance_trend():
         time_range = int(request.args.get('time_range', 168))  # Default 7 days
         
         cache_key = f"performance_trend:{website_id or 'all'}:{time_range}"
+        redis_client = getattr(current_app, 'redis_client', None)
         if redis_client:
             cached_data = redis_client.get(cache_key)
             if cached_data:
@@ -379,7 +382,7 @@ def get_performance_trend():
             
             # Cache result
             if redis_client:
-                redis_client.setex(cache_key, 600, json.dumps(result, default=str))  # 10 min cache
+                if redis_client: redis_client.setex(cache_key, 600, json.dumps(result, default=str))  # 10 min cache
             
             return jsonify({
                 'success': True,
@@ -401,111 +404,8 @@ def get_performance_trend():
         }), 500
 
 
-@ml_bp.route('/health', methods=['GET'])
-@require_admin_auth
-def get_ml_model_health():
-    """
-    Get ML model health status and training information
-    """
-    try:
-        cache_key = "ml_model_health"
-        if redis_client:
-            cached_data = redis_client.get(cache_key)
-            if cached_data:
-                return jsonify(json.loads(cached_data))
-        
-        # Check model file existence
-        model_path = os.path.join(current_app.root_path, '..', 'models', 'passive_captcha_rf.pkl')
-        model_exists = os.path.exists(model_path)
-        
-        # Get recent performance metrics
-        session = get_db_session()
-        try:
-            recent_logs = session.query(VerificationLog).filter(
-                VerificationLog.timestamp >= datetime.utcnow() - timedelta(hours=24)
-            ).all()
-            
-            # Calculate health metrics
-            total_predictions = len(recent_logs)
-            avg_confidence = sum(log.confidence for log in recent_logs) / len(recent_logs) if recent_logs else 0
-            avg_response_time = sum(log.response_time for log in recent_logs if log.response_time) / len([log for log in recent_logs if log.response_time]) if recent_logs else 0
-            
-            # Determine health status
-            if not model_exists:
-                status = 'error'
-                alerts = [{'type': 'error', 'title': 'Model Missing', 'message': 'ML model file not found', 'timestamp': datetime.utcnow().isoformat()}]
-            elif avg_confidence < 0.7:
-                status = 'warning'
-                alerts = [{'type': 'warning', 'title': 'Low Confidence', 'message': f'Average confidence is low: {avg_confidence:.2%}', 'timestamp': datetime.utcnow().isoformat()}]
-            elif avg_response_time > 1000:  # 1 second
-                status = 'warning'
-                alerts = [{'type': 'warning', 'title': 'High Latency', 'message': f'Average response time is high: {avg_response_time:.0f}ms', 'timestamp': datetime.utcnow().isoformat()}]
-            else:
-                status = 'healthy'
-                alerts = []
-            
-            # Calculate accuracy for health assessment
-            if recent_logs:
-                tp = fp = tn = fn = 0
-                for log in recent_logs:
-                    predicted_human = log.confidence > 0.5
-                    actual_human = log.is_human
-                    
-                    if predicted_human and actual_human:
-                        tp += 1
-                    elif predicted_human and not actual_human:
-                        fp += 1
-                    elif not predicted_human and not actual_human:
-                        tn += 1
-                    else:
-                        fn += 1
-                
-                accuracy = (tp + tn) / len(recent_logs) if recent_logs else 0
-            else:
-                accuracy = 0
-            
-            result = {
-                'status': status,
-                'version': '1.0.0',
-                'metrics': {
-                    'accuracy': round(accuracy, 4),
-                    'latency': round(avg_response_time, 2),
-                    'uptime': 99.5,  # Could be calculated from actual uptime monitoring
-                    'predictions_24h': total_predictions,
-                    'avg_confidence': round(avg_confidence, 4)
-                },
-                'training': {
-                    'last_training': (datetime.utcnow() - timedelta(days=7)).isoformat(),
-                    'next_retraining': (datetime.utcnow() + timedelta(days=7)).isoformat(),
-                    'training_data_size': 10000,  # Could be from actual training logs
-                    'model_size_mb': 2.5
-                },
-                'alerts': alerts,
-                'model_file_exists': model_exists
-            }
-            
-            # Cache result
-            if redis_client:
-                redis_client.setex(cache_key, 120, json.dumps(result, default=str))  # 2 min cache
-            
-            return jsonify({
-                'success': True,
-                'data': result,
-                'timestamp': datetime.utcnow().isoformat()
-            })
-            
-        finally:
-            session.close()
-            
-    except Exception as e:
-        current_app.logger.error(f"Error getting ML model health: {e}")
-        return jsonify({
-            'success': False,
-            'error': {
-                'code': 'ML_HEALTH_ERROR',
-                'message': 'Failed to retrieve ML model health'
-            }
-        }), 500
+# REMOVED: Duplicate health endpoint - consolidated to main app level at /health
+# ML health details available through /admin/statistics endpoint
 
 
 @ml_bp.route('/retrain', methods=['POST'])

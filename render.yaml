@@ -15,7 +15,7 @@ services:
       echo "🐍 Installing Python dependencies..."
       pip install -r backend/requirements-render.txt
       echo "✅ Build completed successfully!"
-    startCommand: "cd backend && python app.py"
+    startCommand: "cd backend && python main.py --gunicorn"
     plan: free
     runtime: python3.11
     envVars:
