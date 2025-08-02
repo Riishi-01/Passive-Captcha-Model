@@ -68,7 +68,8 @@ class AuthService:
         """
         # Simple password check for admin
         if password != self.admin_secret:
-            current_app.logger.warning(f"Failed admin login attempt")
+            if has_app_context():
+                current_app.logger.warning(f"Failed admin login attempt")
             return None
         
         # Generate JWT token
@@ -109,13 +110,16 @@ class AuthService:
                 # Store token mapping
                 token_key = f"{self.token_prefix}{token}"
                 self.redis.setex(token_key, self.session_ttl, session_id)
-                current_app.logger.info("Session stored in Redis")
+                if has_app_context():
+                    current_app.logger.info("Session stored in Redis")
             except Exception as e:
-                current_app.logger.warning(f"Failed to store session in Redis: {e}")
-        else:
+                if has_app_context():
+                    current_app.logger.warning(f"Failed to store session in Redis: {e}")
+        elif has_app_context():
             current_app.logger.info("Session created without Redis storage")
         
-        current_app.logger.info(f"Admin login successful")
+        if has_app_context():
+            current_app.logger.info(f"Admin login successful")
         
         return {
             'token': token,
