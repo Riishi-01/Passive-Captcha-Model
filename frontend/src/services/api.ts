@@ -123,9 +123,17 @@ class ApiService {
   constructor() {
     // Auto-detect API URL based on environment
     const isProduction = import.meta.env.PROD
-    const defaultUrl = isProduction 
-      ? '' // Same origin for production (served by same backend)
-      : 'http://localhost:5003'
+    
+    // In production, use relative URLs (same origin) to avoid CORS issues
+    // In development, use localhost backend
+    let defaultUrl: string
+    if (isProduction) {
+      // For production deployments, use relative URLs to avoid CORS issues
+      defaultUrl = window.location.origin
+    } else {
+      // For development, proxy through Vite dev server
+      defaultUrl = 'http://localhost:5003'
+    }
     
     this.baseURL = import.meta.env.VITE_API_URL || defaultUrl
     

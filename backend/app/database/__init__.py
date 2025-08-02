@@ -126,7 +126,29 @@ def init_db():
         if database_url.startswith('postgres://'):
             database_url = database_url.replace('postgres://', 'postgresql://', 1)
         
-        engine = create_engine(database_url, echo=False)
+        # Configure engine with appropriate settings for production
+        engine_kwargs = {
+            'echo': False,
+            'pool_pre_ping': True,  # Verify connections before use
+            'pool_recycle': 3600,   # Recycle connections every hour
+        }
+        
+        # Add SQLite-specific settings
+        if database_url.startswith('sqlite:'):
+            engine_kwargs.update({
+                'pool_timeout': 20,
+                'pool_recycle': -1,
+                'connect_args': {'check_same_thread': False}
+            })
+        # Add PostgreSQL-specific settings
+        elif 'postgresql://' in database_url:
+            engine_kwargs.update({
+                'pool_size': 5,
+                'max_overflow': 10,
+                'pool_timeout': 30,
+            })
+        
+        engine = create_engine(database_url, **engine_kwargs)
         
         # Create tables
         Base.metadata.create_all(engine)

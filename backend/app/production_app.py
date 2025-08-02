@@ -5,7 +5,7 @@ Integrates all components: ML endpoints, WebSocket, logs pipeline, caching
 
 import os
 import redis
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, abort
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -83,8 +83,8 @@ def create_production_app(config_name='production'):
         'CONFIDENCE_THRESHOLD': float(os.getenv('CONFIDENCE_THRESHOLD', '0.6')),
         'ADMIN_SECRET': os.getenv('ADMIN_SECRET', 'Admin123'),
         'RATE_LIMIT_REQUESTS': int(os.getenv('RATE_LIMIT_REQUESTS', '1000')),
-        'API_BASE_URL': os.getenv('API_BASE_URL', 'http://localhost:5003'),
-        'WEBSOCKET_URL': os.getenv('WEBSOCKET_URL', 'ws://localhost:5003'),
+        'API_BASE_URL': os.getenv('API_BASE_URL', os.getenv('RENDER_EXTERNAL_URL', 'http://localhost:5003')),
+        'WEBSOCKET_URL': os.getenv('WEBSOCKET_URL', os.getenv('RENDER_EXTERNAL_URL', 'ws://localhost:5003').replace('https://', 'wss://').replace('http://', 'ws://')),
         'DEBUG': config_name == 'development',
         'TESTING': False,
         'JSON_SORT_KEYS': False,
@@ -105,9 +105,22 @@ def create_production_app(config_name='production'):
     setup_logging(app)
     
     # CORS configuration for production
-    default_origins = 'http://localhost:3000,https://passive-captcha.onrender.com,http://frontend:80,http://localhost:5003'
-    allowed_origins = os.getenv('ALLOWED_ORIGINS', default_origins)
-    cors_origins = allowed_origins.split(',') if allowed_origins != '*' else "*"
+    # Get the current Render URL dynamically if available
+    render_url = os.getenv('RENDER_EXTERNAL_URL', '')
+    
+    default_origins = [
+        'http://localhost:3000',
+        'http://localhost:5003',
+        'http://frontend:80',
+        'https://passive-captcha.onrender.com'
+    ]
+    
+    # Add dynamic Render URL if available and different from default
+    if render_url and render_url not in default_origins:
+        default_origins.append(render_url)
+    
+    allowed_origins_str = os.getenv('ALLOWED_ORIGINS', ','.join(default_origins))
+    cors_origins = allowed_origins_str.split(',') if allowed_origins_str != '*' else "*"
     
     CORS(app, resources={
         r"/api/*": {
@@ -173,44 +186,56 @@ def create_production_app(config_name='production'):
             raise
     
     # Initialize ML model
-    from app.ml import load_model
-    with app.app_context():
-        try:
-            load_model()
-            app.logger.info("ML model loaded successfully")
-        except Exception as e:
-            app.logger.error(f"ML model loading failed: {e}")
-            # Don't raise - app can still function without ML model
+    try:
+        from app.ml import load_model
+        with app.app_context():
+            try:
+                load_model()
+                app.logger.info("ML model loaded successfully")
+            except Exception as e:
+                app.logger.error(f"ML model loading failed: {e}")
+                # Don't raise - app can still function without ML model
+    except ImportError as e:
+        app.logger.warning(f"ML module not available: {e}. App will run without ML functionality.")
     
     # Initialize logs pipeline
-    from app.logs_pipeline import init_logs_pipeline
     logs_pipeline = None
-    if redis_client:
-        try:
-            logs_pipeline = init_logs_pipeline(app, socketio, redis_client)
-            app.logger.info("Logs pipeline initialized successfully")
-        except Exception as e:
-            app.logger.error(f"Logs pipeline initialization failed: {e}")
+    try:
+        from app.logs_pipeline import init_logs_pipeline
+        if redis_client:
+            try:
+                logs_pipeline = init_logs_pipeline(app, socketio, redis_client)
+                app.logger.info("Logs pipeline initialized successfully")
+            except Exception as e:
+                app.logger.error(f"Logs pipeline initialization failed: {e}")
+    except ImportError as e:
+        app.logger.warning(f"Logs pipeline module not available: {e}")
     
     # Initialize WebSocket server
-    from app.websocket_server import init_websocket_server
     websocket_manager = None
-    if redis_client:
-        try:
-            websocket_manager = init_websocket_server(app, socketio, redis_client)
-            app.logger.info("WebSocket server initialized successfully")
-        except Exception as e:
-            app.logger.error(f"WebSocket server initialization failed: {e}")
+    try:
+        from app.websocket_server import init_websocket_server
+        if redis_client:
+            try:
+                websocket_manager = init_websocket_server(app, socketio, redis_client)
+                app.logger.info("WebSocket server initialized successfully")
+            except Exception as e:
+                app.logger.error(f"WebSocket server initialization failed: {e}")
+    except ImportError as e:
+        app.logger.warning(f"WebSocket server module not available: {e}")
     
     # Initialize script token manager
-    from app.script_token_manager import init_script_token_manager
     script_token_manager = None
-    if redis_client:
-        try:
-            script_token_manager = init_script_token_manager(redis_client)
-            app.logger.info("Script token manager initialized successfully")
-        except Exception as e:
-            app.logger.error(f"Script token manager initialization failed: {e}")
+    try:
+        from app.script_token_manager import init_script_token_manager
+        if redis_client:
+            try:
+                script_token_manager = init_script_token_manager(redis_client)
+                app.logger.info("Script token manager initialized successfully")
+            except Exception as e:
+                app.logger.error(f"Script token manager initialization failed: {e}")
+    except ImportError as e:
+        app.logger.warning(f"Script token manager module not available: {e}")
 
     # Initialize centralized services (always)
     from app.services import init_auth_service, init_website_service
@@ -351,7 +376,7 @@ def create_production_app(config_name='production'):
             return {'status': 'unhealthy', 'error': str(e)}, 500
     
     # Frontend serving routes (must be registered last to avoid conflicts)
-    def register_frontend_routes():
+    def register_frontend_routes(app):
         @app.route('/')
         def serve_root():
             """Serve Vue.js frontend root"""
@@ -701,7 +726,7 @@ def create_production_app(config_name='production'):
     app.website_service = website_service
     
     # Register frontend routes (must be last to avoid conflicts)
-    register_frontend_routes()
+    register_frontend_routes(app)
     
     app.logger.info("Production application created successfully")
     return app, socketio

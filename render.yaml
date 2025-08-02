@@ -22,13 +22,21 @@ services:
       - key: FLASK_ENV
         value: production
       - key: ADMIN_SECRET
-        value: Admin123
+        sync: false
       - key: HOST
         value: 0.0.0.0
       - key: PORT
         fromGroup: 5003
       - key: RENDER_EXTERNAL_URL
         value: https://passive-captcha.onrender.com
+      - key: ALLOWED_ORIGINS
+        value: https://passive-captcha.onrender.com,http://localhost:3000,*
+      - key: API_BASE_URL
+        value: https://passive-captcha.onrender.com
+      - key: WEBSOCKET_URL
+        value: wss://passive-captcha.onrender.com
+      - key: DATABASE_URL
+        value: sqlite:///passive_captcha_production.db
       - key: NODE_VERSION
         value: "18"
     healthCheckPath: /health

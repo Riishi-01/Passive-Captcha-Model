@@ -8,8 +8,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.production
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://backend:5000}
-        VITE_WS_URL: ${VITE_WS_URL:-ws://backend:5000}
+        VITE_API_URL: ${VITE_API_URL:-http://backend:5003}
+        VITE_WS_URL: ${VITE_WS_URL:-ws://backend:5003}
         VITE_APP_NAME: "Passive CAPTCHA Admin"
         VITE_APP_VERSION: "2.0.0"
     ports:
@@ -33,7 +33,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.production
     ports:
-      - "5003:5000"
+      - "5003:5003"
     depends_on:
       redis:
         condition: service_healthy
@@ -45,7 +45,7 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgresql://captcha_user:captcha_pass@postgres:5432/passive_captcha}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - HOST=0.0.0.0
-      - PORT=5000
+      - PORT=5003
       - WEB_CONCURRENCY=4
       - WORKER_TIMEOUT=120
     restart: unless-stopped
@@ -55,7 +55,7 @@ services:
     networks:
       - captcha_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5003/health"]
       interval: 30s
       timeout: 10s
       retries: 3
