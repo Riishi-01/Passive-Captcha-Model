@@ -241,8 +241,13 @@ def create_app(config_name='production'):
         app.logger.info("Importing services modules...")
         
         app.logger.info(f"Initializing auth service with Redis: {redis_client is not None}")
+        app.logger.info(f"ADMIN_SECRET in app.config: {app.config.get('ADMIN_SECRET')}")
         auth_service = init_auth_service(redis_client)
         app.logger.info(f"Auth service initialized: {auth_service is not None}")
+        if auth_service:
+            app.logger.info(f"Auth service admin_secret: {auth_service.admin_secret}")
+        else:
+            app.logger.error("Auth service is None after initialization!")
         
         if redis_client:
             website_service = init_website_service(redis_client)
@@ -287,6 +292,38 @@ def create_app(config_name='production'):
     except Exception as e:
         app.logger.warning(f"Failed to register analytics endpoints: {e}")
     
+    # Test fresh auth service creation
+    @app.route('/debug/fresh-auth', methods=['POST'])
+    def debug_fresh_auth():
+        """Test creating a fresh AuthService within request context"""
+        try:
+            data = request.get_json()
+            password = data.get('password', '') if data else ''
+            
+            # Create a fresh AuthService within this request context
+            from app.services.auth_service import AuthService
+            fresh_auth = AuthService(None)
+            
+            # Test authentication with fresh service
+            result = fresh_auth.authenticate_admin(password)
+            
+            return jsonify({
+                'password': password,
+                'app_config_admin_secret': app.config.get('ADMIN_SECRET'),
+                'fresh_auth_admin_secret': fresh_auth.admin_secret,
+                'fresh_auth_jwt_secret': fresh_auth.jwt_secret[:10] + '...',
+                'password_match': password == fresh_auth.admin_secret,
+                'auth_result': result is not None,
+                'app_context': True
+            })
+            
+        except Exception as e:
+            import traceback
+            return jsonify({
+                'error': str(e),
+                'traceback': traceback.format_exc()
+            }), 500
+
     # Debug admin login endpoint
     @app.route('/debug/login', methods=['POST'])
     def debug_login():

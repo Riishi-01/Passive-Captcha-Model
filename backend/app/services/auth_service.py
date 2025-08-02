@@ -346,7 +346,23 @@ auth_service = None
 def init_auth_service(redis_client: Optional[redis.Redis] = None):
     """Initialize the authentication service"""
     global auth_service
+    
+    # Debug logging
+    if has_app_context():
+        current_app.logger.info("Creating AuthService within app context")
+        current_app.logger.info(f"App config ADMIN_SECRET: {current_app.config.get('ADMIN_SECRET')}")
+    else:
+        print("WARNING: Creating AuthService outside app context")
+        print(f"Environment ADMIN_SECRET: {os.getenv('ADMIN_SECRET')}")
+    
     auth_service = AuthService(redis_client)
+    
+    # Log the actual values the service got
+    if has_app_context():
+        current_app.logger.info(f"AuthService created with admin_secret: {auth_service.admin_secret}")
+    else:
+        print(f"AuthService created with admin_secret: {auth_service.admin_secret}")
+    
     return auth_service
 
 
