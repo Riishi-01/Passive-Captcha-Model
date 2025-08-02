@@ -5,18 +5,18 @@ Server runner for production-grade application
 
 import os
 import sys
-from app.production_app import create_production_app
+from app import create_app
 
 def main():
     # Set port
     port = int(os.getenv('PORT', 5003))
     
-    # Create production app
-    print("Creating production Flask application...")
-    app, socketio = create_production_app('development')
+    # Create app
+    print("Creating Flask application...")
+    app, socketio = create_app('development')
     
     print(f"Starting server on http://localhost:{port}")
-    print(f"Admin dashboard: http://localhost:{port}/admin/dashboard")
+    print(f"Admin login: http://localhost:{port}/admin/login")
     print(f"Health check: http://localhost:{port}/health")
     print("Press Ctrl+C to stop")
     

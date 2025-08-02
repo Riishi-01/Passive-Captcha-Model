@@ -46,6 +46,7 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - HOST=0.0.0.0
       - PORT=5003
+      - SERVE_FRONTEND=true
       - WEB_CONCURRENCY=4
       - WORKER_TIMEOUT=120
     restart: unless-stopped

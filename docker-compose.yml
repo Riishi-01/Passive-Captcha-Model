@@ -44,12 +44,14 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - HOST=0.0.0.0
       - PORT=5003
+      - SERVE_FRONTEND=false
     volumes:
       - ./backend:/app
       - ./backend/models:/app/models
       - ./backend/logs:/app/logs
     networks:
       - captcha_network
+    command: ["python", "app.py", "--debug"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5003/health"]
       interval: 30s

@@ -33,28 +33,34 @@ def setup_environment():
 def start_application():
     """Start the Flask application"""
     try:
-        from app.production_app import create_production_app
+        from app import create_app
         
-        app, socketio = create_production_app()
+        app, socketio = create_app('production')
         port = int(os.environ.get('PORT', 5003))
         host = os.environ.get('HOST', '0.0.0.0')
         
         print(f"🌐 Starting server on {host}:{port}")
         print(f"📡 Server will be accessible on port {port}")
         
-        # SocketIO requires special handling - use SocketIO.run instead of Gunicorn
-        print("🔌 Using SocketIO server (SocketIO requires eventlet/gevent worker)")
-        
-        # Run with SocketIO which handles production deployment properly
-        socketio.run(
-            app,
-            host=host,
-            port=port,
-            debug=False,
-            use_reloader=False,
-            log_output=True,
-            allow_unsafe_werkzeug=True
-        )
+        if socketio:
+            print("🔌 Using SocketIO server")
+            socketio.run(
+                app,
+                host=host,
+                port=port,
+                debug=False,
+                use_reloader=False,
+                log_output=True,
+                allow_unsafe_werkzeug=True
+            )
+        else:
+            print("🔌 Using standard Flask server")
+            app.run(
+                host=host,
+                port=port,
+                debug=False,
+                use_reloader=False
+            )
             
     except Exception as e:
         print(f"❌ Application startup failed: {e}")
