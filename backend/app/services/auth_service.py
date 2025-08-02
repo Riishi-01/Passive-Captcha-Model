@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Optional, Any, List
 from dataclasses import dataclass
 from enum import Enum
-from flask import current_app
+from flask import current_app, has_app_context
 import redis
 import json
 
@@ -52,9 +52,15 @@ class AuthService:
         self.token_prefix = "token:"
         self.session_ttl = 86400  # 24 hours
         
-        # Get configuration
-        self.jwt_secret = os.getenv('JWT_SECRET', 'your-secret-key')
-        self.admin_secret = os.getenv('ADMIN_SECRET', 'Admin123')
+        # Get configuration from Flask app context if available, fallback to env vars
+        if has_app_context():
+            from flask import current_app
+            self.jwt_secret = current_app.config.get('JWT_SECRET', os.getenv('JWT_SECRET', 'your-secret-key'))
+            self.admin_secret = current_app.config.get('ADMIN_SECRET', os.getenv('ADMIN_SECRET', 'Admin123'))
+        else:
+            # Fallback to environment variables if no app context
+            self.jwt_secret = os.getenv('JWT_SECRET', 'your-secret-key')
+            self.admin_secret = os.getenv('ADMIN_SECRET', 'Admin123')
         
     def authenticate_admin(self, password: str) -> Optional[Dict[str, Any]]:
         """
