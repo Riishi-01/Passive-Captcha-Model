@@ -7,6 +7,7 @@ from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime, timedelta
 from functools import wraps
 import uuid
+from sqlalchemy import text
 
 from app.services import get_auth_service
 from app.database import get_db_session
@@ -72,7 +73,7 @@ def get_recent_alerts():
                 FROM verifications 
                 WHERE timestamp >= ? AND is_human = 0
             """
-            bot_result = session.execute(bot_query, (recent_time,)).fetchone()
+            bot_result = session.execute(text(bot_query), (recent_time,)).fetchone()
             bot_count = bot_result.bot_count or 0
             
             if bot_count > 50:  # High bot activity threshold
@@ -92,7 +93,7 @@ def get_recent_alerts():
                 FROM verifications 
                 WHERE timestamp >= ? AND confidence < 0.5
             """
-            conf_result = session.execute(low_confidence_query, (recent_time,)).fetchone()
+            conf_result = session.execute(text(low_confidence_query), (recent_time,)).fetchone()
             low_conf_count = conf_result.low_conf_count or 0
             
             if low_conf_count > 20:
@@ -112,7 +113,7 @@ def get_recent_alerts():
                 FROM verifications 
                 WHERE timestamp >= ?
             """
-            recent_result = session.execute(error_query, (recent_time,)).fetchone()
+            recent_result = session.execute(text(error_query), (recent_time,)).fetchone()
             recent_total = recent_result.total_recent or 0
             
             if recent_total == 0:
@@ -217,7 +218,7 @@ def get_alerts_summary():
                 FROM verifications 
                 WHERE timestamp >= ? AND is_human = 0
             """
-            bot_result = session.execute(bot_query, (start_time,)).fetchone()
+            bot_result = session.execute(text(bot_query), (start_time,)).fetchone()
             bot_count = bot_result.bot_count or 0
             
             error_conditions = 0

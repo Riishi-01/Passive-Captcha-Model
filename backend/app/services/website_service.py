@@ -70,7 +70,7 @@ class WebsiteData:
 class WebsiteService:
     """Centralized website management service"""
     
-    def __init__(self, redis_client: redis.Redis):
+    def __init__(self, redis_client: Optional[redis.Redis] = None):
         self.redis = redis_client
         self.cache_prefix = "website:"
         self.cache_ttl = 300  # 5 minutes
@@ -102,7 +102,7 @@ class WebsiteService:
                     url=website.website_url,
                     status=WebsiteStatus(website.status or 'active'),
                     created_at=website.created_at,
-                    updated_at=website.updated_at or website.created_at,
+                    updated_at=website.created_at,  # Use created_at since updated_at doesn't exist
                     description=getattr(website, 'description', None),
                     
                     # Analytics
@@ -147,7 +147,7 @@ class WebsiteService:
                 url=website.website_url,
                 status=WebsiteStatus(website.status or 'active'),
                 created_at=website.created_at,
-                updated_at=website.updated_at or website.created_at,
+                updated_at=website.created_at,  # Use created_at since updated_at doesn't exist
                 description=getattr(website, 'description', None),
                 
                 # Analytics
@@ -180,7 +180,9 @@ class WebsiteService:
                 website_url=url,
                 status=WebsiteStatus.PENDING_INTEGRATION.value,
                 created_at=now,
-                updated_at=now
+                admin_email='admin@passivecaptcha.com',  # Default admin email
+                api_key=f'api_{website_id[:8]}',  # Simple API key for now
+                secret_key=f'secret_{website_id[:8]}'  # Simple secret key for now
             )
             
             # Add description if provided (assuming the model supports it)
@@ -201,7 +203,7 @@ class WebsiteService:
                 url=url,
                 status=WebsiteStatus.PENDING_INTEGRATION,
                 created_at=now,
-                updated_at=now,
+                updated_at=now,  # Set to now for the return data
                 description=description,
                 
                 # New website has no analytics or integration yet
@@ -238,7 +240,7 @@ class WebsiteService:
             if description is not None and hasattr(website, 'description'):
                 website.description = description
             
-            website.updated_at = datetime.utcnow()
+            # Note: updated_at field doesn't exist in the database schema
             session.commit()
             
             # Clear cache
@@ -294,7 +296,7 @@ class WebsiteService:
             new_status = WebsiteStatus.ACTIVE if current_status == WebsiteStatus.INACTIVE else WebsiteStatus.INACTIVE
             
             website.status = new_status.value
-            website.updated_at = datetime.utcnow()
+            # Note: updated_at field doesn't exist in the database schema
             session.commit()
             
             # Clear cache
@@ -324,7 +326,7 @@ class WebsiteService:
             elif status in [IntegrationStatus.NOT_INTEGRATED, IntegrationStatus.REVOKED]:
                 website.status = WebsiteStatus.INACTIVE.value
             
-            website.updated_at = datetime.utcnow()
+            # Note: updated_at field doesn't exist in the database schema
             session.commit()
             
             # Clear cache
@@ -370,15 +372,20 @@ class WebsiteService:
         """
         Get analytics data for a specific website
         """
-        # Cache key for analytics
-        cache_key = f"{self.cache_prefix}analytics:{website_id}"
-        cached_data = self.redis.get(cache_key)
-        
-        if cached_data:
+        # Try to get cached data if Redis is available
+        cached_data = None
+        if self.redis:
             try:
-                return json.loads(cached_data)
-            except json.JSONDecodeError:
-                pass
+                cache_key = f"{self.cache_prefix}analytics:{website_id}"
+                cached_data = self.redis.get(cache_key)
+                
+                if cached_data:
+                    try:
+                        return json.loads(cached_data)
+                    except json.JSONDecodeError:
+                        pass
+            except Exception as e:
+                current_app.logger.warning(f"Redis cache read failed: {e}")
         
         # Calculate analytics from verification logs
         thirty_days_ago = datetime.utcnow() - timedelta(days=30)
@@ -411,8 +418,13 @@ class WebsiteService:
             'last_activity': last_activity
         }
         
-        # Cache for 5 minutes
-        self.redis.setex(cache_key, self.cache_ttl, json.dumps(analytics, default=str))
+        # Cache for 5 minutes if Redis is available
+        if self.redis:
+            try:
+                cache_key = f"{self.cache_prefix}analytics:{website_id}"
+                self.redis.setex(cache_key, self.cache_ttl, json.dumps(analytics, default=str))
+            except Exception as e:
+                current_app.logger.warning(f"Redis cache write failed: {e}")
         
         return analytics
     
@@ -457,6 +469,9 @@ class WebsiteService:
         """
         Clear website-related cache entries
         """
+        if not self.redis:
+            return  # No cache to clear if Redis is not available
+            
         try:
             # Clear all website cache entries
             pattern = f"{self.cache_prefix}*"
@@ -470,7 +485,7 @@ class WebsiteService:
 website_service = None
 
 
-def init_website_service(redis_client: redis.Redis):
+def init_website_service(redis_client: Optional[redis.Redis] = None):
     """Initialize the website service"""
     global website_service
     website_service = WebsiteService(redis_client)

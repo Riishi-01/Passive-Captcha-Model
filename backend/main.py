@@ -249,9 +249,9 @@ def create_app(config_name='production'):
         else:
             app.logger.error("Auth service is None after initialization!")
         
-        if redis_client:
-            website_service = init_website_service(redis_client)
-            app.logger.info(f"Website service initialized: {website_service is not None}")
+        # Always initialize website service (with or without Redis)
+        website_service = init_website_service(redis_client)
+        app.logger.info(f"Website service initialized: {website_service is not None}")
         
         app.logger.info("Services initialized successfully")
     except ImportError as e:
@@ -509,10 +509,10 @@ def register_frontend_routes(app, static_folder):
         """Enhanced SPA route handler for Vue.js application"""
         
         # Define API and backend routes that should NOT serve the SPA
-        api_prefixes = ('api/', 'assets/', 'static/', 'socket.io/')
+        api_prefixes = ('api/', 'admin/', 'assets/', 'static/', 'socket.io/')
         
         # Define specific backend endpoints that should not serve SPA
-        backend_endpoints = ('health', 'admin/login', 'admin/logout', 'admin/health', 'admin/statistics')
+        backend_endpoints = ('health',)
         
         # Define file extensions that should be served directly or return 404
         file_extensions = ('.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.map', '.txt', '.xml', '.json')

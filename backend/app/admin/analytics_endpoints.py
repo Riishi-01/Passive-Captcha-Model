@@ -7,6 +7,7 @@ from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime, timedelta
 from functools import wraps
 import traceback
+from sqlalchemy import text
 
 from app.services import get_auth_service
 from app.database import get_db_session
@@ -87,7 +88,7 @@ def get_dashboard_stats():
                 WHERE timestamp >= ?
             """
             
-            result = session.execute(verification_query, (start_time,)).fetchone()
+            result = session.execute(text(verification_query), (start_time,)).fetchone()
             
             # Get previous period for comparison
             prev_start = start_time - timedelta(hours=hours)
@@ -101,7 +102,7 @@ def get_dashboard_stats():
                 WHERE timestamp >= ? AND timestamp < ?
             """
             
-            prev_result = session.execute(prev_query, (prev_start, start_time)).fetchone()
+            prev_result = session.execute(text(prev_query), (prev_start, start_time)).fetchone()
             
             # Calculate changes
             verification_change = 0
@@ -187,7 +188,7 @@ def get_chart_data():
             """
             
             interval_seconds = interval * 3600  # Convert hours to seconds
-            results = session.execute(chart_query, (interval_seconds, interval_seconds, start_time)).fetchall()
+            results = session.execute(text(chart_query), (interval_seconds, interval_seconds, start_time)).fetchall()
             
             chart_data = []
             for row in results:
@@ -247,7 +248,7 @@ def get_detection_data():
                 WHERE timestamp >= ?
             """
             
-            result = session.execute(detection_query, (start_time,)).fetchone()
+            result = session.execute(text(detection_query), (start_time,)).fetchone()
             
             human_count = result.human_count or 0
             bot_count = result.bot_count or 0
@@ -312,7 +313,7 @@ def get_geographic_data():
                 LIMIT 10
             """
             
-            results = session.execute(geo_query, (start_time,)).fetchall()
+            results = session.execute(text(geo_query), (start_time,)).fetchall()
             total_verifications = sum(row.count for row in results)
             
             geographic_data = []
@@ -379,7 +380,7 @@ def get_threat_analysis():
                 ORDER BY count DESC
             """
             
-            results = session.execute(threat_query, (start_time,)).fetchall()
+            results = session.execute(text(threat_query), (start_time,)).fetchall()
             total_threats = sum(row.count for row in results)
             
             threat_data = []
