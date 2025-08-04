@@ -201,15 +201,26 @@ def create_app(config_name='production'):
     except Exception as e:
         app.logger.warning(f"SocketIO initialization failed: {e}")
 
-    # Rate limiting - use in-memory by default, Redis if specifically available
+    # Rate limiting - use Redis if available, fallback to in-memory
     try:
-        # Always use in-memory rate limiting to avoid Redis connection issues
-        limiter = Limiter(
-            key_func=get_remote_address,
-            default_limits=[f"{app.config['RATE_LIMIT_REQUESTS']} per hour"]
-        )
+        limiter_config = {
+            'key_func': get_remote_address,
+            'default_limits': [f"{app.config['RATE_LIMIT_REQUESTS']} per hour"]
+        }
+        
+        if redis_client:
+            try:
+                # Test Redis connection first
+                redis_client.ping()
+                limiter_config['storage_uri'] = app.config['REDIS_URL']
+                app.logger.info("Rate limiting initialized with Redis backend")
+            except:
+                app.logger.info("Rate limiting using in-memory backend (Redis unavailable)")
+        else:
+            app.logger.info("Rate limiting using in-memory backend (development mode)")
+        
+        limiter = Limiter(**limiter_config)
         limiter.init_app(app)
-        app.logger.info("Rate limiting initialized with in-memory backend")
     except Exception as e:
         app.logger.warning(f"Rate limiting initialization failed, disabling: {e}")
         # Continue without rate limiting if everything fails
@@ -256,18 +267,19 @@ def create_app(config_name='production'):
         app.logger.info(f"Initializing auth service with Redis: {redis_client is not None}")
         app.logger.info(f"ADMIN_SECRET in app.config: {app.config.get('ADMIN_SECRET')}")
         
-        # Use robust auth service if available, fallback to old one
+        # Initialize auth service - try robust service first, fallback to basic
         try:
-            from app.services.robust_auth_service import get_robust_auth_service
-            auth_service = get_robust_auth_service()
+            from app.services.robust_auth_service import init_robust_auth_service, get_robust_auth_service
+            # Initialize the robust auth service first
+            auth_service = init_robust_auth_service(redis_client)
             if auth_service and hasattr(auth_service, 'admin_secret'):
-                app.logger.info(f"Using robust auth service with admin_secret: {auth_service.admin_secret}")
+                app.logger.info(f"Using robust auth service initialized successfully")
             else:
                 # Fallback to old auth service
                 auth_service = init_auth_service(redis_client)
                 app.logger.info(f"Using fallback auth service initialized: {auth_service is not None}")
         except Exception as auth_error:
-            app.logger.warning(f"Robust auth service not available, using fallback: {auth_error}")
+            app.logger.warning(f"Robust auth service initialization failed, using fallback: {auth_error}")
             auth_service = init_auth_service(redis_client)
             app.logger.info(f"Fallback auth service initialized: {auth_service is not None}")
 
@@ -313,10 +325,7 @@ def create_app(config_name='production'):
         app.register_blueprint(ml_metrics_bp)
         app.register_blueprint(script_mgmt_bp)
 
-        # Register bulletproof authentication blueprint
-        from app.bulletproof_auth import bulletproof_bp
-        app.register_blueprint(bulletproof_bp)
-        app.logger.info("Bulletproof authentication endpoints registered")
+        # Additional authentication endpoints handled by existing services
         app.logger.info("Analytics, monitoring, and script management endpoints registered")
     except Exception as e:
         app.logger.warning(f"Failed to register analytics endpoints: {e}")
@@ -685,3 +694,8 @@ if __name__ == '__main__':
             'main:get_wsgi_app()'
         ]
         print(f"[DEPLOY] Starting Passive CAPTCHA with Gunicorn on {args.host}:{port}")
+        print(f"[DEPLOY] Command: {' '.join(cmd)}")
+        sys.exit(subprocess.call(cmd))
+    else:
+        # Use built-in Flask development server
+        run_app(args.host, args.port, args.debug)

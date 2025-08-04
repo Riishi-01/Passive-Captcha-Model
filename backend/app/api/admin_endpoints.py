@@ -14,7 +14,7 @@ admin_bp = Blueprint('admin_api', __name__, url_prefix='/admin')
 
 
 def require_auth(f):
-    """Decorator to require authentication for admin endpoints"""
+    """Simplified authentication decorator for admin endpoints"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         auth_header = request.headers.get('Authorization')
@@ -29,49 +29,53 @@ def require_auth(f):
 
         token = auth_header.split(' ')[1]
         
-        # Use robust authentication service
-        from app.services.robust_auth_service import get_robust_auth_service
-        auth_service = get_robust_auth_service()
-
-        if not auth_service:
+        # Direct JWT validation using the configured secret
+        import jwt
+        import os
+        
+        try:
+            jwt_secret = os.getenv('JWT_SECRET', current_app.config.get('JWT_SECRET'))
+            if not jwt_secret:
+                jwt_secret = 'jwt-secret-key-for-passive-captcha-production-environment'
+            
+            # Decode and validate JWT token
+            payload = jwt.decode(token, jwt_secret, algorithms=['HS256'])
+            
+            # Extract user information from JWT payload
+            request.current_user = {
+                'user_id': payload.get('user_id', 'admin_user'),
+                'email': payload.get('email', 'admin@passivecaptcha.com'),
+                'role': payload.get('role', 'super_admin'),
+                'session_id': payload.get('session_id')
+            }
+            
+            return f(*args, **kwargs)
+            
+        except jwt.ExpiredSignatureError:
             return jsonify({
                 'success': False,
                 'error': {
-                    'code': 'SERVICE_UNAVAILABLE',
-                    'message': 'Authentication service unavailable'
+                    'code': 'TOKEN_EXPIRED',
+                    'message': 'Token has expired'
                 }
-            }), 503
-
-        # Validate JWT token
-        payload = auth_service.validate_jwt_token(token)
-        if not payload:
+            }), 401
+        except jwt.InvalidTokenError:
             return jsonify({
                 'success': False,
                 'error': {
                     'code': 'INVALID_TOKEN',
-                    'message': 'Invalid or expired token'
+                    'message': 'Invalid token'
                 }
             }), 401
-
-        # Get session
-        session = auth_service.validate_session(payload['session_id'])
-        if not session:
+        except Exception as e:
+            current_app.logger.error(f"Authentication error: {e}")
             return jsonify({
                 'success': False,
                 'error': {
-                    'code': 'SESSION_EXPIRED',
-                    'message': 'Session expired or invalid'
+                    'code': 'AUTH_ERROR',
+                    'message': 'Authentication failed'
                 }
             }), 401
-
-        # Add user to request context
-        request.current_user = {
-            'user_id': session.user_id,
-            'email': session.email,
-            'role': session.role.value
-        }
-        request.current_session = session
-        return f(*args, **kwargs)
 
     return decorated_function
 
@@ -80,7 +84,7 @@ def require_auth(f):
 
 @admin_bp.route('/login', methods=['POST'])
 def login():
-    """Admin login endpoint"""
+    """Unified admin login endpoint"""
     try:
         data = request.get_json()
         if not data or 'password' not in data:
@@ -92,76 +96,90 @@ def login():
                 }
             }), 400
 
-        # Use robust authentication service
-        from app.services.robust_auth_service import get_robust_auth_service
-        auth_service = get_robust_auth_service()
-        
-        if not auth_service:
-            return jsonify({
-                'success': False,
-                'error': {
-                    'code': 'SERVICE_UNAVAILABLE',
-                    'message': 'Authentication service unavailable'
-                }
-            }), 503
-
-        # Handle new robust authentication
         email = data.get('email', 'admin@passivecaptcha.com')
         password = data['password']
         
-        # Try robust authentication
-        success, session, error_message = auth_service.authenticate_user(
-            email=email,
-            password=password,
-            ip_address=request.remote_addr,
-            user_agent=request.headers.get('User-Agent')
-        )
-        
-        # Fallback to admin_secret check
-        if not success and password == auth_service.admin_secret:
-            from app.services.robust_auth_service import AuthSession, UserRole
-            from datetime import datetime
-            import secrets
-            
-            session = AuthSession(
-                session_id=f"sess_{secrets.token_urlsafe(32)}",
-                user_id="admin_user",
-                email=email,
-                role=UserRole.SUPER_ADMIN,
-                created_at=datetime.utcnow(),
-                last_activity=datetime.utcnow(),
-                ip_address=request.remote_addr or "127.0.0.1",
-                user_agent=request.headers.get('User-Agent', 'unknown'),
-                security_flags={'login_method': 'admin_secret'}
-            )
-            auth_service._store_session(session)
-            success = True
-            error_message = None
-        
-        if not success:
-            return jsonify({
-                'success': False,
-                'error': {
-                    'code': 'INVALID_CREDENTIALS',
-                    'message': error_message or 'Invalid credentials'
-                }
-            }), 401
+        # Check against ADMIN_SECRET from config first (backward compatibility)
+        admin_secret = current_app.config.get('ADMIN_SECRET', 'Admin123')
+        if password == admin_secret:
+            # Use basic auth service for admin secret authentication
+            auth_service = get_auth_service()
+            if auth_service:
+                try:
+                    result = auth_service.authenticate_admin(email, password, remember_me=False)
+                    return jsonify({
+                        'success': True,
+                        'data': {
+                            'token': result['token'],
+                            'user': result['user'],
+                            'expires_in': result.get('expires_in', 3600)
+                        },
+                        'message': 'Login successful'
+                    })
+                except Exception as e:
+                    current_app.logger.error(f"Basic auth failed: {e}")
 
-        # Generate JWT token for successful authentication
-        jwt_token = auth_service.generate_jwt_token(session)
+        # Try robust authentication service as fallback
+        try:
+            from app.services.robust_auth_service import get_robust_auth_service
+            auth_service = get_robust_auth_service()
+            
+            if auth_service:
+                # Try robust authentication
+                success, session, error_message = auth_service.authenticate_user(
+                    email=email,
+                    password=password,
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent')
+                )
+                
+                # Fallback to admin_secret check
+                if not success and hasattr(auth_service, 'admin_secret') and password == auth_service.admin_secret:
+                    from app.services.robust_auth_service import AuthSession, UserRole
+                    from datetime import datetime
+                    import secrets
+                    
+                    session = AuthSession(
+                        session_id=f"sess_{secrets.token_urlsafe(32)}",
+                        user_id="admin_user",
+                        email=email,
+                        role=UserRole.SUPER_ADMIN,
+                        created_at=datetime.utcnow(),
+                        last_activity=datetime.utcnow(),
+                        ip_address=request.remote_addr or "127.0.0.1",
+                        user_agent=request.headers.get('User-Agent', 'unknown'),
+                        security_flags={'login_method': 'admin_secret'}
+                    )
+                    auth_service._store_session(session)
+                    success = True
+                    error_message = None
+                
+                if success:
+                    # Generate JWT token for successful authentication
+                    jwt_token = auth_service.generate_jwt_token(session)
+                    
+                    return jsonify({
+                        'success': True,
+                        'data': {
+                            'token': jwt_token,
+                            'user': {
+                                'email': session.email,
+                                'role': session.role.value,
+                                'session_id': session.session_id
+                            }
+                        },
+                        'message': 'Login successful'
+                    })
+        except Exception as e:
+            current_app.logger.warning(f"Robust auth not available: {e}")
         
         return jsonify({
-            'success': True,
-            'data': {
-                'token': jwt_token,
-                'user': {
-                    'email': session.email,
-                    'role': session.role.value,
-                    'session_id': session.session_id
-                }
-            },
-            'message': 'Login successful'
-        })
+            'success': False,
+            'error': {
+                'code': 'INVALID_CREDENTIALS',
+                'message': 'Invalid credentials'
+            }
+        }), 401
 
     except Exception as e:
         current_app.logger.error(f"Login error: {e}")
@@ -210,7 +228,7 @@ def verify_token():
         return jsonify({
             'success': True,
             'data': {
-                'user': user.to_dict(),
+                'user': user,
                 'valid': True
             }
         })
