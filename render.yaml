@@ -35,6 +35,10 @@ services:
         value: production
       - key: ADMIN_SECRET
         value: Admin123
+      - key: JWT_SECRET_KEY
+        value: jwt-secret-key-for-passive-captcha-production-environment-render
+      - key: SECRET_KEY
+        value: passive-captcha-production-secret-key-ultra-secure-32-chars-minimum-render
       - key: HOST
         value: 0.0.0.0
       - key: PORT
@@ -49,6 +53,18 @@ services:
         value: wss://passive-captcha.onrender.com
       - key: DATABASE_URL
         value: sqlite:///passive_captcha_production.db
+      - key: REDIS_URL
+        value: redis://localhost:6379/0
+      - key: CONFIDENCE_THRESHOLD
+        value: "0.6"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: ENABLE_REAL_TIME_LOGS
+        value: "true"
+      - key: ENABLE_ML_MONITORING
+        value: "true"
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
       - key: NODE_VERSION
         value: "18"
     healthCheckPath: /health
