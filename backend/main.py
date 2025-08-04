@@ -312,6 +312,11 @@ def create_app(config_name='production'):
         app.register_blueprint(logs_bp)
         app.register_blueprint(ml_metrics_bp)
         app.register_blueprint(script_mgmt_bp)
+
+        # Register bulletproof authentication blueprint
+        from app.bulletproof_auth import bulletproof_bp
+        app.register_blueprint(bulletproof_bp)
+        app.logger.info("Bulletproof authentication endpoints registered")
         app.logger.info("Analytics, monitoring, and script management endpoints registered")
     except Exception as e:
         app.logger.warning(f"Failed to register analytics endpoints: {e}")
@@ -680,6 +685,3 @@ if __name__ == '__main__':
             'main:get_wsgi_app()'
         ]
         print(f"[DEPLOY] Starting Passive CAPTCHA with Gunicorn on {args.host}:{port}")
-        subprocess.run(cmd)
-    else:
-        run_app(host=args.host, port=args.port, debug=args.debug)
