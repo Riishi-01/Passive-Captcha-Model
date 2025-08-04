@@ -128,6 +128,11 @@ class RobustAuthService:
         # Add admin_secret for backward compatibility
         self.admin_secret = os.getenv('ADMIN_SECRET', 'Admin123')
         
+        # In-memory storage fallback when Redis is not available
+        self._memory_users = {}  # email -> User dict
+        self._memory_sessions = {}  # session_id -> AuthSession dict
+        self._memory_rate_limits = {}  # key -> (count, expire_time)
+        
         # Initialize default admin user
         self._ensure_default_admin()
     
@@ -212,40 +217,52 @@ class RobustAuthService:
             return True  # Allow on error
     
     def _store_user(self, user: User):
-        """Store user in Redis"""
-        if not self.redis:
-            logger.warning("No Redis connection, user not persisted")
-            return
-        
+        """Store user in Redis or memory fallback"""
         try:
-            key = self._get_redis_key("user", user.email)
             data = user.to_dict()
             data['password_hash'] = user.password_hash  # Include for storage
-            self.redis.setex(key, int(timedelta(days=30).total_seconds()), json.dumps(data, default=str))
+            
+            if self.redis:
+                key = self._get_redis_key("user", user.email)
+                self.redis.setex(key, int(timedelta(days=30).total_seconds()), json.dumps(data, default=str))
+            else:
+                # Fallback to in-memory storage
+                self._memory_users[user.email] = data
+                logger.debug(f"Stored user {user.email} in memory (Redis unavailable)")
+                
         except Exception as e:
             logger.error(f"Failed to store user: {e}")
     
     def _store_session(self, session: AuthSession):
-        """Store session in Redis"""
-        if not self.redis:
-            logger.warning("No Redis connection, session not persisted")
-            return
-        
+        """Store session in Redis or memory fallback"""
         try:
-            key = self._get_redis_key("session", session.session_id)
-            self.redis.setex(
-                key, 
-                int(self.session_timeout.total_seconds()), 
-                json.dumps(session.to_dict(), default=str)
-            )
+            session_data = session.to_dict()
             
-            # Also store by email for lookup
-            email_key = self._get_redis_key("session_by_email", session.email)
-            self.redis.setex(
-                email_key,
-                int(self.session_timeout.total_seconds()),
-                session.session_id
-            )
+            if self.redis:
+                key = self._get_redis_key("session", session.session_id)
+                self.redis.setex(
+                    key, 
+                    int(self.session_timeout.total_seconds()), 
+                    json.dumps(session_data, default=str)
+                )
+                
+                # Also store by email for lookup
+                email_key = self._get_redis_key("session_by_email", session.email)
+                self.redis.setex(
+                    email_key,
+                    int(self.session_timeout.total_seconds()),
+                    session.session_id
+                )
+            else:
+                # Fallback to in-memory storage
+                expiry_time = datetime.utcnow() + self.session_timeout
+                self._memory_sessions[session.session_id] = {
+                    'data': session_data,
+                    'expires_at': expiry_time,
+                    'email': session.email
+                }
+                logger.debug(f"Stored session {session.session_id} in memory (Redis unavailable)")
+                
         except Exception as e:
             logger.error(f"Failed to store session: {e}")
     
@@ -277,15 +294,22 @@ class RobustAuthService:
         return user
     
     def get_user_by_email(self, email: str) -> Optional[User]:
-        """Get user by email"""
-        if not self.redis:
-            return None
+        """Get user by email from Redis or memory fallback"""
+        email = email.lower().strip()
         
         try:
-            key = self._get_redis_key("user", email.lower().strip())
-            data = self.redis.get(key)
-            if data:
-                user_data = json.loads(data)
+            user_data = None
+            
+            if self.redis:
+                key = self._get_redis_key("user", email)
+                data = self.redis.get(key)
+                if data:
+                    user_data = json.loads(data)
+            else:
+                # Fallback to in-memory storage
+                user_data = self._memory_users.get(email)
+            
+            if user_data:
                 return User(
                     user_id=user_data['user_id'],
                     email=user_data['email'],
@@ -300,6 +324,7 @@ class RobustAuthService:
                     password_changed_at=datetime.fromisoformat(user_data['password_changed_at']) if user_data.get('password_changed_at') else None,
                     security_settings=user_data.get('security_settings', {})
                 )
+                
         except Exception as e:
             logger.error(f"Failed to get user by email: {e}")
         
@@ -369,19 +394,35 @@ class RobustAuthService:
         return True, session, None
     
     def validate_session(self, session_id: str, update_activity: bool = True) -> Optional[AuthSession]:
-        """Validate and optionally update session"""
-        if not self.redis or not session_id:
+        """Validate and optionally update session from Redis or memory fallback"""
+        if not session_id:
             return None
         
         try:
-            key = self._get_redis_key("session", session_id)
-            data = self.redis.get(key)
-            if not data:
+            session_data = None
+            
+            if self.redis:
+                key = self._get_redis_key("session", session_id)
+                data = self.redis.get(key)
+                if data:
+                    session_data = json.loads(data)
+            else:
+                # Fallback to in-memory storage
+                memory_session = self._memory_sessions.get(session_id)
+                if memory_session:
+                    # Check if session is expired
+                    if memory_session['expires_at'] < datetime.utcnow():
+                        # Remove expired session
+                        del self._memory_sessions[session_id]
+                        return None
+                    session_data = memory_session['data']
+            
+            if not session_data:
                 return None
             
-            session = AuthSession.from_dict(json.loads(data))
+            session = AuthSession.from_dict(session_data)
             
-            # Check if session is expired
+            # Check if session is expired (double check for Redis sessions)
             if session.last_activity + self.session_timeout < datetime.utcnow():
                 self.invalidate_session(session_id)
                 return None

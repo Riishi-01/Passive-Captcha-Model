@@ -28,8 +28,11 @@ def verify_admin_token(token):
 
 def require_admin_auth(f):
     """
-    Decorator to require admin authentication
+    Decorator to require admin authentication (updated to use robust auth service)
     """
+    from functools import wraps
+    
+    @wraps(f)
     def decorated_function(*args, **kwargs):
         auth_header = request.headers.get('Authorization', '')
 
@@ -43,17 +46,58 @@ def require_admin_auth(f):
 
         token = auth_header.split(' ')[1]
 
-        if not verify_admin_token(token):
+        # Use robust authentication service instead of old verify_admin_token
+        try:
+            from app.services.robust_auth_service import get_robust_auth_service
+            auth_service = get_robust_auth_service()
+            
+            if not auth_service:
+                return jsonify({
+                    'error': {
+                        'code': 'SERVICE_UNAVAILABLE',
+                        'message': 'Authentication service unavailable'
+                    }
+                }), 503
+
+            # Validate JWT token
+            payload = auth_service.validate_jwt_token(token)
+            if not payload:
+                return jsonify({
+                    'error': {
+                        'code': 'INVALID_TOKEN',
+                        'message': 'Invalid or expired token'
+                    }
+                }), 401
+
+            # Get session
+            session = auth_service.validate_session(payload['session_id'])
+            if not session:
+                return jsonify({
+                    'error': {
+                        'code': 'SESSION_EXPIRED',
+                        'message': 'Session expired or invalid'
+                    }
+                }), 401
+
+            # Add user to request context
+            request.current_user = {
+                'user_id': session.user_id,
+                'email': session.email,
+                'role': session.role.value
+            }
+            request.current_session = session
+            
+        except Exception as e:
+            current_app.logger.error(f"Auth error in require_admin_auth: {e}")
             return jsonify({
                 'error': {
-                    'code': 'INVALID_AUTH',
-                    'message': 'Invalid or expired token'
+                    'code': 'AUTH_ERROR',
+                    'message': 'Authentication error'
                 }
             }), 401
 
         return f(*args, **kwargs)
 
-    decorated_function.__name__ = f.__name__
     return decorated_function
 
 
