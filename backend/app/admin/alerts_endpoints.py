@@ -27,10 +27,10 @@ def require_auth(f):
                     'message': 'Authorization header required'
                 }
             }), 401
-        
+
         token = auth_header.split(' ')[1]
         auth_service = get_auth_service()
-        
+
         if not auth_service:
             return jsonify({
                 'success': False,
@@ -39,7 +39,7 @@ def require_auth(f):
                     'message': 'Authentication service unavailable'
                 }
             }), 503
-        
+
         user = auth_service.validate_token(token)
         if not user:
             return jsonify({
@@ -49,7 +49,7 @@ def require_auth(f):
                     'message': 'Invalid or expired token'
                 }
             }), 401
-        
+
         return f(*args, **kwargs)
     return decorated_function
 
@@ -60,22 +60,22 @@ def get_recent_alerts():
     """Get recent alerts for the dashboard"""
     try:
         limit = request.args.get('limit', 10, type=int)
-        
+
         session = get_db_session()
         try:
             # Generate dynamic alerts based on system conditions
             alerts = []
-            
+
             # Check for high bot activity
             recent_time = datetime.now() - timedelta(hours=1)
             bot_query = """
-                SELECT COUNT(*) as bot_count 
-                FROM verifications 
+                SELECT COUNT(*) as bot_count
+                FROM verifications
                 WHERE timestamp >= ? AND is_human = 0
             """
             bot_result = session.execute(text(bot_query), (recent_time,)).fetchone()
             bot_count = bot_result.bot_count or 0
-            
+
             if bot_count > 50:  # High bot activity threshold
                 alerts.append({
                     'id': str(uuid.uuid4()),
@@ -86,16 +86,16 @@ def get_recent_alerts():
                     'websiteId': None,
                     'resolved': False
                 })
-            
+
             # Check for low confidence scores
             low_confidence_query = """
-                SELECT COUNT(*) as low_conf_count 
-                FROM verifications 
+                SELECT COUNT(*) as low_conf_count
+                FROM verifications
                 WHERE timestamp >= ? AND confidence < 0.5
             """
             conf_result = session.execute(text(low_confidence_query), (recent_time,)).fetchone()
             low_conf_count = conf_result.low_conf_count or 0
-            
+
             if low_conf_count > 20:
                 alerts.append({
                     'id': str(uuid.uuid4()),
@@ -106,16 +106,16 @@ def get_recent_alerts():
                     'websiteId': None,
                     'resolved': False
                 })
-            
+
             # Check for recent errors (simulated)
             error_query = """
-                SELECT COUNT(*) as total_recent 
-                FROM verifications 
+                SELECT COUNT(*) as total_recent
+                FROM verifications
                 WHERE timestamp >= ?
             """
             recent_result = session.execute(text(error_query), (recent_time,)).fetchone()
             recent_total = recent_result.total_recent or 0
-            
+
             if recent_total == 0:
                 alerts.append({
                     'id': str(uuid.uuid4()),
@@ -126,7 +126,7 @@ def get_recent_alerts():
                     'websiteId': None,
                     'resolved': False
                 })
-            
+
             # Add a success alert if system is healthy
             if recent_total > 0 and bot_count < 10:
                 alerts.append({
@@ -138,20 +138,20 @@ def get_recent_alerts():
                     'websiteId': None,
                     'resolved': False
                 })
-            
+
             # Sort by timestamp (most recent first) and limit
             alerts.sort(key=lambda x: x['timestamp'], reverse=True)
             alerts = alerts[:limit]
-            
+
             return jsonify({
                 'success': True,
                 'data': alerts,
                 'timestamp': datetime.now().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error getting recent alerts: {e}")
         return jsonify({
@@ -170,7 +170,7 @@ def resolve_alert(alert_id):
     try:
         # In a real implementation, you would update the alert in the database
         # For now, we'll just return success
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -180,7 +180,7 @@ def resolve_alert(alert_id):
             },
             'timestamp': datetime.now().isoformat()
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error resolving alert {alert_id}: {e}")
         return jsonify({
@@ -198,7 +198,7 @@ def get_alerts_summary():
     """Get alerts summary statistics"""
     try:
         time_range = request.args.get('timeRange', '24h')
-        
+
         if time_range == '24h':
             hours = 24
         elif time_range == '7d':
@@ -207,24 +207,24 @@ def get_alerts_summary():
             hours = 720
         else:
             hours = 24
-        
+
         start_time = datetime.now() - timedelta(hours=hours)
-        
+
         session = get_db_session()
         try:
             # Calculate alert-worthy conditions
             bot_query = """
-                SELECT COUNT(*) as bot_count 
-                FROM verifications 
+                SELECT COUNT(*) as bot_count
+                FROM verifications
                 WHERE timestamp >= ? AND is_human = 0
             """
             bot_result = session.execute(text(bot_query), (start_time,)).fetchone()
             bot_count = bot_result.bot_count or 0
-            
+
             error_conditions = 0
             warning_conditions = 0
             info_conditions = 0
-            
+
             # Count different alert conditions
             if bot_count > 100:
                 error_conditions += 1
@@ -232,7 +232,7 @@ def get_alerts_summary():
                 warning_conditions += 1
             else:
                 info_conditions += 1
-            
+
             summary = {
                 'total_alerts': error_conditions + warning_conditions + info_conditions,
                 'error_count': error_conditions,
@@ -240,16 +240,16 @@ def get_alerts_summary():
                 'info_count': info_conditions,
                 'resolved_count': 0  # Would be calculated from database in real implementation
             }
-            
+
             return jsonify({
                 'success': True,
                 'data': summary,
                 'timestamp': datetime.now().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error getting alerts summary: {e}")
         return jsonify({

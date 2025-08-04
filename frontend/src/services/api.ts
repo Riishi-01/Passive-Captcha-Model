@@ -192,9 +192,9 @@ class ApiService {
   }
 
   // Authentication APIs
-  async login(password: string): Promise<ApiResponse<{ token: string; user: any }>> {
+  async login(password: string, email: string = 'admin@passivecaptcha.com'): Promise<ApiResponse<{ token: string; user: any }>> {
     return this.handleRequest(
-      this.axiosInstance.post('/admin/login', { password })
+      this.axiosInstance.post('/admin/login', { email, password })
     )
   }
 
@@ -292,21 +292,197 @@ class ApiService {
   }
 
   // Script Integration APIs
-  async generateScriptToken(websiteId: string): Promise<ApiResponse<{ token: string; expires: string }>> {
+  async generateScriptToken(websiteId: string, config?: any): Promise<ApiResponse<{ 
+    token: any; 
+    integration: any; 
+    analytics: any; 
+    message: string 
+  }>> {
     return this.handleRequest(
-      this.axiosInstance.post(`/admin/scripts/tokens/${websiteId}`)
+      this.axiosInstance.post('/admin/scripts/generate', {
+        website_id: websiteId,
+        script_version: 'v2_enhanced',
+        config: config || {}
+      })
     )
   }
 
-  async getScriptTokenInfo(websiteId: string): Promise<ApiResponse<{ token_info: any }>> {
+  async getScriptTokenInfo(websiteId: string): Promise<ApiResponse<{ token: any }>> {
     return this.handleRequest(
       this.axiosInstance.get(`/admin/scripts/tokens/${websiteId}`)
     )
   }
 
-  async deleteScriptToken(websiteId: string): Promise<ApiResponse<{}>> {
+  // Legacy methods - use enhanced versions instead
+  async revokeScriptToken(websiteId: string, reason?: string, adminUser?: string): Promise<ApiResponse<{ 
+    message: string; 
+    website_id: string; 
+    revocation_details: any; 
+    token: any 
+  }>> {
+    return this.revokeScriptTokenEnhanced(websiteId, reason, adminUser)
+  }
+
+  async regenerateScriptToken(websiteId: string, scriptVersion?: string): Promise<ApiResponse<{ 
+    token: any; 
+    integration: any; 
+    regeneration_details: any; 
+    analytics: any; 
+    message: string 
+  }>> {
+    return this.regenerateScriptTokenEnhanced(websiteId, {
+      script_version: scriptVersion || 'v2_enhanced'
+    })
+  }
+
+  async getScriptAnalytics(websiteId: string, timeRange?: string): Promise<ApiResponse<{
+    overview: any;
+    script_performance: any;
+    time_series: any[];
+    configuration: any;
+    integration_health: any;
+  }>> {
     return this.handleRequest(
-      this.axiosInstance.delete(`/admin/scripts/tokens/${websiteId}`)
+      this.axiosInstance.get(`/admin/scripts/analytics/${websiteId}?timeRange=${timeRange || '24h'}`)
+    )
+  }
+
+  async getRealtimeScriptAnalytics(websiteId: string): Promise<ApiResponse<{
+    active_sessions: number;
+    verifications_per_minute: number;
+    current_load: number;
+    status: string;
+    last_activity: string | null;
+  }>> {
+    return this.handleRequest(
+      this.axiosInstance.get(`/admin/scripts/analytics/${websiteId}/realtime`)
+    )
+  }
+
+  async getScriptStatistics(): Promise<ApiResponse<any>> {
+    return this.handleRequest(
+      this.axiosInstance.get('/admin/scripts/statistics')
+    )
+  }
+
+  async cleanupExpiredTokens(): Promise<ApiResponse<{ 
+    message: string; 
+    tokens_processed: number; 
+    cleanup_time: string 
+  }>> {
+    return this.handleRequest(
+      this.axiosInstance.post('/admin/scripts/cleanup')
+    )
+  }
+
+  async getAllScriptTokens(): Promise<ApiResponse<{ 
+    tokens: any[]; 
+    statistics: any; 
+    total_count: number 
+  }>> {
+    return this.handleRequest(
+      this.axiosInstance.get('/admin/scripts/tokens')
+    )
+  }
+
+  // Enhanced token management methods
+  async updateTokenConfig(websiteId: string, configUpdates: any, adminUser?: string): Promise<ApiResponse<{ 
+    token: any; 
+    updated_config: any; 
+    message: string 
+  }>> {
+    return this.handleRequest(
+      this.axiosInstance.patch(`/admin/scripts/tokens/${websiteId}/config`, {
+        config: configUpdates,
+        admin_user: adminUser
+      })
+    )
+  }
+
+  async validateTokenSecurity(websiteId: string): Promise<ApiResponse<{ 
+    security_report: any; 
+    recommendations: any; 
+    compliance_status: string 
+  }>> {
+    return this.handleRequest(
+      this.axiosInstance.get(`/admin/scripts/tokens/${websiteId}/security`)
+    )
+  }
+
+  async getTokenHistory(websiteId: string): Promise<ApiResponse<{ 
+    history: any[]; 
+    total_tokens: number; 
+    current_token: any 
+  }>> {
+    return this.handleRequest(
+      this.axiosInstance.get(`/admin/scripts/tokens/${websiteId}/history`)
+    )
+  }
+
+  async bulkRevokeTokens(websiteIds: string[], reason?: string, adminUser?: string): Promise<ApiResponse<{ 
+    results: Record<string, boolean>; 
+    summary: any; 
+    revocation_details: any; 
+    message: string 
+  }>> {
+    return this.handleRequest(
+      this.axiosInstance.post('/admin/scripts/tokens/bulk/revoke', {
+        website_ids: websiteIds,
+        reason,
+        admin_user: adminUser
+      })
+    )
+  }
+
+  async getRotationCandidates(daysThreshold?: number): Promise<ApiResponse<{ 
+    candidates: any[]; 
+    summary: any; 
+    recommendations: any 
+  }>> {
+    const params = daysThreshold ? { days_threshold: daysThreshold } : {}
+    return this.handleRequest(
+      this.axiosInstance.get('/admin/scripts/tokens/rotation/candidates', { params })
+    )
+  }
+
+  async getTokensByEnvironment(environment: string): Promise<ApiResponse<{ 
+    tokens: any[]; 
+    environment_stats: any 
+  }>> {
+    return this.handleRequest(
+      this.axiosInstance.get(`/admin/scripts/tokens/environment/${environment}`)
+    )
+  }
+
+  async revokeScriptTokenEnhanced(websiteId: string, reason?: string, adminUser?: string): Promise<ApiResponse<{ 
+    message: string; 
+    website_id: string; 
+    revocation_details: any; 
+    token: any 
+  }>> {
+    return this.handleRequest(
+      this.axiosInstance.post(`/admin/scripts/tokens/${websiteId}/revoke`, {
+        reason,
+        admin_user: adminUser
+      })
+    )
+  }
+
+  async regenerateScriptTokenEnhanced(websiteId: string, options?: {
+    script_version?: string;
+    environment?: string;
+    config?: any;
+    admin_user?: string;
+    reason?: string;
+  }): Promise<ApiResponse<{ 
+    token: any; 
+    integration: any; 
+    regeneration_details: any; 
+    analytics: any; 
+    message: string 
+  }>> {
+    return this.handleRequest(
+      this.axiosInstance.post(`/admin/scripts/tokens/${websiteId}/regenerate`, options || {})
     )
   }
 

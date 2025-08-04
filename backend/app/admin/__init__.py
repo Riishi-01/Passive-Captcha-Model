@@ -32,7 +32,7 @@ def require_admin_auth(f):
     """
     def decorated_function(*args, **kwargs):
         auth_header = request.headers.get('Authorization', '')
-        
+
         if not auth_header.startswith('Bearer '):
             return jsonify({
                 'error': {
@@ -40,9 +40,9 @@ def require_admin_auth(f):
                     'message': 'Authorization header required'
                 }
             }), 401
-        
+
         token = auth_header.split(' ')[1]
-        
+
         if not verify_admin_token(token):
             return jsonify({
                 'error': {
@@ -50,9 +50,9 @@ def require_admin_auth(f):
                     'message': 'Invalid or expired token'
                 }
             }), 401
-        
+
         return f(*args, **kwargs)
-    
+
     decorated_function.__name__ = f.__name__
     return decorated_function
 
@@ -70,7 +70,7 @@ def get_analytics():
     """
     try:
         hours = int(request.args.get('hours', 24))
-        
+
         # Validate hours parameter
         if hours < 1 or hours > 168:  # Max 1 week
             return jsonify({
@@ -79,11 +79,11 @@ def get_analytics():
                     'message': 'Hours must be between 1 and 168'
                 }
             }), 400
-        
+
         analytics_data = get_analytics_data(hours)
-        
+
         return jsonify(analytics_data), 200
-        
+
     except ValueError:
         return jsonify({
             'error': {
@@ -91,7 +91,7 @@ def get_analytics():
                 'message': 'Hours parameter must be a valid integer'
             }
         }), 400
-        
+
     except Exception as e:
         print(f"Error in get_analytics: {e}")
         return jsonify({
@@ -115,35 +115,35 @@ def get_verification_logs():
         is_human = request.args.get('is_human')
         origin = request.args.get('origin')
         hours = int(request.args.get('hours', 24))
-        
+
         # Build query
         session = get_db_session()
         query = session.query(VerificationLog)
-        
+
         # Apply time filter
         since = datetime.utcnow() - timedelta(hours=hours)
         query = query.filter(VerificationLog.timestamp >= since)
-        
+
         # Apply filters
         if is_human is not None:
             is_human_bool = is_human.lower() == 'true'
             query = query.filter(VerificationLog.is_human == is_human_bool)
-        
+
         if origin:
             query = query.filter(VerificationLog.origin.ilike(f'%{origin}%'))
-        
+
         # Get total count for pagination
         total_count = query.count()
-        
+
         # Apply pagination and ordering
         logs = query.order_by(VerificationLog.timestamp.desc()).offset(offset).limit(limit).all()
-        
+
         # Convert to dictionaries
         logs_data = [log.to_dict() for log in logs]
-        
+
         # Close session
         session.close()
-        
+
         return jsonify({
             'logs': logs_data,
             'pagination': {
@@ -158,7 +158,7 @@ def get_verification_logs():
                 'origin': origin
             }
         }), 200
-        
+
     except ValueError as e:
         return jsonify({
             'error': {
@@ -166,7 +166,7 @@ def get_verification_logs():
                 'message': f'Invalid parameter: {str(e)}'
             }
         }), 400
-        
+
     except Exception as e:
         print(f"Error in get_verification_logs: {e}")
         return jsonify({
@@ -186,7 +186,7 @@ def get_system_stats():
     try:
         from app.ml import get_model_info, is_model_loaded
         from app.database import get_last_verification_time
-        
+
         # Database statistics
         session = get_db_session()
         total_verifications = session.query(VerificationLog).count()
@@ -194,10 +194,10 @@ def get_system_stats():
             VerificationLog.timestamp >= datetime.utcnow() - timedelta(hours=24)
         ).count()
         session.close()
-        
+
         # Model information
         model_info = get_model_info()
-        
+
         # System health
         system_stats = {
             'database': {
@@ -218,9 +218,9 @@ def get_system_stats():
             },
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }
-        
+
         return jsonify(system_stats), 200
-        
+
     except Exception as e:
         print(f"Error in get_system_stats: {e}")
         return jsonify({
@@ -240,7 +240,7 @@ def cleanup_data():
     try:
         data = request.get_json() or {}
         days = int(data.get('days', 30))
-        
+
         # Validate days parameter
         if days < 1 or days > 365:
             return jsonify({
@@ -249,15 +249,15 @@ def cleanup_data():
                     'message': 'Days must be between 1 and 365'
                 }
             }), 400
-        
+
         deleted_count = cleanup_old_data(days)
-        
+
         return jsonify({
             'deleted_records': deleted_count,
             'cutoff_days': days,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }), 200
-        
+
     except ValueError as e:
         return jsonify({
             'error': {
@@ -265,7 +265,7 @@ def cleanup_data():
                 'message': f'Invalid parameter: {str(e)}'
             }
         }), 400
-        
+
     except Exception as e:
         print(f"Error in cleanup_data: {e}")
         return jsonify({
@@ -283,7 +283,7 @@ def admin_dashboard():
     """
     import os
     dashboard_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'modern_dashboard.html')
-    
+
     try:
         with open(dashboard_path, 'r', encoding='utf-8') as f:
             dashboard_html = f.read()
@@ -334,12 +334,12 @@ def admin_dashboard():
         <div class="header">
             <h1>Passive CAPTCHA Admin Dashboard</h1>
         </div>
-        
+
         <div class="container">
             <div class="grid" id="stats-grid">
                 <!-- Stats will be loaded here -->
             </div>
-            
+
             <div class="card">
                 <h3>Recent Verification Logs</h3>
                 <button onclick="loadLogs()" class="btn">Refresh Logs</button>
@@ -352,7 +352,7 @@ def admin_dashboard():
 
     <script>
         let authToken = localStorage.getItem('admin_token');
-        
+
         if (authToken) {
             document.getElementById('login-section').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
@@ -362,16 +362,16 @@ def admin_dashboard():
         async function login() {
             const password = document.getElementById('password').value;
             const errorDiv = document.getElementById('login-error');
-            
+
             try {
                 const response = await fetch('/admin/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     authToken = data.token;
                     localStorage.setItem('admin_token', authToken);
@@ -396,7 +396,7 @@ def admin_dashboard():
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 const data = await response.json();
-                
+
                 const statsGrid = document.getElementById('stats-grid');
                 statsGrid.innerHTML = `
                     <div class="card">
@@ -443,17 +443,17 @@ def admin_dashboard():
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 const data = await response.json();
-                
+
                 const logsContainer = document.getElementById('logs-container');
                 const logs = data.logs.map(log => `
                     <div style="border-bottom: 1px solid #e5e7eb; padding: 0.75rem 0;">
-                        <strong>${log.isHuman ? 'Human' : 'Bot'}</strong> 
-                        (${(log.confidence * 100).toFixed(1)}% confidence) - 
-                        ${log.origin || 'Unknown origin'} - 
+                        <strong>${log.isHuman ? 'Human' : 'Bot'}</strong>
+                        (${(log.confidence * 100).toFixed(1)}% confidence) -
+                        ${log.origin || 'Unknown origin'} -
                         ${new Date(log.timestamp).toLocaleString()}
                     </div>
                 `).join('');
-                
+
                 logsContainer.innerHTML = logs || '<p>No recent logs found.</p>';
             } catch (error) {
                 console.error('Failed to load logs:', error);
@@ -470,7 +470,7 @@ def admin_dashboard():
 </body>
 </html>
     """
-    
+
     return render_template_string(dashboard_html)
 
 
@@ -493,4 +493,4 @@ def handle_forbidden(e):
             'code': 'FORBIDDEN',
             'message': 'Access forbidden'
         }
-    }), 403 
+    }), 403

@@ -1,0 +1,715 @@
+{
+  "timestamp": "Mon Aug  4 19:34:36 IST 2025",
+  "total_issues": 3,
+  "critical_issues": 1,
+  "high_issues": 1,
+  "medium_issues": 1,
+  "issues": [
+    {
+      "type": "unicode_characters",
+      "severity": "critical",
+      "description": "Unicode characters found in Python files",
+      "details": [
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/render_start.py",
+          "line": 30,
+          "char": "[SUCCESS]",
+          "content": "print(f\"[SUCCESS] Environment configured\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/render_start.py",
+          "line": 67,
+          "char": "[ERROR]",
+          "content": "print(f\"[ERROR] Application startup failed: {e}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/render_start.py",
+          "line": 43,
+          "char": "[NETWORK]",
+          "content": "print(f\"[NETWORK] Starting server on {host}:{port}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/render_start.py",
+          "line": 14,
+          "char": "[DEPLOY]",
+          "content": "print(\"[DEPLOY] Passive CAPTCHA - Render Deployment\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/main.py",
+          "line": 39,
+          "char": "[SUCCESS]",
+          "content": "print(f\"[SUCCESS] Loaded production config from: {config_path}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/main.py",
+          "line": 91,
+          "char": "[SUCCESS]",
+          "content": "print(f\"[SUCCESS] Found frontend at: {static_folder}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/main.py",
+          "line": 98,
+          "char": "[SUCCESS]",
+          "content": "print(f\"[SUCCESS] Using primary static folder: {static_folder}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/main.py",
+          "line": 478,
+          "char": "[SUCCESS]",
+          "content": "<p>[SUCCESS] API Server Running</p>"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/main.py",
+          "line": 42,
+          "char": "[WARNING]",
+          "content": "print(\"[WARNING] No production config file found\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/main.py",
+          "line": 109,
+          "char": "[WARNING]",
+          "content": "print(f\"[WARNING] Could not list static folder contents: {e}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/main.py",
+          "line": 571,
+          "char": "[WARNING]",
+          "content": "<p>[WARNING] Frontend temporarily unavailable</p>"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/main.py",
+          "line": 94,
+          "char": "[ERROR]",
+          "content": "print(f\"[ERROR] No static folder found, disabling frontend serving\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/main.py",
+          "line": 626,
+          "char": "[DEPLOY]",
+          "content": "print(f\"[DEPLOY] Starting Passive CAPTCHA with SocketIO on {host}:{port}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/main.py",
+          "line": 632,
+          "char": "[DEPLOY]",
+          "content": "print(f\"[DEPLOY] Starting Passive CAPTCHA on {host}:{port}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/main.py",
+          "line": 661,
+          "char": "[DEPLOY]",
+          "content": "print(f\"[DEPLOY] Starting Passive CAPTCHA with Gunicorn on {args.host}:{port}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/main.py",
+          "line": 480,
+          "char": "[HEALTH]",
+          "content": "<a href=\"/health\">[HEALTH] Health Check</a> |"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 17,
+          "char": "[SUCCESS]",
+          "content": "'[SUCCESS]': '[SUCCESS]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 164,
+          "char": "[SUCCESS]",
+          "content": "print(f\"[SUCCESS] Fixed {file_replacements} characters in: {py_file}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 22,
+          "char": "[WARNING]",
+          "content": "'[WARNING]': '[WARNING]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 23,
+          "char": "[WARNING]",
+          "content": "'[WARNING]': '[WARNING]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 67,
+          "char": "[WARNING]",
+          "content": "'[WARNING]': '[WARNING]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 24,
+          "char": "[ERROR]",
+          "content": "'[ERROR]': '[ERROR]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 167,
+          "char": "[ERROR]",
+          "content": "print(f\"[ERROR] Error processing {py_file}: {e}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 30,
+          "char": "[PROCESSING]",
+          "content": "'[PROCESSING]': '[PROCESSING]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 36,
+          "char": "[INFO]",
+          "content": "'[INFO]': '[INFO]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 71,
+          "char": "[INFO]",
+          "content": "'[INFO]': '[INFO]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 120,
+          "char": "[INFO]",
+          "content": "'[INFO]': '[INFO]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 46,
+          "char": "[SECURE]",
+          "content": "'[SECURE]': '[SECURE]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 50,
+          "char": "[NETWORK]",
+          "content": "'[NETWORK]': '[NETWORK]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 55,
+          "char": "[FEATURE]",
+          "content": "'[FEATURE]': '[FEATURE]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 57,
+          "char": "[TARGET]",
+          "content": "'[TARGET]': '[TARGET]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 169,
+          "char": "[TARGET]",
+          "content": "print(f\"\\n[TARGET] Unicode Fix Summary:\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 59,
+          "char": "[DEPLOY]",
+          "content": "'[DEPLOY]': '[DEPLOY]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/final_unicode_fix.py",
+          "line": 64,
+          "char": "[HEALTH]",
+          "content": "'[HEALTH]': '[HEALTH]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 25,
+          "char": "[SUCCESS]",
+          "content": "'[SUCCESS]': '[SUCCESS]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 54,
+          "char": "[SUCCESS]",
+          "content": "print(f\"  [SUCCESS] Fixed: {py_file}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 94,
+          "char": "[SUCCESS]",
+          "content": "print(f\"  [SUCCESS] Fixed: {pkg_file}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 140,
+          "char": "[SUCCESS]",
+          "content": "print(f\"  [SUCCESS] Added encoding to: {py_file}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 184,
+          "char": "[SUCCESS]",
+          "content": "print(f\"  [SUCCESS] Cleaned: {py_file}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 234,
+          "char": "[SUCCESS]",
+          "content": "print(\"  [SUCCESS] Created vercel.json\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 271,
+          "char": "[SUCCESS]",
+          "content": "print('[SUCCESS] All critical imports successful')"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 281,
+          "char": "[SUCCESS]",
+          "content": "echo \"[SUCCESS] Syntax check passed\""
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 298,
+          "char": "[SUCCESS]",
+          "content": "print(\"  [SUCCESS] Created deploy.sh\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 345,
+          "char": "[SUCCESS]",
+          "content": "print(f\"[SUCCESS] {fix['fix']}: Applied successfully\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 26,
+          "char": "[WARNING]",
+          "content": "'[WARNING]': '[WARNING]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 27,
+          "char": "[ERROR]",
+          "content": "'[ERROR]': '[ERROR]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 57,
+          "char": "[ERROR]",
+          "content": "print(f\"  [ERROR] Error fixing {py_file}: {e}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 97,
+          "char": "[ERROR]",
+          "content": "print(f\"  [ERROR] Error fixing {pkg_file}: {e}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 143,
+          "char": "[ERROR]",
+          "content": "print(f\"  [ERROR] Error processing {py_file}: {e}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 187,
+          "char": "[ERROR]",
+          "content": "print(f\"  [ERROR] Error processing {py_file}: {e}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 243,
+          "char": "[ERROR]",
+          "content": "print(f\"  [ERROR] Error creating vercel.json: {e}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 273,
+          "char": "[ERROR]",
+          "content": "print(f'[ERROR] Import error: {e}')"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 283,
+          "char": "[ERROR]",
+          "content": "echo \"[ERROR] Syntax errors found\""
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 307,
+          "char": "[ERROR]",
+          "content": "print(f\"  [ERROR] Error creating deploy.sh: {e}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 328,
+          "char": "[ERROR]",
+          "content": "print(f\"[ERROR] Error in {fix_func.__name__}: {e}\\n\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 28,
+          "char": "[PROCESSING]",
+          "content": "'[PROCESSING]': '[PROCESSING]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 29,
+          "char": "[INFO]",
+          "content": "'[INFO]': '[INFO]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 340,
+          "char": "[INFO]",
+          "content": "print(f\"[INFO] FIX APPLICATION REPORT\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 30,
+          "char": "[SECURE]",
+          "content": "'[SECURE]': '[SECURE]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 31,
+          "char": "[NETWORK]",
+          "content": "'[NETWORK]': '[NETWORK]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 32,
+          "char": "[FEATURE]",
+          "content": "'[FEATURE]': '[FEATURE]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 33,
+          "char": "[TARGET]",
+          "content": "'[TARGET]': '[TARGET]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 65,
+          "char": "[TARGET]",
+          "content": "print(f\"[TARGET] Fixed Unicode characters in {files_fixed} files\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 104,
+          "char": "[TARGET]",
+          "content": "print(f\"[TARGET] Fixed Node.js version in {files_fixed} files\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 150,
+          "char": "[TARGET]",
+          "content": "print(f\"[TARGET] Added encoding declarations to {files_fixed} files\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 194,
+          "char": "[TARGET]",
+          "content": "print(f\"[TARGET] Cleaned up {files_fixed} files\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 287,
+          "char": "[TARGET]",
+          "content": "echo \"[TARGET] Deployment validation complete\""
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 34,
+          "char": "[DEPLOY]",
+          "content": "'[DEPLOY]': '[DEPLOY]',"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 253,
+          "char": "[DEPLOY]",
+          "content": "echo \"[DEPLOY] Starting Passive CAPTCHA Deployment\""
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 312,
+          "char": "[DEPLOY]",
+          "content": "print(\"[DEPLOY] Starting Automated Fix Application\\n\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/fix_deployment_issues.py",
+          "line": 35,
+          "char": "[HEALTH]",
+          "content": "'[HEALTH]': '[HEALTH]'"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/fixes/create_robust_auth.py",
+          "line": 503,
+          "char": "[SUCCESS]",
+          "content": "print(\"[SUCCESS] Created enhanced authentication service\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 24,
+          "char": "[SUCCESS]",
+          "content": "unicode_chars = ['[SUCCESS]', '[WARNING]', '[ERROR]', '[PROCESSING]', '[INFO]', '[SECURE]', '[NETWORK]', '[FEATURE]', '[TARGET]', '[DEPLOY]', '[HEALTH]']"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 61,
+          "char": "[SUCCESS]",
+          "content": "print(\"[SUCCESS] No Unicode character issues found\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 103,
+          "char": "[SUCCESS]",
+          "content": "print(\"[SUCCESS] Node.js version configuration is correct\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 148,
+          "char": "[SUCCESS]",
+          "content": "print(\"[SUCCESS] Encoding declarations are correct\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 190,
+          "char": "[SUCCESS]",
+          "content": "print(\"[SUCCESS] No syntax errors found\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 236,
+          "char": "[SUCCESS]",
+          "content": "print(\"[SUCCESS] No import errors found\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 298,
+          "char": "[SUCCESS]",
+          "content": "print(\"[SUCCESS] Requirements are consistent\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 339,
+          "char": "[SUCCESS]",
+          "content": "print(f\"Deployment Ready: {'[SUCCESS] YES' if report['deployment_ready'] else '[ERROR] NO'}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 24,
+          "char": "[WARNING]",
+          "content": "unicode_chars = ['[SUCCESS]', '[WARNING]', '[ERROR]', '[PROCESSING]', '[INFO]', '[SECURE]', '[NETWORK]', '[FEATURE]', '[TARGET]', '[DEPLOY]', '[HEALTH]']"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 24,
+          "char": "[ERROR]",
+          "content": "unicode_chars = ['[SUCCESS]', '[WARNING]', '[ERROR]', '[PROCESSING]', '[INFO]', '[SECURE]', '[NETWORK]', '[FEATURE]', '[TARGET]', '[DEPLOY]', '[HEALTH]']"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 59,
+          "char": "[ERROR]",
+          "content": "print(f\"[ERROR] Found {len(issues_found)} Unicode character issues\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 101,
+          "char": "[ERROR]",
+          "content": "print(f\"[ERROR] Found {len(issues_found)} Node.js version issues\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 146,
+          "char": "[ERROR]",
+          "content": "print(f\"[ERROR] Found {len(issues_found)} encoding declaration issues\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 188,
+          "char": "[ERROR]",
+          "content": "print(f\"[ERROR] Found {len(issues_found)} syntax errors\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 234,
+          "char": "[ERROR]",
+          "content": "print(f\"[ERROR] Found {len(issues_found)} import errors\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 296,
+          "char": "[ERROR]",
+          "content": "print(f\"[ERROR] Found {len(issues_found)} requirements issues\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 339,
+          "char": "[ERROR]",
+          "content": "print(f\"Deployment Ready: {'[SUCCESS] YES' if report['deployment_ready'] else '[ERROR] NO'}\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 24,
+          "char": "[PROCESSING]",
+          "content": "unicode_chars = ['[SUCCESS]', '[WARNING]', '[ERROR]', '[PROCESSING]', '[INFO]', '[SECURE]', '[NETWORK]', '[FEATURE]', '[TARGET]', '[DEPLOY]', '[HEALTH]']"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 24,
+          "char": "[INFO]",
+          "content": "unicode_chars = ['[SUCCESS]', '[WARNING]', '[ERROR]', '[PROCESSING]', '[INFO]', '[SECURE]', '[NETWORK]', '[FEATURE]', '[TARGET]', '[DEPLOY]', '[HEALTH]']"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 333,
+          "char": "[INFO]",
+          "content": "print(f\"\\n[INFO] DEPLOYMENT TEST REPORT\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 24,
+          "char": "[SECURE]",
+          "content": "unicode_chars = ['[SUCCESS]', '[WARNING]', '[ERROR]', '[PROCESSING]', '[INFO]', '[SECURE]', '[NETWORK]', '[FEATURE]', '[TARGET]', '[DEPLOY]', '[HEALTH]']"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 24,
+          "char": "[NETWORK]",
+          "content": "unicode_chars = ['[SUCCESS]', '[WARNING]', '[ERROR]', '[PROCESSING]', '[INFO]', '[SECURE]', '[NETWORK]', '[FEATURE]', '[TARGET]', '[DEPLOY]', '[HEALTH]']"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 24,
+          "char": "[FEATURE]",
+          "content": "unicode_chars = ['[SUCCESS]', '[WARNING]', '[ERROR]', '[PROCESSING]', '[INFO]', '[SECURE]', '[NETWORK]', '[FEATURE]', '[TARGET]', '[DEPLOY]', '[HEALTH]']"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 24,
+          "char": "[TARGET]",
+          "content": "unicode_chars = ['[SUCCESS]', '[WARNING]', '[ERROR]', '[PROCESSING]', '[INFO]', '[SECURE]', '[NETWORK]', '[FEATURE]', '[TARGET]', '[DEPLOY]', '[HEALTH]']"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 24,
+          "char": "[DEPLOY]",
+          "content": "unicode_chars = ['[SUCCESS]', '[WARNING]', '[ERROR]', '[PROCESSING]', '[INFO]', '[SECURE]', '[NETWORK]', '[FEATURE]', '[TARGET]', '[DEPLOY]', '[HEALTH]']"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 304,
+          "char": "[DEPLOY]",
+          "content": "print(\"[DEPLOY] Starting Comprehensive Deployment Testing Suite\\n\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/scripts/testing/deployment_test_suite.py",
+          "line": 24,
+          "char": "[HEALTH]",
+          "content": "unicode_chars = ['[SUCCESS]', '[WARNING]', '[ERROR]', '[PROCESSING]', '[INFO]', '[SECURE]', '[NETWORK]', '[FEATURE]', '[TARGET]', '[DEPLOY]', '[HEALTH]']"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/app/production_app.py",
+          "line": 354,
+          "char": "[SUCCESS]",
+          "content": "<p><strong>[SUCCESS] API Server Running</strong></p>"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/app/production_app.py",
+          "line": 383,
+          "char": "[SUCCESS]",
+          "content": "resultDiv.innerHTML = '<span style=\"color: green;\">[SUCCESS] Login successful!</span>';"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/app/production_app.py",
+          "line": 386,
+          "char": "[ERROR]",
+          "content": "resultDiv.innerHTML = '<span style=\"color: red;\">[ERROR] ' + (data.error?.message || 'Login failed') + '</span>';"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/app/production_app.py",
+          "line": 389,
+          "char": "[ERROR]",
+          "content": "resultDiv.innerHTML = '<span style=\"color: red;\">[ERROR] Error: ' + error.message + '</span>';"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/app/production_app.py",
+          "line": 360,
+          "char": "[INFO]",
+          "content": "<a href=\"/admin/analytics\" class=\"api-link\">[INFO] Analytics API</a>"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/app/production_app.py",
+          "line": 358,
+          "char": "[HEALTH]",
+          "content": "<a href=\"/health\" class=\"api-link\">[HEALTH] Health Check</a>"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/app/script_generator.py",
+          "line": 502,
+          "char": "[SUCCESS]",
+          "content": "console.log('[SUCCESS] Human verified with confidence:', result.confidence);"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/app/script_generator.py",
+          "line": 506,
+          "char": "[ERROR]",
+          "content": "console.log('[ERROR] Verification failed:', result);"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/app/api/script_endpoints.py",
+          "line": 22,
+          "char": "[WARNING]",
+          "content": "print(\"[WARNING] GeoIP2 not available - geographic features disabled\")"
+        },
+        {
+          "file": "/Users/rr/MLOPS/Passive-Captcha-Model/backend/app/api/script_endpoints.py",
+          "line": 29,
+          "char": "[WARNING]",
+          "content": "print(\"[WARNING] User-agents library not available - user agent parsing disabled\")"
+        }
+      ],
+      "fix_command": "fix_unicode_characters"
+    },
+    {
+      "type": "import_errors",
+      "severity": "high",
+      "description": "Import errors found",
+      "details": [
+        {
+          "file": "backend/main.py",
+          "error": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import sys; sys.path.insert(0, \"backend\"); exec(open(\"backend/main.py\").read())\n                                               ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<string>\", line 10, in <module>\nModuleNotFoundError: No module named 'redis'\n"
+        },
+        {
+          "file": "backend/app/__init__.py",
+          "error": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import sys; sys.path.insert(0, \"backend\"); exec(open(\"backend/app/__init__.py\").read())\n                                               ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<string>\", line 7, in <module>\nModuleNotFoundError: No module named 'flask'\n"
+        },
+        {
+          "file": "backend/app/services/auth_service.py",
+          "error": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import sys; sys.path.insert(0, \"backend\"); exec(open(\"backend/app/services/auth_service.py\").read())\n                                               ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<string>\", line 8, in <module>\nModuleNotFoundError: No module named 'jwt'\n"
+        }
+      ],
+      "fix_command": "fix_import_errors"
+    },
+    {
+      "type": "requirements_consistency",
+      "severity": "medium",
+      "description": "Requirements file inconsistencies",
+      "details": [
+        {
+          "type": "version_mismatch",
+          "file1": "backend/requirements.txt",
+          "file2": "backend/requirements-render.txt",
+          "difference": {
+            "only_in_1": [
+              "flake8==7.0.0",
+              "pytest==7.4.2",
+              "pytest-flask==1.3.0",
+              "pytest-cov==4.1.0",
+              "black==23.12.0"
+            ],
+            "only_in_2": []
+          }
+        }
+      ],
+      "fix_command": "fix_requirements"
+    }
+  ],
+  "deployment_ready": false
+}

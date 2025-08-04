@@ -26,10 +26,10 @@ def require_auth(f):
                     'message': 'Authorization header required'
                 }
             }), 401
-        
+
         token = auth_header.split(' ')[1]
         auth_service = get_auth_service()
-        
+
         if not auth_service:
             return jsonify({
                 'success': False,
@@ -38,7 +38,7 @@ def require_auth(f):
                     'message': 'Authentication service unavailable'
                 }
             }), 503
-        
+
         user = auth_service.validate_token(token)
         if not user:
             return jsonify({
@@ -48,7 +48,7 @@ def require_auth(f):
                     'message': 'Invalid or expired token'
                 }
             }), 401
-        
+
         return f(*args, **kwargs)
     return decorated_function
 
@@ -61,12 +61,12 @@ def get_timeline_logs():
         filter_type = request.args.get('filter', 'all')
         offset = request.args.get('offset', 0, type=int)
         limit = request.args.get('limit', 50, type=int)
-        
+
         session = get_db_session()
         try:
             # Base query for verification logs
             base_query = """
-                SELECT 
+                SELECT
                     id,
                     timestamp,
                     is_human,
@@ -76,12 +76,12 @@ def get_timeline_logs():
                     website_origin,
                     features,
                     response_time
-                FROM verifications 
+                FROM verifications
                 WHERE 1=1
             """
-            
+
             params = []
-            
+
             # Apply filters
             if filter_type == 'human':
                 base_query += " AND is_human = 1"
@@ -91,19 +91,19 @@ def get_timeline_logs():
                 base_query += " AND confidence > 0.8"
             elif filter_type == 'low_confidence':
                 base_query += " AND confidence < 0.5"
-            
+
             # Add ordering and pagination
             base_query += " ORDER BY timestamp DESC LIMIT ? OFFSET ?"
             params.extend([limit, offset])
-            
+
             results = session.execute(base_query, params).fetchall()
-            
+
             # Transform to timeline log format
             logs = []
             for row in results:
                 log_type = 'verification'
                 level = 'info'
-                
+
                 # Determine log level based on confidence and classification
                 if row.confidence < 0.3:
                     level = 'error'
@@ -111,15 +111,15 @@ def get_timeline_logs():
                     level = 'warning'
                 elif row.is_human and row.confidence > 0.9:
                     level = 'success'
-                
+
                 # Create descriptive message
                 classification = 'Human' if row.is_human else 'Bot'
                 confidence_pct = round(row.confidence * 100, 1)
-                
+
                 message = f"{classification} detected with {confidence_pct}% confidence"
                 if row.website_origin:
                     message += f" from {row.website_origin}"
-                
+
                 logs.append({
                     'id': str(row.id),
                     'timestamp': row.timestamp.isoformat() if hasattr(row.timestamp, 'isoformat') else str(row.timestamp),
@@ -136,7 +136,7 @@ def get_timeline_logs():
                         'features': row.features
                     }
                 })
-            
+
             # Check if there are more logs
             count_query = "SELECT COUNT(*) FROM verifications WHERE 1=1"
             if filter_type == 'human':
@@ -147,10 +147,10 @@ def get_timeline_logs():
                 count_query += " AND confidence > 0.8"
             elif filter_type == 'low_confidence':
                 count_query += " AND confidence < 0.5"
-            
+
             total_count = session.execute(count_query).fetchone()[0]
             has_more = offset + limit < total_count
-            
+
             return jsonify({
                 'success': True,
                 'data': {
@@ -162,10 +162,10 @@ def get_timeline_logs():
                 },
                 'timestamp': datetime.now().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error getting timeline logs: {e}")
         return jsonify({
@@ -184,12 +184,12 @@ def get_activity_logs():
     try:
         limit = request.args.get('limit', 20, type=int)
         since = request.args.get('since')  # ISO timestamp for real-time updates
-        
+
         session = get_db_session()
         try:
             # Get recent verifications
             query = """
-                SELECT 
+                SELECT
                     id,
                     timestamp,
                     is_human,
@@ -197,11 +197,11 @@ def get_activity_logs():
                     ip_address,
                     website_origin,
                     response_time
-                FROM verifications 
+                FROM verifications
             """
-            
+
             params = []
-            
+
             if since:
                 try:
                     since_dt = datetime.fromisoformat(since.replace('Z', '+00:00'))
@@ -210,18 +210,18 @@ def get_activity_logs():
                 except ValueError:
                     # Invalid timestamp, ignore since parameter
                     pass
-            
+
             query += " ORDER BY timestamp DESC LIMIT ?"
             params.append(limit)
-            
+
             results = session.execute(query, params).fetchall()
-            
+
             # Transform to activity log format
             activities = []
             for row in results:
                 classification = 'human' if row.is_human else 'bot'
                 confidence_pct = round(row.confidence * 100, 1)
-                
+
                 activity = {
                     'id': str(row.id),
                     'timestamp': row.timestamp.isoformat() if hasattr(row.timestamp, 'isoformat') else str(row.timestamp),
@@ -232,9 +232,9 @@ def get_activity_logs():
                     'ip': row.ip_address or 'Unknown',
                     'responseTime': row.response_time or 0
                 }
-                
+
                 activities.append(activity)
-            
+
             return jsonify({
                 'success': True,
                 'data': {
@@ -244,10 +244,10 @@ def get_activity_logs():
                 },
                 'timestamp': datetime.now().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error getting activity logs: {e}")
         return jsonify({
@@ -267,7 +267,7 @@ def export_logs():
         format_type = request.args.get('format', 'json')  # json, csv, excel
         time_range = request.args.get('timeRange', '24h')
         filter_type = request.args.get('filter', 'all')
-        
+
         if time_range == '24h':
             hours = 24
         elif time_range == '7d':
@@ -276,14 +276,14 @@ def export_logs():
             hours = 720
         else:
             hours = 24
-        
+
         start_time = datetime.now() - timedelta(hours=hours)
-        
+
         session = get_db_session()
         try:
             # Get filtered logs
             query = """
-                SELECT 
+                SELECT
                     id,
                     timestamp,
                     is_human,
@@ -293,25 +293,25 @@ def export_logs():
                     website_origin,
                     response_time,
                     features
-                FROM verifications 
+                FROM verifications
                 WHERE timestamp >= ?
             """
-            
+
             params = [start_time]
-            
+
             # Apply filters
             if filter_type == 'human':
                 query += " AND is_human = 1"
             elif filter_type == 'bot':
                 query += " AND is_human = 0"
-            
+
             query += " ORDER BY timestamp DESC"
-            
+
             results = session.execute(query, params).fetchall()
-            
+
             # For now, return a download URL (in a real implementation, you'd generate the file)
             download_url = f"/admin/downloads/logs_{format_type}_{int(datetime.now().timestamp())}.{format_type}"
-            
+
             return jsonify({
                 'success': True,
                 'data': {
@@ -322,10 +322,10 @@ def export_logs():
                 },
                 'timestamp': datetime.now().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error exporting logs: {e}")
         return jsonify({
@@ -343,7 +343,7 @@ def get_logs_stats():
     """Get logs statistics for the dashboard"""
     try:
         time_range = request.args.get('timeRange', '24h')
-        
+
         if time_range == '24h':
             hours = 24
         elif time_range == '7d':
@@ -352,26 +352,26 @@ def get_logs_stats():
             hours = 720
         else:
             hours = 24
-        
+
         start_time = datetime.now() - timedelta(hours=hours)
-        
+
         session = get_db_session()
         try:
             # Get comprehensive stats
             stats_query = """
-                SELECT 
+                SELECT
                     COUNT(*) as total_logs,
                     SUM(CASE WHEN is_human = 1 THEN 1 ELSE 0 END) as human_logs,
                     SUM(CASE WHEN is_human = 0 THEN 1 ELSE 0 END) as bot_logs,
                     AVG(confidence) as avg_confidence,
                     COUNT(DISTINCT ip_address) as unique_ips,
                     COUNT(DISTINCT website_origin) as unique_origins
-                FROM verifications 
+                FROM verifications
                 WHERE timestamp >= ?
             """
-            
+
             result = session.execute(stats_query, (start_time,)).fetchone()
-            
+
             stats = {
                 'total_logs': result.total_logs or 0,
                 'human_logs': result.human_logs or 0,
@@ -381,16 +381,16 @@ def get_logs_stats():
                 'unique_origins': result.unique_origins or 0,
                 'time_range': time_range
             }
-            
+
             return jsonify({
                 'success': True,
                 'data': stats,
                 'timestamp': datetime.now().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error getting logs stats: {e}")
         return jsonify({

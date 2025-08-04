@@ -40,7 +40,7 @@ def register_website():
     """
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({
                 'error': {
@@ -48,7 +48,7 @@ def register_website():
                     'message': 'Request body is required'
                 }
             }), 400
-        
+
         # Validate required fields
         required_fields = ['name', 'url', 'admin_email']
         for field in required_fields:
@@ -59,11 +59,11 @@ def register_website():
                         'message': f'Field "{field}" is required'
                     }
                 }), 400
-        
+
         website_name = data['name'].strip()
         website_url = data['url'].strip()
         admin_email = data['admin_email'].strip().lower()
-        
+
         # Validate inputs
         if len(website_name) < 2 or len(website_name) > 100:
             return jsonify({
@@ -72,7 +72,7 @@ def register_website():
                     'message': 'Website name must be between 2 and 100 characters'
                 }
             }), 400
-        
+
         if not validate_url(website_url):
             return jsonify({
                 'error': {
@@ -80,7 +80,7 @@ def register_website():
                     'message': 'Invalid website URL format'
                 }
             }), 400
-        
+
         if not validate_email(admin_email):
             return jsonify({
                 'error': {
@@ -88,35 +88,35 @@ def register_website():
                     'message': 'Invalid admin email format'
                 }
             }), 400
-        
+
         # Generate unique tokens
         website_registration = token_manager.generate_website_token(
             website_name, website_url, admin_email
         )
-        
+
         # Generate script tag
         script_tag = script_generator.generate_html_script_tag(
             website_registration.website_id,
             website_registration.api_key,
             website_name
         )
-        
+
         # Generate integration example
         integration_example = script_generator.generate_integration_example(
             website_registration.website_id,
             website_registration.api_key,
             website_name
         )
-        
+
         # Create dashboard URL
         dashboard_url = f"{current_app.config.get('DASHBOARD_BASE_URL', 'https://dashboard.passive-captcha.com')}/{website_registration.website_id}"
-        
+
         # Generate dashboard access token
         dashboard_token = token_manager.generate_dashboard_token(
             website_registration.website_id,
             admin_email
         )
-        
+
         return jsonify({
             'success': True,
             'website_id': website_registration.website_id,
@@ -136,7 +136,7 @@ def register_website():
                 'step_4': 'Monitor verification attempts and analytics in real-time'
             }
         }), 201
-        
+
     except Exception as e:
         print(f"Error in register_website: {e}")
         return jsonify({
@@ -155,7 +155,7 @@ def get_website_script(website_id):
     try:
         # Get website information
         website_data = get_website_by_id(website_id)
-        
+
         if not website_data:
             return jsonify({
                 'error': {
@@ -163,7 +163,7 @@ def get_website_script(website_id):
                     'message': 'Website not found'
                 }
             }), 404
-        
+
         if website_data['status'] != 'active':
             return jsonify({
                 'error': {
@@ -171,17 +171,17 @@ def get_website_script(website_id):
                     'message': 'Website is not active'
                 }
             }), 403
-        
+
         # Generate script
         script_content = script_generator.generate_embedded_script(
             website_id,
             website_data['api_key'],
             website_data['website_name']
         )
-        
+
         # Return as JavaScript content type
         return script_content, 200, {'Content-Type': 'application/javascript'}
-        
+
     except Exception as e:
         print(f"Error in get_website_script: {e}")
         return jsonify({
@@ -200,7 +200,7 @@ def get_integration_example(website_id):
     try:
         # Get website information
         website_data = get_website_by_id(website_id)
-        
+
         if not website_data:
             return jsonify({
                 'error': {
@@ -208,17 +208,17 @@ def get_integration_example(website_id):
                     'message': 'Website not found'
                 }
             }), 404
-        
+
         # Generate integration example
         integration_html = script_generator.generate_integration_example(
             website_id,
             website_data['api_key'],
             website_data['website_name']
         )
-        
+
         # Return as HTML
         return integration_html, 200, {'Content-Type': 'text/html'}
-        
+
     except Exception as e:
         print(f"Error in get_integration_example: {e}")
         return jsonify({
@@ -237,7 +237,7 @@ def get_website_dashboard(website_id):
     try:
         # Check authorization
         auth_header = request.headers.get('Authorization', '')
-        
+
         if not auth_header.startswith('Bearer '):
             return jsonify({
                 'error': {
@@ -245,9 +245,9 @@ def get_website_dashboard(website_id):
                     'message': 'Authorization header required'
                 }
             }), 401
-        
+
         token = auth_header.split(' ')[1]
-        
+
         if not token_manager.validate_dashboard_token(token, website_id):
             return jsonify({
                 'error': {
@@ -255,10 +255,10 @@ def get_website_dashboard(website_id):
                     'message': 'Invalid or expired dashboard token'
                 }
             }), 401
-        
+
         # Get website information
         website_data = get_website_by_id(website_id)
-        
+
         if not website_data:
             return jsonify({
                 'error': {
@@ -266,16 +266,16 @@ def get_website_dashboard(website_id):
                     'message': 'Website not found'
                 }
             }), 404
-        
+
         # Generate dashboard HTML (will be implemented in dashboard module)
         from app.dashboard_manager import dashboard_manager
         dashboard_html = dashboard_manager.create_website_dashboard(
-            website_id, 
+            website_id,
             website_data['website_name']
         )
-        
+
         return dashboard_html, 200, {'Content-Type': 'text/html'}
-        
+
     except Exception as e:
         print(f"Error in get_website_dashboard: {e}")
         return jsonify({
@@ -294,7 +294,7 @@ def get_website_analytics(website_id):
     try:
         # Validate website API token
         api_key = request.headers.get('X-Website-Token')
-        
+
         if not api_key:
             return jsonify({
                 'error': {
@@ -302,9 +302,9 @@ def get_website_analytics(website_id):
                     'message': 'Website API key required'
                 }
             }), 401
-        
+
         website_token = token_manager.validate_api_request(api_key, website_id)
-        
+
         if not website_token:
             return jsonify({
                 'error': {
@@ -312,7 +312,7 @@ def get_website_analytics(website_id):
                     'message': 'Invalid API key or website ID'
                 }
             }), 401
-        
+
         # Apply rate limiting
         if not security_manager.apply_rate_limit(website_id, 'analytics'):
             return jsonify({
@@ -321,10 +321,10 @@ def get_website_analytics(website_id):
                     'message': 'Analytics rate limit exceeded'
                 }
             }), 429
-        
+
         # Get query parameters
         hours = int(request.args.get('hours', 24))
-        
+
         # Validate hours parameter
         if hours < 1 or hours > 168:  # Max 1 week
             return jsonify({
@@ -333,13 +333,13 @@ def get_website_analytics(website_id):
                     'message': 'Hours must be between 1 and 168'
                 }
             }), 400
-        
+
         # Get analytics data
         analytics_data = get_analytics_data_for_website(website_id, hours)
-        
+
         # Get rate limit info
         rate_limit_info = security_manager.get_rate_limit_info(website_id, 'analytics')
-        
+
         # Add rate limit headers
         response_data = {
             'analytics': analytics_data,
@@ -347,9 +347,9 @@ def get_website_analytics(website_id):
             'website_id': website_id,
             'website_name': website_token.website_name
         }
-        
+
         return jsonify(response_data), 200
-        
+
     except ValueError:
         return jsonify({
             'error': {
@@ -357,7 +357,7 @@ def get_website_analytics(website_id):
                 'message': 'Invalid hours parameter'
             }
         }), 400
-        
+
     except Exception as e:
         print(f"Error in get_website_analytics: {e}")
         return jsonify({
@@ -377,7 +377,7 @@ def get_admin_websites(admin_email):
     try:
         # Basic auth check (in production, use proper admin authentication)
         auth_header = request.headers.get('Authorization', '')
-        
+
         if not auth_header.startswith('Bearer '):
             return jsonify({
                 'error': {
@@ -385,7 +385,7 @@ def get_admin_websites(admin_email):
                     'message': 'Authorization header required'
                 }
             }), 401
-        
+
         # Validate email format
         if not validate_email(admin_email):
             return jsonify({
@@ -394,10 +394,10 @@ def get_admin_websites(admin_email):
                     'message': 'Invalid admin email format'
                 }
             }), 400
-        
+
         # Get websites
         websites = get_websites_by_admin(admin_email.lower())
-        
+
         # Remove sensitive information
         safe_websites = []
         for website in websites:
@@ -411,14 +411,14 @@ def get_admin_websites(admin_email):
                 'rate_limits': website.get('rate_limits', {})
             }
             safe_websites.append(safe_website)
-        
+
         return jsonify({
             'admin_email': admin_email,
             'websites': safe_websites,
             'total_websites': len(safe_websites),
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }), 200
-        
+
     except Exception as e:
         print(f"Error in get_admin_websites: {e}")
         return jsonify({
@@ -437,7 +437,7 @@ def get_website_status(website_id):
     try:
         # Get website information
         website_data = get_website_by_id(website_id)
-        
+
         if not website_data:
             return jsonify({
                 'error': {
@@ -445,7 +445,7 @@ def get_website_status(website_id):
                     'message': 'Website not found'
                 }
             }), 404
-        
+
         # Return basic status information
         return jsonify({
             'website_id': website_id,
@@ -458,7 +458,7 @@ def get_website_status(website_id):
             'rate_limits': website_data.get('rate_limits', {}),
             'permissions': website_data.get('permissions', [])
         }), 200
-        
+
     except Exception as e:
         print(f"Error in get_website_status: {e}")
         return jsonify({
@@ -478,11 +478,11 @@ def verify_with_website(website_id):
     """
     if request.method == 'OPTIONS':
         return '', 200
-    
+
     try:
         # Validate website API token
         api_key = request.headers.get('X-Website-Token')
-        
+
         if not api_key:
             return jsonify({
                 'error': {
@@ -490,9 +490,9 @@ def verify_with_website(website_id):
                     'message': 'Website API key required'
                 }
             }), 401
-        
+
         website_token = token_manager.validate_api_request(api_key, website_id)
-        
+
         if not website_token:
             return jsonify({
                 'error': {
@@ -500,7 +500,7 @@ def verify_with_website(website_id):
                     'message': 'Invalid API key or website ID'
                 }
             }), 401
-        
+
         # Apply rate limiting
         if not security_manager.apply_rate_limit(website_id, 'verify'):
             rate_limit_info = security_manager.get_rate_limit_info(website_id, 'verify')
@@ -511,16 +511,16 @@ def verify_with_website(website_id):
                     'rate_limit': rate_limit_info
                 }
             }), 429
-        
+
         # Process verification request (use existing ML logic)
         from app.api import verify_captcha
-        
+
         # Temporarily set website_id in request context for logging
         request.website_id = website_id
-        
+
         # Call existing verification logic
         return verify_captcha()
-        
+
     except Exception as e:
         print(f"Error in verify_with_website: {e}")
         return jsonify({

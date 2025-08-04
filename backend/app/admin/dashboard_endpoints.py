@@ -36,24 +36,24 @@ def get_analytics_summary():
     try:
         website_id = request.args.get('website_id')
         time_range = int(request.args.get('time_range', 24))
-        
+
         # Check cache first
         cache_key = f"analytics_summary:{website_id or 'all'}:{time_range}"
         if redis_client:
             cached_data = redis_client.get(cache_key)
             if cached_data:
                 return jsonify(json.loads(cached_data))
-        
+
         session = get_db_session()
         try:
             since = datetime.utcnow() - timedelta(hours=time_range)
             query = session.query(VerificationLog).filter(VerificationLog.timestamp >= since)
-            
+
             if website_id and website_id != 'all':
                 query = query.filter(VerificationLog.origin.like(f'%{website_id}%'))
-            
+
             logs = query.all()
-            
+
             # Previous period for comparison
             prev_since = since - timedelta(hours=time_range)
             prev_query = session.query(VerificationLog).filter(
@@ -62,22 +62,22 @@ def get_analytics_summary():
                     VerificationLog.timestamp < since
                 )
             )
-            
+
             if website_id and website_id != 'all':
                 prev_query = prev_query.filter(VerificationLog.origin.like(f'%{website_id}%'))
-            
+
             prev_logs = prev_query.all()
-            
+
             # Calculate current metrics
             total_verifications = len(logs)
             human_verifications = len([log for log in logs if log.is_human])
             human_rate = (human_verifications / total_verifications * 100) if total_verifications > 0 else 0
-            
+
             avg_confidence = sum(log.confidence for log in logs) / len(logs) if logs else 0
-            
+
             response_times = [log.response_time for log in logs if log.response_time is not None]
             avg_response_time = sum(response_times) / len(response_times) if response_times else 0
-            
+
             # Calculate previous metrics for comparison
             prev_total = len(prev_logs)
             prev_human = len([log for log in prev_logs if log.is_human])
@@ -85,13 +85,13 @@ def get_analytics_summary():
             prev_confidence = sum(log.confidence for log in prev_logs) / len(prev_logs) if prev_logs else 0
             prev_response_times = [log.response_time for log in prev_logs if log.response_time is not None]
             prev_avg_response_time = sum(prev_response_times) / len(prev_response_times) if prev_response_times else 0
-            
+
             # Calculate changes
             verification_change = ((total_verifications - prev_total) / prev_total * 100) if prev_total > 0 else 0
             human_rate_change = human_rate - prev_human_rate
             confidence_change = ((avg_confidence - prev_confidence) / prev_confidence * 100) if prev_confidence > 0 else 0
             response_time_change = ((avg_response_time - prev_avg_response_time) / prev_avg_response_time * 100) if prev_avg_response_time > 0 else 0
-            
+
             # Generate trend data (hourly buckets)
             trend_buckets = {}
             for log in logs:
@@ -105,7 +105,7 @@ def get_analytics_summary():
                         'response_time_sum': 0,
                         'response_time_count': 0
                     }
-                
+
                 trend_buckets[hour_key]['verifications'] += 1
                 if log.is_human:
                     trend_buckets[hour_key]['human_count'] += 1
@@ -113,12 +113,12 @@ def get_analytics_summary():
                 if log.response_time:
                     trend_buckets[hour_key]['response_time_sum'] += log.response_time
                     trend_buckets[hour_key]['response_time_count'] += 1
-            
+
             # Generate trend arrays
             sorted_hours = sorted(trend_buckets.keys())
             verification_trend = [trend_buckets[hour]['verifications'] for hour in sorted_hours]
             human_rate_trend = [
-                (trend_buckets[hour]['human_count'] / trend_buckets[hour]['verifications'] * 100) 
+                (trend_buckets[hour]['human_count'] / trend_buckets[hour]['verifications'] * 100)
                 if trend_buckets[hour]['verifications'] > 0 else 0
                 for hour in sorted_hours
             ]
@@ -132,7 +132,7 @@ def get_analytics_summary():
                 if trend_buckets[hour]['response_time_count'] > 0 else 0
                 for hour in sorted_hours
             ]
-            
+
             result = {
                 'total_verifications': total_verifications,
                 'verification_change': round(verification_change, 1),
@@ -151,20 +151,20 @@ def get_analytics_summary():
                 'time_range_hours': time_range,
                 'last_updated': datetime.utcnow().isoformat()
             }
-            
+
             # Cache the result
             if redis_client:
                 redis_client.setex(cache_key, 300, json.dumps(result, default=str))  # 5 min cache
-            
+
             return jsonify({
                 'success': True,
                 'data': result,
                 'timestamp': datetime.utcnow().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error getting analytics summary: {e}")
         return jsonify({
@@ -185,7 +185,7 @@ def get_analytics_charts():
     try:
         website_id = request.args.get('website_id')
         time_range = request.args.get('time_range', '24h')
-        
+
         # Parse time range
         if time_range == '1h':
             hours = 1
@@ -197,23 +197,23 @@ def get_analytics_charts():
             hours = 720
         else:
             hours = 24
-        
+
         cache_key = f"analytics_charts:{website_id or 'all'}:{time_range}"
         if redis_client:
             cached_data = redis_client.get(cache_key)
             if cached_data:
                 return jsonify(json.loads(cached_data))
-        
+
         session = get_db_session()
         try:
             since = datetime.utcnow() - timedelta(hours=hours)
             query = session.query(VerificationLog).filter(VerificationLog.timestamp >= since)
-            
+
             if website_id and website_id != 'all':
                 query = query.filter(VerificationLog.origin.like(f'%{website_id}%'))
-            
+
             logs = query.order_by(VerificationLog.timestamp).all()
-            
+
             # Time bucket size based on range
             if hours <= 24:
                 bucket_minutes = 60  # 1 hour buckets
@@ -221,7 +221,7 @@ def get_analytics_charts():
                 bucket_minutes = 60 * 6  # 6 hour buckets
             else:
                 bucket_minutes = 60 * 24  # 1 day buckets
-            
+
             # Group logs by time buckets
             time_buckets = {}
             for log in logs:
@@ -235,24 +235,24 @@ def get_analytics_charts():
                     bucket_time = bucket_time.replace(
                         hour=(bucket_time.hour // (bucket_minutes // 60)) * (bucket_minutes // 60)
                     )
-                
+
                 bucket_key = bucket_time.isoformat()
-                
+
                 if bucket_key not in time_buckets:
                     time_buckets[bucket_key] = {
                         'human': 0,
                         'bot': 0,
                         'timestamp': bucket_time
                     }
-                
+
                 if log.is_human:
                     time_buckets[bucket_key]['human'] += 1
                 else:
                     time_buckets[bucket_key]['bot'] += 1
-            
+
             # Generate chart data
             sorted_buckets = sorted(time_buckets.keys())
-            
+
             # Format labels based on time range
             labels = []
             for bucket_key in sorted_buckets:
@@ -263,18 +263,18 @@ def get_analytics_charts():
                     labels.append(timestamp.strftime('%m/%d %H:%M'))
                 else:
                     labels.append(timestamp.strftime('%m/%d'))
-            
+
             human_data = [time_buckets[bucket]['human'] for bucket in sorted_buckets]
             bot_data = [time_buckets[bucket]['bot'] for bucket in sorted_buckets]
-            
+
             # Calculate totals for distribution
             total_human = sum(human_data)
             total_bot = sum(bot_data)
             total_verifications = total_human + total_bot
-            
+
             human_percentage = (total_human / total_verifications * 100) if total_verifications > 0 else 0
             bot_percentage = (total_bot / total_verifications * 100) if total_verifications > 0 else 0
-            
+
             result = {
                 'verification_trends': {
                     'labels': labels,
@@ -303,20 +303,20 @@ def get_analytics_charts():
                 'time_range': time_range,
                 'bucket_size_minutes': bucket_minutes
             }
-            
+
             # Cache result
             if redis_client:
                 redis_client.setex(cache_key, 600, json.dumps(result, default=str))  # 10 min cache
-            
+
             return jsonify({
                 'success': True,
                 'data': result,
                 'timestamp': datetime.utcnow().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error getting analytics charts: {e}")
         return jsonify({
@@ -337,23 +337,23 @@ def get_geographic_analytics():
     try:
         website_id = request.args.get('website_id')
         time_range = int(request.args.get('time_range', 24))
-        
+
         cache_key = f"analytics_geo:{website_id or 'all'}:{time_range}"
         if redis_client:
             cached_data = redis_client.get(cache_key)
             if cached_data:
                 return jsonify(json.loads(cached_data))
-        
+
         session = get_db_session()
         try:
             since = datetime.utcnow() - timedelta(hours=time_range)
             query = session.query(VerificationLog).filter(VerificationLog.timestamp >= since)
-            
+
             if website_id and website_id != 'all':
                 query = query.filter(VerificationLog.origin.like(f'%{website_id}%'))
-            
+
             logs = query.all()
-            
+
             # Count by country (simulated - would use actual GeoIP)
             country_counts = {}
             for log in logs:
@@ -367,45 +367,45 @@ def get_geographic_analytics():
                         'human': 0,
                         'bot': 0
                     }
-                
+
                 country_counts[country]['count'] += 1
                 if log.is_human:
                     country_counts[country]['human'] += 1
                 else:
                     country_counts[country]['bot'] += 1
-            
+
             # Sort by count and get top countries
             top_countries = sorted(
                 country_counts.values(),
                 key=lambda x: x['count'],
                 reverse=True
             )[:10]
-            
+
             # Add percentages
             total_verifications = sum(country['count'] for country in top_countries)
             for country in top_countries:
                 country['percentage'] = (country['count'] / total_verifications * 100) if total_verifications > 0 else 0
-            
+
             result = {
                 'top_countries': top_countries,
                 'total_countries': len(country_counts),
                 'total_verifications': total_verifications,
                 'time_range_hours': time_range
             }
-            
+
             # Cache result
             if redis_client:
                 redis_client.setex(cache_key, 900, json.dumps(result, default=str))  # 15 min cache
-            
+
             return jsonify({
                 'success': True,
                 'data': result,
                 'timestamp': datetime.utcnow().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error getting geographic analytics: {e}")
         return jsonify({
@@ -426,13 +426,13 @@ def get_threat_analytics():
     try:
         website_id = request.args.get('website_id')
         time_range = int(request.args.get('time_range', 24))
-        
+
         cache_key = f"analytics_threats:{website_id or 'all'}:{time_range}"
         if redis_client:
             cached_data = redis_client.get(cache_key)
             if cached_data:
                 return jsonify(json.loads(cached_data))
-        
+
         session = get_db_session()
         try:
             since = datetime.utcnow() - timedelta(hours=time_range)
@@ -442,19 +442,19 @@ def get_threat_analytics():
                     VerificationLog.is_human == False  # Only bot detections
                 )
             )
-            
+
             if website_id and website_id != 'all':
                 query = query.filter(VerificationLog.origin.like(f'%{website_id}%'))
-            
+
             bot_logs = query.all()
-            
+
             # Analyze bot types based on confidence and patterns
             threat_types = {
                 'High Confidence Bots': {'count': 0, 'severity': 'high', 'description': 'Clear bot signatures detected'},
                 'Suspicious Activity': {'count': 0, 'severity': 'medium', 'description': 'Potentially automated behavior'},
                 'Low Confidence': {'count': 0, 'severity': 'low', 'description': 'Uncertain classifications'}
             }
-            
+
             for log in bot_logs:
                 if log.confidence <= 0.3:  # Very confident it's a bot
                     threat_types['High Confidence Bots']['count'] += 1
@@ -462,16 +462,16 @@ def get_threat_analytics():
                     threat_types['Suspicious Activity']['count'] += 1
                 else:
                     threat_types['Low Confidence']['count'] += 1
-            
+
             # Calculate percentages
             total_threats = len(bot_logs)
             for threat_type in threat_types.values():
                 threat_type['percentage'] = (threat_type['count'] / total_threats * 100) if total_threats > 0 else 0
-            
+
             # Additional threat metrics
             unique_ips = len(set(log.ip_address for log in bot_logs))
             avg_confidence = sum(log.confidence for log in bot_logs) / len(bot_logs) if bot_logs else 0
-            
+
             result = {
                 'threat_types': [
                     {
@@ -496,20 +496,20 @@ def get_threat_analytics():
                 },
                 'time_range_hours': time_range
             }
-            
+
             # Cache result
             if redis_client:
                 redis_client.setex(cache_key, 600, json.dumps(result, default=str))  # 10 min cache
-            
+
             return jsonify({
                 'success': True,
                 'data': result,
                 'timestamp': datetime.utcnow().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error getting threat analytics: {e}")
         return jsonify({
@@ -530,7 +530,7 @@ def get_verification_trends():
     try:
         time_range = request.args.get('time_range', '24h')
         website_id = request.args.get('website_id')
-        
+
         # Parse time range
         if time_range == '1h':
             hours = 1
@@ -542,27 +542,27 @@ def get_verification_trends():
             hours = 720
         else:
             hours = 24
-        
+
         cache_key = f"verification_trends:{website_id or 'all'}:{time_range}"
         if redis_client:
             cached_data = redis_client.get(cache_key)
             if cached_data:
                 return jsonify(json.loads(cached_data))
-        
+
         session = get_db_session()
         try:
             since = datetime.utcnow() - timedelta(hours=hours)
             query = session.query(VerificationLog).filter(VerificationLog.timestamp >= since)
-            
+
             if website_id and website_id != 'all':
                 query = query.filter(VerificationLog.origin.like(f'%{website_id}%'))
-            
+
             logs = query.order_by(VerificationLog.timestamp).all()
-            
+
             # Group by time buckets
             bucket_minutes = 60 if hours <= 24 else 360  # 1 hour or 6 hour buckets
             time_buckets = {}
-            
+
             for log in logs:
                 bucket_time = log.timestamp.replace(
                     minute=(log.timestamp.minute // (bucket_minutes % 60)) * (bucket_minutes % 60),
@@ -573,9 +573,9 @@ def get_verification_trends():
                     bucket_time = bucket_time.replace(
                         hour=(bucket_time.hour // (bucket_minutes // 60)) * (bucket_minutes // 60)
                     )
-                
+
                 bucket_key = bucket_time.isoformat()
-                
+
                 if bucket_key not in time_buckets:
                     time_buckets[bucket_key] = {
                         'successful': 0,
@@ -583,37 +583,37 @@ def get_verification_trends():
                         'response_times': [],
                         'timestamp': bucket_time
                     }
-                
+
                 # Consider high confidence predictions as "successful"
                 if log.confidence > 0.7:
                     time_buckets[bucket_key]['successful'] += 1
                 else:
                     time_buckets[bucket_key]['failed'] += 1
-                
+
                 if log.response_time:
                     time_buckets[bucket_key]['response_times'].append(log.response_time)
-            
+
             # Build timeline
             timeline = []
             total_successful = 0
             total_failed = 0
-            
+
             for bucket_key in sorted(time_buckets.keys()):
                 bucket = time_buckets[bucket_key]
                 avg_response_time = sum(bucket['response_times']) / len(bucket['response_times']) if bucket['response_times'] else 0
-                
+
                 timeline.append({
                     'timestamp': bucket['timestamp'].isoformat(),
                     'successful_verifications': bucket['successful'],
                     'failed_verifications': bucket['failed'],
                     'avg_response_time': round(avg_response_time, 2)
                 })
-                
+
                 total_successful += bucket['successful']
                 total_failed += bucket['failed']
-            
+
             success_rate = (total_successful / (total_successful + total_failed) * 100) if (total_successful + total_failed) > 0 else 0
-            
+
             result = {
                 'timeline': timeline,
                 'summary': {
@@ -621,27 +621,27 @@ def get_verification_trends():
                     'total_failed': total_failed,
                     'success_rate': round(success_rate, 1),
                     'avg_response_time': round(
-                        sum(log.response_time for log in logs if log.response_time) / 
+                        sum(log.response_time for log in logs if log.response_time) /
                         len([log for log in logs if log.response_time]), 2
                     ) if logs else 0
                 },
                 'time_range': time_range,
                 'bucket_size_minutes': bucket_minutes
             }
-            
+
             # Cache result
             if redis_client:
                 redis_client.setex(cache_key, 600, json.dumps(result, default=str))
-            
+
             return jsonify({
                 'success': True,
                 'data': result,
                 'timestamp': datetime.utcnow().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error getting verification trends: {e}")
         return jsonify({
@@ -665,7 +665,7 @@ def get_system_health():
             cached_data = redis_client.get(cache_key)
             if cached_data:
                 return jsonify(json.loads(cached_data))
-        
+
         # Check various system components
         components = {
             'database': _check_database_health(),
@@ -674,36 +674,36 @@ def get_system_health():
             'ml_model': _check_ml_model_health(),
             'logs_pipeline': _check_logs_pipeline_health()
         }
-        
+
         # Calculate overall health
         healthy_components = sum(1 for comp in components.values() if comp['status'] == 'healthy')
         total_components = len(components)
         overall_health = healthy_components / total_components
-        
+
         if overall_health >= 0.8:
             overall_status = 'healthy'
         elif overall_health >= 0.6:
             overall_status = 'warning'
         else:
             overall_status = 'error'
-        
+
         result = {
             'overall_status': overall_status,
             'overall_health_percentage': round(overall_health * 100, 1),
             'components': components,
             'last_checked': datetime.utcnow().isoformat()
         }
-        
+
         # Cache for shorter time due to dynamic nature
         if redis_client:
             redis_client.setex(cache_key, 60, json.dumps(result, default=str))  # 1 min cache
-        
+
         return jsonify({
             'success': True,
             'data': result,
             'timestamp': datetime.utcnow().isoformat()
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error getting system health: {e}")
         return jsonify({
@@ -726,7 +726,7 @@ def export_logs():
         website_id = request.args.get('website_id')
         time_range = int(request.args.get('time_range', 24))
         log_filter = request.args.get('filter', 'all')  # all, human, bot, suspicious
-        
+
         if format_type not in ['csv', 'json', 'excel']:
             return jsonify({
                 'success': False,
@@ -735,15 +735,15 @@ def export_logs():
                     'message': 'Supported formats: csv, json, excel'
                 }
             }), 400
-        
+
         session = get_db_session()
         try:
             since = datetime.utcnow() - timedelta(hours=time_range)
             query = session.query(VerificationLog).filter(VerificationLog.timestamp >= since)
-            
+
             if website_id and website_id != 'all':
                 query = query.filter(VerificationLog.origin.like(f'%{website_id}%'))
-            
+
             # Apply log filter
             if log_filter == 'human':
                 query = query.filter(VerificationLog.is_human == True)
@@ -756,15 +756,15 @@ def export_logs():
                         VerificationLog.confidence <= 0.6
                     )
                 )
-            
+
             logs = query.order_by(VerificationLog.timestamp.desc()).limit(10000).all()  # Limit for performance
-            
+
             # Export logs
             if logs_pipeline:
                 exported_data = logs_pipeline.exporter.export_logs(logs, format_type)
             else:
                 exported_data = LogsExporter.export_logs(logs, format_type)
-            
+
             # Create response
             if format_type == 'csv':
                 response = make_response(exported_data)
@@ -778,12 +778,12 @@ def export_logs():
                 response = make_response(exported_data)
                 response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 response.headers['Content-Disposition'] = f'attachment; filename=verification_logs_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.xlsx'
-            
+
             return response
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error exporting logs: {e}")
         return jsonify({
@@ -805,11 +805,11 @@ def _get_country_from_ip(ip_address: str) -> str:
         '127.0.0.1': 'localhost',
         '192.168.': 'Private Network'
     }
-    
+
     for ip_prefix, country in ip_to_country.items():
         if ip_address.startswith(ip_prefix):
             return country
-    
+
     # Simulate based on IP patterns (for demo)
     if ip_address.startswith('10.'):
         return 'United States'

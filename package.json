@@ -6,6 +6,6 @@
     "build": "cd frontend && npm install --no-audit --no-fund && npm run build"
   },
   "engines": {
-    "node": "18"
+    "node": "22.x"
   }
 }

@@ -40,19 +40,19 @@ def get_websites():
             cached_data = redis_client.get(cache_key)
             if cached_data:
                 return jsonify(json.loads(cached_data))
-        
+
         session = get_db_session()
         try:
             websites = session.query(Website).all()
             websites_data = []
-            
+
             # Get script token manager for integration status
             token_manager = get_script_token_manager()
-            
+
             for website in websites:
                 # Get recent activity count
                 recent_count = _get_recent_activity_count(website.website_id)
-                
+
                 # Get script token status
                 script_token = None
                 integration_status = 'not_integrated'
@@ -60,7 +60,7 @@ def get_websites():
                     script_token = token_manager.get_website_token(website.website_id)
                     if script_token:
                         integration_status = script_token.status.value
-                
+
                 website_data = website.to_dict()
                 website_data.update({
                     'total_verifications': recent_count,
@@ -71,27 +71,27 @@ def get_websites():
                     'script_token_info': script_token.to_dict() if script_token else None
                 })
                 websites_data.append(website_data)
-            
+
             result = {
                 'websites': websites_data,
                 'total_count': len(websites_data),
                 'active_count': len([w for w in websites_data if w['status'] == 'active']),
                 'suspended_count': len([w for w in websites_data if w['status'] == 'suspended'])
             }
-            
+
             # Cache result
             if redis_client:
                 redis_client.setex(cache_key, 300, json.dumps(result, default=str))  # 5 min cache
-            
+
             return jsonify({
                 'success': True,
                 'data': result,
                 'timestamp': datetime.utcnow().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error getting websites: {e}")
         return jsonify({
@@ -111,7 +111,7 @@ def create_website():
     """
     try:
         data = request.get_json()
-        
+
         # Validate required fields
         required_fields = ['name', 'url']
         for field in required_fields:
@@ -123,7 +123,7 @@ def create_website():
                         'message': f'Missing required field: {field}'
                     }
                 }), 400
-        
+
         # Validate URL format
         if not data['url'].startswith(('http://', 'https://')):
             return jsonify({
@@ -133,7 +133,7 @@ def create_website():
                     'message': 'URL must start with http:// or https://'
                 }
             }), 400
-        
+
         session = get_db_session()
         try:
             # Check if website already exists
@@ -143,7 +143,7 @@ def create_website():
                     Website.website_url == data['url']
                 )
             ).first()
-            
+
             if existing:
                 return jsonify({
                     'success': False,
@@ -152,12 +152,12 @@ def create_website():
                         'message': 'Website with this name or URL already exists'
                     }
                 }), 409
-            
+
             # Generate API credentials
             website_id = str(uuid.uuid4())
             api_key = f"pk_{secrets.token_urlsafe(32)}"
             secret_key = f"sk_{secrets.token_urlsafe(32)}"
-            
+
             # Create website record
             website = Website(
                 website_id=website_id,
@@ -174,14 +174,14 @@ def create_website():
                     'requests_per_day': 1000000
                 })
             )
-            
+
             session.add(website)
             session.commit()
-            
+
             # Clear cache
             if redis_client:
                 redis_client.delete("websites_list")
-            
+
             # Log creation
             if logs_pipeline:
                 logs_pipeline.log_system_event(
@@ -192,7 +192,7 @@ def create_website():
                         'website_url': data['url']
                     }
                 )
-            
+
             return jsonify({
                 'success': True,
                 'data': {
@@ -201,10 +201,10 @@ def create_website():
                 },
                 'timestamp': datetime.utcnow().isoformat()
             }), 201
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error creating website: {e}")
         return jsonify({
@@ -224,11 +224,11 @@ def update_website(website_id):
     """
     try:
         data = request.get_json()
-        
+
         session = get_db_session()
         try:
             website = session.query(Website).filter(Website.website_id == website_id).first()
-            
+
             if not website:
                 return jsonify({
                     'success': False,
@@ -237,33 +237,33 @@ def update_website(website_id):
                         'message': 'Website not found'
                     }
                 }), 404
-            
+
             # Update allowed fields
             updatable_fields = ['website_name', 'website_url', 'admin_email', 'status']
             updates_made = []
-            
+
             for field in updatable_fields:
                 if field in data:
                     old_value = getattr(website, field)
                     setattr(website, field, data[field])
                     updates_made.append(f"{field}: {old_value} -> {data[field]}")
-            
+
             # Update permissions if provided
             if 'permissions' in data:
                 website.permissions = json.dumps(data['permissions'])
                 updates_made.append(f"permissions updated")
-            
+
             # Update rate limits if provided
             if 'rate_limits' in data:
                 website.rate_limits = json.dumps(data['rate_limits'])
                 updates_made.append(f"rate_limits updated")
-            
+
             session.commit()
-            
+
             # Clear cache
             if redis_client:
                 redis_client.delete("websites_list")
-            
+
             # Log update
             if logs_pipeline:
                 logs_pipeline.log_system_event(
@@ -273,7 +273,7 @@ def update_website(website_id):
                         'updates': updates_made
                     }
                 )
-            
+
             return jsonify({
                 'success': True,
                 'data': {
@@ -283,10 +283,10 @@ def update_website(website_id):
                 },
                 'timestamp': datetime.utcnow().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error updating website: {e}")
         return jsonify({
@@ -308,7 +308,7 @@ def delete_website(website_id):
         session = get_db_session()
         try:
             website = session.query(Website).filter(Website.website_id == website_id).first()
-            
+
             if not website:
                 return jsonify({
                     'success': False,
@@ -317,17 +317,17 @@ def delete_website(website_id):
                         'message': 'Website not found'
                     }
                 }), 404
-            
+
             website_name = website.website_name
-            
+
             # Delete website
             session.delete(website)
             session.commit()
-            
+
             # Clear cache
             if redis_client:
                 redis_client.delete("websites_list")
-            
+
             # Log deletion
             if logs_pipeline:
                 logs_pipeline.log_system_event(
@@ -337,7 +337,7 @@ def delete_website(website_id):
                         'website_name': website_name
                     }
                 )
-            
+
             return jsonify({
                 'success': True,
                 'data': {
@@ -345,10 +345,10 @@ def delete_website(website_id):
                 },
                 'timestamp': datetime.utcnow().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error deleting website: {e}")
         return jsonify({
@@ -369,7 +369,7 @@ def toggle_website_status(website_id):
     try:
         data = request.get_json()
         new_status = data.get('status')
-        
+
         if new_status not in ['active', 'suspended']:
             return jsonify({
                 'success': False,
@@ -378,11 +378,11 @@ def toggle_website_status(website_id):
                     'message': 'Status must be "active" or "suspended"'
                 }
             }), 400
-        
+
         session = get_db_session()
         try:
             website = session.query(Website).filter(Website.website_id == website_id).first()
-            
+
             if not website:
                 return jsonify({
                     'success': False,
@@ -391,15 +391,15 @@ def toggle_website_status(website_id):
                         'message': 'Website not found'
                     }
                 }), 404
-            
+
             old_status = website.status
             website.status = new_status
             session.commit()
-            
+
             # Clear cache
             if redis_client:
                 redis_client.delete("websites_list")
-            
+
             # Log status change
             if logs_pipeline:
                 logs_pipeline.log_system_event(
@@ -410,7 +410,7 @@ def toggle_website_status(website_id):
                         'new_status': new_status
                     }
                 )
-            
+
             return jsonify({
                 'success': True,
                 'data': {
@@ -419,10 +419,10 @@ def toggle_website_status(website_id):
                 },
                 'timestamp': datetime.utcnow().isoformat()
             })
-            
+
         finally:
             session.close()
-            
+
     except Exception as e:
         current_app.logger.error(f"Error toggling website status: {e}")
         return jsonify({
@@ -448,7 +448,7 @@ def get_api_config():
             cached_data = redis_client.get(cache_key)
             if cached_data:
                 return jsonify(json.loads(cached_data))
-        
+
         # Get configuration from environment/database
         config = {
             'api_endpoint': current_app.config.get('API_BASE_URL', 'http://localhost:5003'),
@@ -476,17 +476,17 @@ def get_api_config():
                 'token_expiry_hours': 24
             }
         }
-        
+
         # Cache result
         if redis_client:
             redis_client.setex(cache_key, 900, json.dumps(config, default=str))  # 15 min cache
-        
+
         return jsonify({
             'success': True,
             'data': config,
             'timestamp': datetime.utcnow().isoformat()
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error getting API config: {e}")
         return jsonify({
@@ -506,7 +506,7 @@ def update_api_config():
     """
     try:
         data = request.get_json()
-        
+
         # Validate configuration data
         if 'rate_limiting' in data:
             rate_config = data['rate_limiting']
@@ -518,21 +518,21 @@ def update_api_config():
                         'message': 'Rate limiting enabled must be boolean'
                     }
                 }), 400
-        
+
         # Store configuration (in production, save to database/config file)
         # For now, we'll just validate and return success
-        
+
         # Clear cache
         if redis_client:
             redis_client.delete("api_config")
-        
+
         # Log configuration change
         if logs_pipeline:
             logs_pipeline.log_system_event(
                 "API configuration updated",
                 metadata={'updated_fields': list(data.keys())}
             )
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -541,7 +541,7 @@ def update_api_config():
             },
             'timestamp': datetime.utcnow().isoformat()
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error updating API config: {e}")
         return jsonify({
@@ -563,13 +563,13 @@ def test_api_connection():
         data = request.get_json()
         endpoint = data.get('endpoint', current_app.config.get('API_BASE_URL', 'http://localhost:5003'))
         timeout = data.get('timeout', 10)
-        
+
         # Test connection
         test_url = f"{endpoint}/api/health"
-        
+
         try:
             response = requests.get(test_url, timeout=timeout)
-            
+
             if response.status_code == 200:
                 result = {
                     'status': 'success',
@@ -586,7 +586,7 @@ def test_api_connection():
                     'status_code': response.status_code,
                     'endpoint': test_url
                 }
-        
+
         except requests.exceptions.Timeout:
             result = {
                 'status': 'error',
@@ -594,27 +594,27 @@ def test_api_connection():
                 'endpoint': test_url,
                 'timeout_seconds': timeout
             }
-        
+
         except requests.exceptions.ConnectionError:
             result = {
                 'status': 'error',
                 'message': 'Connection failed - endpoint unreachable',
                 'endpoint': test_url
             }
-        
+
         except Exception as e:
             result = {
                 'status': 'error',
                 'message': f'Connection test failed: {str(e)}',
                 'endpoint': test_url
             }
-        
+
         return jsonify({
             'success': True,
             'data': result,
             'timestamp': datetime.utcnow().isoformat()
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error testing API connection: {e}")
         return jsonify({
@@ -640,7 +640,7 @@ def get_alert_settings():
             cached_data = redis_client.get(cache_key)
             if cached_data:
                 return jsonify(json.loads(cached_data))
-        
+
         # Default alert settings (in production, load from database)
         settings = {
             'email_notifications': {
@@ -691,17 +691,17 @@ def get_alert_settings():
                 'timezone': 'UTC'
             }
         }
-        
+
         # Cache result
         if redis_client:
             redis_client.setex(cache_key, 600, json.dumps(settings, default=str))  # 10 min cache
-        
+
         return jsonify({
             'success': True,
             'data': settings,
             'timestamp': datetime.utcnow().isoformat()
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error getting alert settings: {e}")
         return jsonify({
@@ -721,7 +721,7 @@ def update_alert_settings():
     """
     try:
         data = request.get_json()
-        
+
         # Validate email settings if provided
         if 'email_notifications' in data:
             email_config = data['email_notifications']
@@ -735,7 +735,7 @@ def update_alert_settings():
                             'message': 'Recipients must be a list of valid email addresses'
                         }
                     }), 400
-        
+
         # Validate thresholds if provided
         if 'alert_thresholds' in data:
             thresholds = data['alert_thresholds']
@@ -749,21 +749,21 @@ def update_alert_settings():
                                 'message': f'Threshold for {threshold_name} must be a number'
                             }
                         }), 400
-        
+
         # Store settings (in production, save to database)
         # For now, we'll just validate and return success
-        
+
         # Clear cache
         if redis_client:
             redis_client.delete("alert_settings")
-        
+
         # Log configuration change
         if logs_pipeline:
             logs_pipeline.log_system_event(
                 "Alert settings updated",
                 metadata={'updated_sections': list(data.keys())}
             )
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -772,7 +772,7 @@ def update_alert_settings():
             },
             'timestamp': datetime.utcnow().isoformat()
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error updating alert settings: {e}")
         return jsonify({
@@ -794,7 +794,7 @@ def send_test_alert():
         data = request.get_json()
         alert_type = data.get('type', 'email')
         recipient = data.get('recipient')
-        
+
         if alert_type == 'email':
             if not recipient:
                 return jsonify({
@@ -804,7 +804,7 @@ def send_test_alert():
                         'message': 'Email recipient is required for email test'
                     }
                 }), 400
-            
+
             # Simulate sending test email
             # In production, use actual email service
             result = {
@@ -814,14 +814,14 @@ def send_test_alert():
                 'recipient': recipient,
                 'sent_at': datetime.utcnow().isoformat()
             }
-        
+
         else:
             result = {
                 'status': 'error',
                 'message': f'Alert type "{alert_type}" not supported',
                 'supported_types': ['email']
             }
-        
+
         # Log test alert
         if logs_pipeline:
             logs_pipeline.log_system_event(
@@ -832,13 +832,13 @@ def send_test_alert():
                     'result': result['status']
                 }
             )
-        
+
         return jsonify({
             'success': True,
             'data': result,
             'timestamp': datetime.utcnow().isoformat()
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error sending test alert: {e}")
         return jsonify({
@@ -857,7 +857,7 @@ def _get_recent_activity_count(website_id: str) -> int:
     try:
         session = get_db_session()
         from app.database import VerificationLog
-        
+
         since = datetime.utcnow() - timedelta(hours=24)
         count = session.query(VerificationLog).filter(
             and_(
@@ -865,7 +865,7 @@ def _get_recent_activity_count(website_id: str) -> int:
                 VerificationLog.origin.like(f'%{website_id}%')
             )
         ).count()
-        
+
         session.close()
         return count
     except:
@@ -877,13 +877,13 @@ def _get_last_activity_time(website_id: str) -> str:
     try:
         session = get_db_session()
         from app.database import VerificationLog
-        
+
         last_log = session.query(VerificationLog).filter(
             VerificationLog.origin.like(f'%{website_id}%')
         ).order_by(VerificationLog.timestamp.desc()).first()
-        
+
         session.close()
-        
+
         if last_log:
             return last_log.timestamp.isoformat()
         else:

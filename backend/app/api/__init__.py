@@ -29,9 +29,9 @@ def verify_captcha():
     """
     if request.method == 'OPTIONS':
         return '', 200
-    
+
     start_time = time.time()
-    
+
     try:
         # Validate request
         if not request.is_json:
@@ -41,9 +41,9 @@ def verify_captcha():
                     'message': 'Content-Type must be application/json'
                 }
             }), 400
-        
+
         data = request.get_json()
-        
+
         if not data:
             return jsonify({
                 'error': {
@@ -51,11 +51,11 @@ def verify_captcha():
                     'message': 'Request body is required'
                 }
             }), 400
-        
+
         # Extract required fields
         session_id = data.get('sessionId', f'session_{int(time.time())}')
         origin = data.get('origin', request.headers.get('Origin', 'unknown'))
-        
+
         # Extract features from behavioral data
         try:
             features = extract_features(data)
@@ -66,21 +66,21 @@ def verify_captcha():
                     'message': f'Failed to extract features: {str(e)}'
                 }
             }), 400
-        
+
         # Get ML prediction
         try:
             prediction = predict_human_probability(features)
         except Exception as e:
             return jsonify({
                 'error': {
-                    'code': 'PREDICTION_ERROR', 
+                    'code': 'PREDICTION_ERROR',
                     'message': f'ML model prediction failed: {str(e)}'
                 }
             }), 500
-        
+
         # Calculate response time
         response_time = int((time.time() - start_time) * 1000)
-        
+
         # Prepare response
         result = {
             'isHuman': prediction['isHuman'],
@@ -89,7 +89,7 @@ def verify_captcha():
             'timestamp': datetime.utcnow().isoformat() + 'Z',
             'responseTime': response_time
         }
-        
+
         # Log verification
         try:
             log_verification(
@@ -104,9 +104,9 @@ def verify_captcha():
             )
         except Exception as e:
             print(f"Warning: Failed to log verification: {e}")
-        
+
         return jsonify(result), 200
-        
+
     except Exception as e:
         print(f"Error in verify_captcha: {e}")
         return jsonify({
@@ -128,7 +128,7 @@ def validate_token():
     """
     try:
         data = request.get_json()
-        
+
         if not data or 'token' not in data:
             return jsonify({
                 'valid': False,
@@ -137,13 +137,13 @@ def validate_token():
                     'message': 'Token is required'
                 }
             }), 400
-        
+
         token = data['token']
         secret = data.get('secret')
-        
+
         # Validate against admin secret (simplified approach)
         expected_secret = current_app.config.get('ADMIN_SECRET')
-        
+
         if secret != expected_secret:
             return jsonify({
                 'valid': False,
@@ -152,7 +152,7 @@ def validate_token():
                     'message': 'Invalid secret key'
                 }
             }), 401
-        
+
         # Basic token validation - check format and length
         # In production, you'd verify JWT tokens or check against a database
         if not token or len(token) < 10:
@@ -160,25 +160,25 @@ def validate_token():
                 'valid': False,
                 'reason': 'Invalid token format'
             }), 200
-        
+
         # Additional basic checks for token validity
         if not token.replace('-', '').replace('_', '').isalnum():
             return jsonify({
                 'valid': False,
                 'reason': 'Token contains invalid characters'
             }), 200
-        
+
         return jsonify({
             'valid': True,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }), 200
-        
+
     except Exception as e:
         print(f"Error in validate_token: {e}")
         return jsonify({
             'valid': False,
             'error': {
-                'code': 'VALIDATION_ERROR', 
+                'code': 'VALIDATION_ERROR',
                 'message': 'Token validation failed'
             }
         }), 500
@@ -197,9 +197,9 @@ def model_info():
                     'message': 'ML model is not loaded'
                 }
             }), 503
-        
+
         info = get_model_info()
-        
+
         return jsonify({
             'model': {
                 'algorithm': info.get('algorithm', 'Random Forest'),
@@ -211,7 +211,7 @@ def model_info():
             'status': 'loaded',
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }), 200
-        
+
     except Exception as e:
         print(f"Error in model_info: {e}")
         return jsonify({
@@ -234,7 +234,7 @@ def api_status():
         'timestamp': datetime.utcnow().isoformat() + 'Z',
         'endpoints': {
             'verify': '/api/verify',
-            'health': '/api/health', 
+            'health': '/api/health',
             'validate': '/api/validate',
             'model_info': '/api/ml/info'
         }
@@ -273,4 +273,4 @@ def method_not_allowed_handler(e):
             'code': 'METHOD_NOT_ALLOWED',
             'message': 'The HTTP method is not allowed for this endpoint'
         }
-    }), 405 
+    }), 405

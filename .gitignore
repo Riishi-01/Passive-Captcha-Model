@@ -1,6 +1,26 @@
+# Testing and Reports
+testing/reports/
+testing/*.json
+testing/*.log
+*_validation_report.json
+*_test_report.*
+comprehensive_test.log
+local_validation_report.json
+final_validation_report.json
+run_tests.py
+
+# Temporary and test files
+*.tmp
+*.temp
+test_*.db
+test_validation.db
+temp_*
+.pytest_cache/
+
 # Ignore all .md files except README.md
 *.md
 !README.md
+!TESTING_REPORT.md
 
 # Python
 __pycache__/

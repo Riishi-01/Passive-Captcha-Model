@@ -24,7 +24,7 @@ def create_app(config_name='development'):
     Application factory pattern for Flask app creation
     """
     app = Flask(__name__)
-    
+
     # Configuration
     app.config.update({
         'SECRET_KEY': os.getenv('SECRET_KEY', 'passive-captcha-secret-key'),
@@ -35,14 +35,14 @@ def create_app(config_name='development'):
         'RATE_LIMIT_REQUESTS': int(os.getenv('RATE_LIMIT_REQUESTS', '100')),
         'DEBUG': config_name == 'development'
     })
-    
+
     # CORS configuration - Allow Render.com domains
     allowed_origins = os.getenv('ALLOWED_ORIGINS', '*')
     if allowed_origins == '*':
         cors_origins = "*"
     else:
         cors_origins = allowed_origins.split(',')
-    
+
     CORS(app, resources={
         r"/api/*": {
             "origins": cors_origins,
@@ -60,38 +60,38 @@ def create_app(config_name='development'):
             "allow_headers": ["Content-Type"]
         }
     })
-    
+
     # Rate limiting
     limiter = Limiter(
         key_func=get_remote_address,
         default_limits=[f"{app.config['RATE_LIMIT_REQUESTS']} per hour"]
     )
     limiter.init_app(app)
-    
+
     # Initialize database
     from app.database import init_db
     with app.app_context():
         init_db()
-    
+
     # Initialize ML model
     from app.ml import load_model
     with app.app_context():
         load_model()
-    
+
     # Register blueprints
     from app.api import api_bp
     from app.admin import admin_bp
-    
+
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(admin_bp, url_prefix='/admin')
-    
+
     # Health check endpoint
     # REMOVED: Duplicate health endpoint - consolidated to main.py at /health
-    
+
     return app
 
 
 if __name__ == '__main__':
     app = create_app()
     port = int(os.getenv('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True) 
+    app.run(host='0.0.0.0', port=port, debug=True)

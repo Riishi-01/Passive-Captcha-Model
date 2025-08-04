@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Passive CAPTCHA - Consolidated Application Factory
 Single entry point for all environments (development, production, testing)
@@ -27,7 +28,7 @@ load_dotenv()
 # Load production environment if available
 production_config_paths = [
     'config.env.production',
-    './config.env.production', 
+    './config.env.production',
     'backend/config.env.production',
     '../config.env.production'
 ]
@@ -35,33 +36,33 @@ production_config_paths = [
 for config_path in production_config_paths:
     if os.path.exists(config_path):
         load_dotenv(config_path, override=True)
-        print(f"✅ Loaded production config from: {config_path}")
+        print(f"[SUCCESS] Loaded production config from: {config_path}")
         break
 else:
-    print("⚠️ No production config file found")
+    print("[WARNING] No production config file found")
 
 
 def create_app(config_name='production'):
     """
     Consolidated application factory for all environments
     """
-    
+
     # Determine if we need to serve static files
     serve_frontend = os.getenv('SERVE_FRONTEND', 'true').lower() == 'true'
     static_folder = None
-    
+
     if serve_frontend:
         # Configure Flask app to serve static frontend files
         backend_dir = os.path.dirname(__file__)
         project_root = os.path.dirname(backend_dir)
         static_folder = os.path.join(project_root, 'frontend', 'dist')
-        
-        print(f"🔍 Static folder detection:")
+
+        print(f"[SEARCH] Static folder detection:")
         print(f"   Backend dir: {backend_dir}")
         print(f"   Project root: {project_root}")
         print(f"   Primary static path: {static_folder}")
         print(f"   Primary path exists: {os.path.exists(static_folder)}")
-        
+
         # Check for alternative static folder locations (Render-optimized)
         if not os.path.exists(static_folder):
             alternative_paths = [
@@ -79,39 +80,39 @@ def create_app(config_name='production'):
                 './frontend/dist',
                 '../frontend/dist'
             ]
-            
-            print(f"🔍 Checking alternative paths:")
+
+            print(f"[SEARCH] Checking alternative paths:")
             for alt_path in alternative_paths:
                 abs_path = os.path.abspath(alt_path)
                 exists = os.path.exists(abs_path)
                 print(f"   {alt_path} -> {abs_path} (exists: {exists})")
                 if exists:
                     static_folder = abs_path
-                    print(f"✅ Found frontend at: {static_folder}")
+                    print(f"[SUCCESS] Found frontend at: {static_folder}")
                     break
             else:
-                print(f"❌ No static folder found, disabling frontend serving")
+                print(f"[ERROR] No static folder found, disabling frontend serving")
                 static_folder = None
                 serve_frontend = False
         else:
-            print(f"✅ Using primary static folder: {static_folder}")
-        
+            print(f"[SUCCESS] Using primary static folder: {static_folder}")
+
         # Log static folder contents for debugging
         if static_folder and os.path.exists(static_folder):
             try:
                 files = os.listdir(static_folder)
-                print(f"📁 Static folder contains {len(files)} files: {files[:5]}{'...' if len(files) > 5 else ''}")
+                print(f"[CHAR] Static folder contains {len(files)} files: {files[:5]}{'...' if len(files) > 5 else ''}")
                 # Check for index.html specifically
                 index_path = os.path.join(static_folder, 'index.html')
-                print(f"📄 index.html exists: {os.path.exists(index_path)}")
+                print(f"[DOCUMENT] index.html exists: {os.path.exists(index_path)}")
             except Exception as e:
-                print(f"⚠️ Could not list static folder contents: {e}")
-    
+                print(f"[WARNING] Could not list static folder contents: {e}")
+
     # Create Flask app
-    app = Flask(__name__, 
+    app = Flask(__name__,
                 static_folder=static_folder if serve_frontend else None,
                 static_url_path='/static' if serve_frontend else None)
-    
+
     # Configuration
     app.config.update({
         'SECRET_KEY': os.getenv('SECRET_KEY', 'passive-captcha-production-secret'),
@@ -127,21 +128,21 @@ def create_app(config_name='production'):
         'TESTING': config_name == 'testing',
         'JSON_SORT_KEYS': False,
         'JSONIFY_PRETTYPRINT_REGULAR': True,
-        
+
         # WebSocket configuration
         'SOCKETIO_ASYNC_MODE': 'threading',
         'SOCKETIO_CORS_ALLOWED_ORIGINS': "*",
-        
+
         # Logging configuration
         'LOG_LEVEL': os.getenv('LOG_LEVEL', 'INFO'),
         'LOG_FILE': os.getenv('LOG_FILE', 'logs/app.log'),
         'LOG_MAX_SIZE': int(os.getenv('LOG_MAX_SIZE', '10485760')),  # 10MB
         'LOG_BACKUP_COUNT': int(os.getenv('LOG_BACKUP_COUNT', '10'))
     })
-    
+
     # Setup logging
     setup_logging(app)
-    
+
     # CORS configuration
     render_url = os.getenv('RENDER_EXTERNAL_URL', '')
     default_origins = [
@@ -150,13 +151,13 @@ def create_app(config_name='production'):
         'http://frontend:80',
         'https://passive-captcha.onrender.com'
     ]
-    
+
     if render_url and render_url not in default_origins:
         default_origins.append(render_url)
-    
+
     allowed_origins_str = os.getenv('ALLOWED_ORIGINS', ','.join(default_origins))
     cors_origins = allowed_origins_str.split(',') if allowed_origins_str != '*' else "*"
-    
+
     CORS(app, resources={
         r"/api/*": {
             "origins": cors_origins,
@@ -176,7 +177,7 @@ def create_app(config_name='production'):
             "allow_headers": ["Content-Type"]
         }
     })
-    
+
     # Initialize Redis client (optional)
     redis_client = None
     try:
@@ -185,7 +186,7 @@ def create_app(config_name='production'):
         app.logger.info("Redis connection established successfully")
     except Exception as e:
         app.logger.warning(f"Redis unavailable, running without caching: {e}")
-    
+
     # Initialize SocketIO (optional)
     socketio = None
     try:
@@ -199,7 +200,7 @@ def create_app(config_name='production'):
         app.logger.info("SocketIO initialized successfully")
     except Exception as e:
         app.logger.warning(f"SocketIO initialization failed: {e}")
-    
+
     # Rate limiting - use in-memory by default, Redis if specifically available
     try:
         # Always use in-memory rate limiting to avoid Redis connection issues
@@ -213,7 +214,7 @@ def create_app(config_name='production'):
         app.logger.warning(f"Rate limiting initialization failed, disabling: {e}")
         # Continue without rate limiting if everything fails
         limiter = None
-    
+
     # Initialize database
     try:
         from app.database import init_db
@@ -224,6 +225,18 @@ def create_app(config_name='production'):
         app.logger.error(f"Database initialization failed: {e}")
         # Don't raise - let app start without database for debugging
     
+    # Initialize robust authentication system
+    try:
+        from app.auth_integration import integrate_with_existing_app
+        with app.app_context():
+            auth_success = integrate_with_existing_app(app)
+            if auth_success:
+                app.logger.info("✅ Robust authentication system integrated")
+            else:
+                app.logger.warning("⚠️  Failed to integrate robust authentication, using fallback")
+    except Exception as e:
+        app.logger.warning(f"⚠️  Authentication integration error: {e}, using fallback")
+
     # Initialize ML model (optional)
     try:
         from app.ml import load_model
@@ -232,14 +245,14 @@ def create_app(config_name='production'):
             app.logger.info("ML model loaded successfully")
     except Exception as e:
         app.logger.warning(f"ML model loading failed: {e}")
-    
+
     # Initialize services
     auth_service = None
     website_service = None
     try:
         from app.services import init_auth_service, init_website_service
         app.logger.info("Importing services modules...")
-        
+
         app.logger.info(f"Initializing auth service with Redis: {redis_client is not None}")
         app.logger.info(f"ADMIN_SECRET in app.config: {app.config.get('ADMIN_SECRET')}")
         auth_service = init_auth_service(redis_client)
@@ -248,11 +261,11 @@ def create_app(config_name='production'):
             app.logger.info(f"Auth service admin_secret: {auth_service.admin_secret}")
         else:
             app.logger.error("Auth service is None after initialization!")
-        
+
         # Always initialize website service (with or without Redis)
         website_service = init_website_service(redis_client)
         app.logger.info(f"Website service initialized: {website_service is not None}")
-        
+
         app.logger.info("Services initialized successfully")
     except ImportError as e:
         app.logger.error(f"Service import failed: {e}")
@@ -260,7 +273,7 @@ def create_app(config_name='production'):
         app.logger.error(f"Service initialization failed: {e}")
         import traceback
         app.logger.error(f"Traceback: {traceback.format_exc()}")
-    
+
     # Register core API blueprints
     try:
         from app.api import api_bp
@@ -268,7 +281,7 @@ def create_app(config_name='production'):
         app.logger.info("Core API endpoints registered")
     except Exception as e:
         app.logger.error(f"Failed to register core API: {e}")
-    
+
     # Register consolidated admin blueprint
     try:
         from app.api.admin_endpoints import admin_bp
@@ -276,22 +289,24 @@ def create_app(config_name='production'):
         app.logger.info("Admin API endpoints registered")
     except Exception as e:
         app.logger.error(f"Failed to register admin API: {e}")
-    
+
     # Register analytics and monitoring endpoints (non-conflicting)
     try:
         from app.admin.analytics_endpoints import analytics_bp
         from app.admin.alerts_endpoints import alerts_bp
         from app.admin.logs_endpoints import logs_bp
         from app.admin.ml_metrics_endpoints import ml_metrics_bp
-        
+        from app.admin.script_management import script_mgmt_bp
+
         app.register_blueprint(analytics_bp)
         app.register_blueprint(alerts_bp)
         app.register_blueprint(logs_bp)
         app.register_blueprint(ml_metrics_bp)
-        app.logger.info("Analytics and monitoring endpoints registered")
+        app.register_blueprint(script_mgmt_bp)
+        app.logger.info("Analytics, monitoring, and script management endpoints registered")
     except Exception as e:
         app.logger.warning(f"Failed to register analytics endpoints: {e}")
-    
+
     # Test fresh auth service creation
     @app.route('/debug/fresh-auth', methods=['POST'])
     def debug_fresh_auth():
@@ -299,14 +314,14 @@ def create_app(config_name='production'):
         try:
             data = request.get_json()
             password = data.get('password', '') if data else ''
-            
+
             # Create a fresh AuthService within this request context
-            from app.services.auth_service import AuthService
-            fresh_auth = AuthService(None)
-            
+            from app.services.auth_service import RobustAuthService
+            fresh_auth = RobustAuthService(None)
+
             # Test authentication with fresh service
             result = fresh_auth.authenticate_admin(password)
-            
+
             return jsonify({
                 'password': password,
                 'app_config_admin_secret': app.config.get('ADMIN_SECRET'),
@@ -316,7 +331,7 @@ def create_app(config_name='production'):
                 'auth_result': result is not None,
                 'app_context': True
             })
-            
+
         except Exception as e:
             import traceback
             return jsonify({
@@ -331,19 +346,19 @@ def create_app(config_name='production'):
         try:
             data = request.get_json()
             password = data.get('password', '') if data else ''
-            
+
             # Get auth service
             auth_service = app.auth_service
             if not auth_service:
                 return jsonify({'error': 'Auth service not available'}), 503
-            
+
             # Check password directly
             admin_secret = app.config.get('ADMIN_SECRET')
             password_match = password == admin_secret
-            
+
             # Try authentication
             result = auth_service.authenticate_admin(password)
-            
+
             return jsonify({
                 'received_password': password,
                 'expected_password': admin_secret,
@@ -352,14 +367,14 @@ def create_app(config_name='production'):
                 'auth_service_admin_secret': auth_service.admin_secret,
                 'full_result': result
             })
-            
+
         except Exception as e:
             import traceback
             return jsonify({
                 'error': str(e),
                 'traceback': traceback.format_exc()
             }), 500
-    
+
     # Debug endpoint for environment variables (temporary)
     @app.route('/debug/env')
     def debug_env():
@@ -367,7 +382,7 @@ def create_app(config_name='production'):
         config_files_status = {}
         for config_path in ['config.env.production', './config.env.production', 'backend/config.env.production', '../config.env.production']:
             config_files_status[config_path] = os.path.exists(config_path)
-            
+
         return jsonify({
             'ADMIN_SECRET': os.getenv('ADMIN_SECRET', 'NOT_SET'),
             'ADMIN_SECRET_from_config': app.config.get('ADMIN_SECRET', 'NOT_SET'),
@@ -377,7 +392,7 @@ def create_app(config_name='production'):
             'current_working_directory': os.getcwd(),
             'render_external_url': os.getenv('RENDER_EXTERNAL_URL', 'NOT_SET')
         })
-    
+
     # Health check endpoint
     @app.route('/health')
     def health_check():
@@ -400,7 +415,7 @@ def create_app(config_name='production'):
                     'websocket_connections': 0  # TODO: Get actual count from SocketIO
                 }
             }
-            
+
             # Test database
             try:
                 from app.database import get_db_session
@@ -416,14 +431,14 @@ def create_app(config_name='production'):
             except Exception as db_error:
                 health_status['components']['database'] = 'error'
                 health_status['status'] = 'unhealthy'
-            
+
             # Test ML model
             try:
                 from app.ml import model_loaded
                 health_status['components']['ml_model'] = 'healthy' if model_loaded else 'unavailable'
             except Exception:
                 health_status['components']['ml_model'] = 'unavailable'
-            
+
             # Test Redis connection if client exists
             if redis_client:
                 try:
@@ -431,20 +446,20 @@ def create_app(config_name='production'):
                     health_status['components']['redis'] = 'healthy'
                 except Exception:
                     health_status['components']['redis'] = 'error'
-            
+
             return jsonify(health_status)
-            
+
         except Exception as e:
             return jsonify({
                 'status': 'unhealthy',
                 'error': str(e),
                 'timestamp': int(__import__('time').time())
             }), 500
-    
+
     # Frontend serving (if enabled)
     if serve_frontend and static_folder and os.path.exists(static_folder):
         register_frontend_routes(app, static_folder)
-    
+
     # Store references for external access
     app.redis_client = redis_client
     app.socketio = socketio
@@ -452,14 +467,14 @@ def create_app(config_name='production'):
     app.website_service = website_service
     app.limiter = limiter if 'limiter' in locals() else None
     app.start_time = int(__import__('time').time())
-    
+
     app.logger.info("Application created successfully")
     return app, socketio
 
 
 def register_frontend_routes(app, static_folder):
     """Register frontend serving routes"""
-    
+
     @app.route('/')
     def serve_root():
         """Serve Vue.js frontend root"""
@@ -472,14 +487,14 @@ def register_frontend_routes(app, static_folder):
             <html><head><title>Passive CAPTCHA</title></head>
             <body>
                 <h1>🔐 Passive CAPTCHA API</h1>
-                <p>✅ API Server Running</p>
+                <p>[SUCCESS] API Server Running</p>
                 <div>
-                    <a href="/health">❤️ Health Check</a> |
-                    <a href="/admin/login">🔑 Admin Login</a>
+                    <a href="/health">[HEALTH] Health Check</a> |
+                    <a href="/admin/login">[KEY] Admin Login</a>
                 </div>
             </body></html>
             '''
-    
+
     @app.route('/assets/<path:filename>')
     def serve_assets(filename):
         """Serve Vue.js build assets"""
@@ -490,7 +505,7 @@ def register_frontend_routes(app, static_folder):
                           'text/css' if filename.endswith('.css') else \
                           'application/json' if filename.endswith('.map') else \
                           'application/octet-stream'
-                
+
                 with open(asset_path, 'rb') as f:
                     response = app.response_class(
                         f.read(),
@@ -503,28 +518,28 @@ def register_frontend_routes(app, static_folder):
         except Exception as e:
             app.logger.error(f"Error serving asset {filename}: {e}")
             abort(500)
-    
+
     @app.route('/<path:path>')
     def serve_spa(path):
         """Enhanced SPA route handler for Vue.js application"""
-        
+
         # Define API and backend routes that should NOT serve the SPA
         api_prefixes = ('api/', 'admin/', 'assets/', 'static/', 'socket.io/')
-        
+
         # Define specific backend endpoints that should not serve SPA
         backend_endpoints = ('health',)
-        
+
         # Define file extensions that should be served directly or return 404
         file_extensions = ('.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.map', '.txt', '.xml', '.json')
-        
+
         # Log the request for debugging
         app.logger.info(f"SPA route handler: /{path}")
-        
+
         # 1. Skip API routes - these should be handled by their respective blueprints
         if path.startswith(api_prefixes) or path in backend_endpoints:
             app.logger.info(f"Skipping API/backend route: /{path}")
             abort(404)
-        
+
         # 2. Handle direct file requests
         if path.endswith(file_extensions):
             file_path = os.path.join(static_folder, path)
@@ -534,7 +549,7 @@ def register_frontend_routes(app, static_folder):
             else:
                 app.logger.debug(f"Static file not found: {path}")
                 abort(404)
-        
+
         # 3. Serve Vue.js SPA for all other routes (dashboard, login, websites, etc.)
         # This includes routes like: dashboard, login, websites, analytics, settings, etc.
         try:
@@ -565,7 +580,7 @@ def register_frontend_routes(app, static_folder):
             <head><title>Passive CAPTCHA</title></head>
             <body>
                 <h1>🔐 Passive CAPTCHA</h1>
-                <p>⚠️ Frontend temporarily unavailable</p>
+                <p>[WARNING] Frontend temporarily unavailable</p>
                 <p><a href="/admin/login">Admin API Login</a></p>
                 <p><a href="/health">System Health</a></p>
             </body>
@@ -577,16 +592,16 @@ def setup_logging(app):
     """Setup logging for the application"""
     if app.config.get('DEBUG'):
         return  # Use default logging in debug mode
-    
+
     # Create logs directory
     log_dir = os.path.dirname(app.config['LOG_FILE'])
     if log_dir and not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    
+
     # Set log level
     log_level = getattr(logging, app.config['LOG_LEVEL'].upper(), logging.INFO)
     app.logger.setLevel(log_level)
-    
+
     # File handler with rotation
     try:
         file_handler = RotatingFileHandler(
@@ -594,14 +609,14 @@ def setup_logging(app):
             maxBytes=app.config['LOG_MAX_SIZE'],
             backupCount=app.config['LOG_BACKUP_COUNT']
         )
-        
+
         file_handler.setLevel(log_level)
         formatter = logging.Formatter(
             '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
         )
         file_handler.setFormatter(formatter)
         app.logger.addHandler(file_handler)
-        
+
     except Exception as e:
         print(f"Warning: Could not setup file logging: {e}")
 
@@ -616,31 +631,31 @@ def run_app(host='0.0.0.0', port=None, debug=False):
     """Run the application"""
     if port is None:
         port = int(os.getenv('PORT', 5003))
-    
+
     app, socketio = create_app('development' if debug else 'production')
-    
+
     if socketio:
-        print(f"🚀 Starting Passive CAPTCHA with SocketIO on {host}:{port}")
+        print(f"[DEPLOY] Starting Passive CAPTCHA with SocketIO on {host}:{port}")
         # Allow unsafe Werkzeug in production for development purposes
         # In real production, this should use a proper WSGI server like gunicorn
-        socketio.run(app, host=host, port=port, debug=debug, use_reloader=False, 
+        socketio.run(app, host=host, port=port, debug=debug, use_reloader=False,
                     allow_unsafe_werkzeug=True)
     else:
-        print(f"🚀 Starting Passive CAPTCHA on {host}:{port}")
+        print(f"[DEPLOY] Starting Passive CAPTCHA on {host}:{port}")
         app.run(host=host, port=port, debug=debug, use_reloader=False)
 
 
 if __name__ == '__main__':
     import argparse
-    
+
     parser = argparse.ArgumentParser(description='Passive CAPTCHA Application')
     parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
     parser.add_argument('--port', type=int, default=None, help='Port to bind to')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     parser.add_argument('--gunicorn', action='store_true', help='Use gunicorn for production (requires gunicorn installed)')
-    
+
     args = parser.parse_args()
-    
+
     if args.gunicorn and not args.debug:
         # Use gunicorn for production
         import subprocess
@@ -655,7 +670,7 @@ if __name__ == '__main__':
             '--keep-alive', '2',
             'main:get_wsgi_app()'
         ]
-        print(f"🚀 Starting Passive CAPTCHA with Gunicorn on {args.host}:{port}")
+        print(f"[DEPLOY] Starting Passive CAPTCHA with Gunicorn on {args.host}:{port}")
         subprocess.run(cmd)
     else:
         run_app(host=args.host, port=args.port, debug=args.debug)

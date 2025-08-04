@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/main.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb",
+        "runtime": "python3.9"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/backend/main.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/backend/main.py"
+    }
+  ],
+  "env": {
+    "FLASK_ENV": "production",
+    "PYTHON_VERSION": "3.9"
+  }
+}

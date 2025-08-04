@@ -26,10 +26,13 @@ def require_auth(f):
                     'message': 'Authorization header required'
                 }
             }), 401
-        
+
         token = auth_header.split(' ')[1]
-        auth_service = get_auth_service()
         
+        # Use robust authentication service
+        from app.services.robust_auth_service import get_robust_auth_service
+        auth_service = get_robust_auth_service()
+
         if not auth_service:
             return jsonify({
                 'success': False,
@@ -38,9 +41,10 @@ def require_auth(f):
                     'message': 'Authentication service unavailable'
                 }
             }), 503
-        
-        user = auth_service.validate_token(token)
-        if not user:
+
+        # Validate JWT token
+        payload = auth_service.validate_jwt_token(token)
+        if not payload:
             return jsonify({
                 'success': False,
                 'error': {
@@ -48,11 +52,27 @@ def require_auth(f):
                     'message': 'Invalid or expired token'
                 }
             }), 401
-        
+
+        # Get session
+        session = auth_service.validate_session(payload['session_id'])
+        if not session:
+            return jsonify({
+                'success': False,
+                'error': {
+                    'code': 'SESSION_EXPIRED',
+                    'message': 'Session expired or invalid'
+                }
+            }), 401
+
         # Add user to request context
-        request.current_user = user
+        request.current_user = {
+            'user_id': session.user_id,
+            'email': session.email,
+            'role': session.role.value
+        }
+        request.current_session = session
         return f(*args, **kwargs)
-    
+
     return decorated_function
 
 
@@ -71,8 +91,11 @@ def login():
                     'message': 'Password is required'
                 }
             }), 400
+
+        # Use robust authentication service
+        from app.services.robust_auth_service import get_robust_auth_service
+        auth_service = get_robust_auth_service()
         
-        auth_service = get_auth_service()
         if not auth_service:
             return jsonify({
                 'success': False,
@@ -81,19 +104,65 @@ def login():
                     'message': 'Authentication service unavailable'
                 }
             }), 503
+
+        # Handle new robust authentication
+        email = data.get('email', 'admin@passivecaptcha.com')
+        password = data['password']
         
-        result = auth_service.authenticate_admin(data['password'])
-        if not result:
+        # Try robust authentication
+        success, session, error_message = auth_service.authenticate_user(
+            email=email,
+            password=password,
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent')
+        )
+        
+        # Fallback to admin_secret check
+        if not success and password == auth_service.admin_secret:
+            from app.services.robust_auth_service import AuthSession, UserRole
+            from datetime import datetime
+            import secrets
+            
+            session = AuthSession(
+                session_id=f"sess_{secrets.token_urlsafe(32)}",
+                user_id="admin_user",
+                email=email,
+                role=UserRole.SUPER_ADMIN,
+                created_at=datetime.utcnow(),
+                last_activity=datetime.utcnow(),
+                ip_address=request.remote_addr or "127.0.0.1",
+                user_agent=request.headers.get('User-Agent', 'unknown'),
+                security_flags={'login_method': 'admin_secret'}
+            )
+            auth_service._store_session(session)
+            success = True
+            error_message = None
+        
+        if not success:
             return jsonify({
                 'success': False,
                 'error': {
                     'code': 'INVALID_CREDENTIALS',
-                    'message': 'Invalid password'
+                    'message': error_message or 'Invalid credentials'
                 }
             }), 401
+
+        # Generate JWT token for successful authentication
+        jwt_token = auth_service.generate_jwt_token(session)
         
-        return jsonify(result)
-        
+        return jsonify({
+            'success': True,
+            'data': {
+                'token': jwt_token,
+                'user': {
+                    'email': session.email,
+                    'role': session.role.value,
+                    'session_id': session.session_id
+                }
+            },
+            'message': 'Login successful'
+        })
+
     except Exception as e:
         current_app.logger.error(f"Login error: {e}")
         return jsonify({
@@ -112,15 +181,15 @@ def logout():
     try:
         auth_header = request.headers.get('Authorization')
         token = auth_header.split(' ')[1]
-        
+
         auth_service = get_auth_service()
         success = auth_service.logout(token)
-        
+
         return jsonify({
             'success': success,
             'message': 'Logged out successfully' if success else 'Logout failed'
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Logout error: {e}")
         return jsonify({
@@ -145,7 +214,7 @@ def verify_token():
                 'valid': True
             }
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Token verification error: {e}")
         return jsonify({
@@ -173,10 +242,10 @@ def get_websites():
                     'message': 'Website service unavailable'
                 }
             }), 503
-        
+
         include_analytics = request.args.get('include_analytics', 'true').lower() == 'true'
         websites = website_service.get_all_websites(include_analytics=include_analytics)
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -185,7 +254,7 @@ def get_websites():
                 'timestamp': datetime.utcnow().isoformat()
             }
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error getting websites: {e}")
         return jsonify({
@@ -211,11 +280,11 @@ def create_website():
                     'message': 'Request data is required'
                 }
             }), 400
-        
+
         name = data.get('name')
         url = data.get('url')
         description = data.get('description', '')
-        
+
         if not name or not url:
             return jsonify({
                 'success': False,
@@ -224,7 +293,7 @@ def create_website():
                     'message': 'Name and URL are required'
                 }
             }), 400
-        
+
         website_service = get_website_service()
         if not website_service:
             return jsonify({
@@ -234,9 +303,9 @@ def create_website():
                     'message': 'Website service unavailable'
                 }
             }), 503
-        
+
         website = website_service.create_website(name, url, description)
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -244,7 +313,7 @@ def create_website():
                 'message': 'Website created successfully'
             }
         }), 201
-        
+
     except Exception as e:
         current_app.logger.error(f"Error creating website: {e}")
         return jsonify({
@@ -270,7 +339,7 @@ def update_website(website_id):
                     'message': 'Request data is required'
                 }
             }), 400
-        
+
         website_service = get_website_service()
         if not website_service:
             return jsonify({
@@ -280,14 +349,14 @@ def update_website(website_id):
                     'message': 'Website service unavailable'
                 }
             }), 503
-        
+
         success = website_service.update_website(
             website_id,
             name=data.get('name'),
             url=data.get('url'),
             description=data.get('description')
         )
-        
+
         if not success:
             return jsonify({
                 'success': False,
@@ -296,10 +365,10 @@ def update_website(website_id):
                     'message': 'Website not found'
                 }
             }), 404
-        
+
         # Get updated website
         website = website_service.get_website(website_id)
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -307,7 +376,7 @@ def update_website(website_id):
                 'message': 'Website updated successfully'
             }
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error updating website: {e}")
         return jsonify({
@@ -333,9 +402,9 @@ def delete_website(website_id):
                     'message': 'Website service unavailable'
                 }
             }), 503
-        
+
         success = website_service.delete_website(website_id)
-        
+
         if not success:
             return jsonify({
                 'success': False,
@@ -344,14 +413,14 @@ def delete_website(website_id):
                     'message': 'Website not found'
                 }
             }), 404
-        
+
         return jsonify({
             'success': True,
             'data': {
                 'message': 'Website deleted successfully'
             }
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error deleting website: {e}")
         return jsonify({
@@ -377,9 +446,9 @@ def toggle_website_status(website_id):
                     'message': 'Website service unavailable'
                 }
             }), 503
-        
+
         new_status = website_service.toggle_website_status(website_id)
-        
+
         if not new_status:
             return jsonify({
                 'success': False,
@@ -388,7 +457,7 @@ def toggle_website_status(website_id):
                     'message': 'Website not found'
                 }
             }), 404
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -396,7 +465,7 @@ def toggle_website_status(website_id):
                 'message': f'Website status changed to {new_status.value}'
             }
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error toggling website status: {e}")
         return jsonify({
@@ -418,7 +487,7 @@ def generate_script_token():
         data = request.get_json()
         website_id = data.get('website_id')
         script_version = data.get('script_version', 'v2_enhanced')
-        
+
         if not website_id:
             return jsonify({
                 'success': False,
@@ -427,7 +496,7 @@ def generate_script_token():
                     'message': 'Website ID is required'
                 }
             }), 400
-        
+
         # Validate script version
         try:
             version_enum = ScriptVersion(script_version)
@@ -439,7 +508,7 @@ def generate_script_token():
                     'message': f'Invalid script version. Valid options: {[v.value for v in ScriptVersion]}'
                 }
             }), 400
-        
+
         token_manager = get_script_token_manager()
         if not token_manager:
             return jsonify({
@@ -449,14 +518,14 @@ def generate_script_token():
                     'message': 'Script token manager not available'
                 }
             }), 503
-        
+
         try:
             script_token = token_manager.generate_script_token(website_id, version_enum)
-            
+
             # Generate integration instructions
             api_base = current_app.config.get('API_BASE_URL', request.host_url.rstrip('/'))
             script_url = f"{api_base}/api/script/generate?token={script_token.script_token}"
-            
+
             integration_code = f'''
 <!-- Passive CAPTCHA Integration -->
 <script>
@@ -470,7 +539,7 @@ def generate_script_token():
 </script>
 <!-- End Passive CAPTCHA -->
 '''
-            
+
             return jsonify({
                 'success': True,
                 'data': {
@@ -489,7 +558,7 @@ def generate_script_token():
                 },
                 'timestamp': datetime.utcnow().isoformat()
             })
-            
+
         except ValueError as e:
             return jsonify({
                 'success': False,
@@ -498,7 +567,7 @@ def generate_script_token():
                     'message': str(e)
                 }
             }), 400
-            
+
     except Exception as e:
         current_app.logger.error(f"Error generating script token: {e}")
         return jsonify({
@@ -524,7 +593,7 @@ def get_script_token(website_id):
                     'message': 'Script token manager not available'
                 }
             }), 503
-        
+
         token = token_manager.get_website_token(website_id)
         if not token:
             return jsonify({
@@ -534,11 +603,11 @@ def get_script_token(website_id):
                     'message': 'No script token found for this website'
                 }
             }), 404
-        
+
         # Generate integration information
         api_base = current_app.config.get('API_BASE_URL', request.host_url.rstrip('/'))
         script_url = f"{api_base}/api/script/generate?token={token.script_token}"
-        
+
         integration_code = f'''
 <!-- Passive CAPTCHA Integration -->
 <script>
@@ -552,14 +621,14 @@ def get_script_token(website_id):
 </script>
 <!-- End Passive CAPTCHA -->
 '''
-        
+
         token_dict = token.to_dict()
         token_dict['integration'] = {
             'script_url': script_url,
             'integration_code': integration_code.strip(),
             'status_check_url': f"{api_base}/api/script/health"
         }
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -567,7 +636,7 @@ def get_script_token(website_id):
             },
             'timestamp': datetime.utcnow().isoformat()
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error getting script token: {e}")
         return jsonify({
@@ -593,7 +662,7 @@ def revoke_script_token(website_id):
                     'message': 'Script token manager not available'
                 }
             }), 503
-        
+
         success = token_manager.revoke_token(website_id)
         if not success:
             return jsonify({
@@ -603,7 +672,7 @@ def revoke_script_token(website_id):
                     'message': 'Failed to revoke script token'
                 }
             }), 400
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -613,7 +682,7 @@ def revoke_script_token(website_id):
             },
             'timestamp': datetime.utcnow().isoformat()
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error revoking script token: {e}")
         return jsonify({
@@ -636,28 +705,28 @@ def get_admin_statistics():
     """Get comprehensive admin statistics"""
     try:
         stats = {}
-        
+
         # Auth statistics
         auth_service = get_auth_service()
         if auth_service:
             stats['auth'] = auth_service.get_auth_statistics()
-        
+
         # Website statistics
         website_service = get_website_service()
         if website_service:
             stats['websites'] = website_service.get_website_statistics()
-        
+
         # Script token statistics
         token_manager = get_script_token_manager()
         if token_manager:
             stats['script_tokens'] = token_manager.get_token_stats()
-        
+
         return jsonify({
             'success': True,
             'data': stats,
             'timestamp': datetime.utcnow().isoformat()
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error getting statistics: {e}")
         return jsonify({

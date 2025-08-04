@@ -10,16 +10,16 @@ from main import create_app  # Using consolidated application factory
 def main():
     # Set port
     port = int(os.getenv('PORT', 5003))
-    
+
     # Create app
     print("Creating Flask application...")
     app, socketio = create_app('development')
-    
+
     print(f"Starting server on http://localhost:{port}")
     print(f"Admin login: http://localhost:{port}/admin/login")
     print(f"Health check: http://localhost:{port}/health")
     print("Press Ctrl+C to stop")
-    
+
     try:
         if socketio:
             print("Starting with SocketIO support...")

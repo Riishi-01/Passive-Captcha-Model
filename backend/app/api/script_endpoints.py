@@ -19,14 +19,14 @@ try:
     import geoip2.errors
     GEOIP_AVAILABLE = True
 except ImportError:
-    print("⚠️ GeoIP2 not available - geographic features disabled")
+    print("[WARNING] GeoIP2 not available - geographic features disabled")
     GEOIP_AVAILABLE = False
 
 try:
     from user_agents import parse
     USER_AGENTS_AVAILABLE = True
 except ImportError:
-    print("⚠️ User-agents library not available - user agent parsing disabled")
+    print("[WARNING] User-agents library not available - user agent parsing disabled")
     USER_AGENTS_AVAILABLE = False
 
 script_bp = Blueprint('script', __name__, url_prefix='/api/script')
@@ -51,7 +51,7 @@ def generate_script():
                     'message': 'Script token is required'
                 }
             }), 400
-        
+
         # Validate token
         token_manager = get_script_token_manager()
         if not token_manager:
@@ -62,7 +62,7 @@ def generate_script():
                     'message': 'Token manager not available'
                 }
             }), 503
-        
+
         # Get website URL from referrer or parameter
         website_url = request.headers.get('Referer') or request.args.get('url', '')
         if not website_url:
@@ -73,7 +73,7 @@ def generate_script():
                     'message': 'Website URL is required'
                 }
             }), 400
-        
+
         # Validate token
         is_valid, token_obj = token_manager.validate_token(script_token, website_url)
         if not is_valid or not token_obj:
@@ -84,7 +84,7 @@ def generate_script():
                     'message': 'Invalid or expired script token'
                 }
             }), 401
-        
+
         # Read the script template
         script_path = os.path.join(current_app.root_path, 'static', 'passive-captcha-script.js')
         try:
@@ -98,12 +98,12 @@ def generate_script():
                     'message': 'Script file not found'
                 }
             }), 404
-        
+
         # Replace placeholders with actual values
         api_endpoint = current_app.config.get('API_BASE_URL', request.host_url.rstrip('/'))
         script_content = script_content.replace('{API_ENDPOINT}', api_endpoint)
         script_content = script_content.replace('{SCRIPT_TOKEN}', script_token)
-        
+
         # Add configuration based on token settings
         config_js = f"""
 window.PASSIVE_CAPTCHA_CONFIG = {{
@@ -123,7 +123,7 @@ window.PASSIVE_CAPTCHA_CONFIG = {{
 
 {script_content}
 """
-        
+
         # Log script delivery
         if logs_pipeline:
             logs_pipeline.log_system_event(
@@ -137,7 +137,7 @@ window.PASSIVE_CAPTCHA_CONFIG = {{
                     'ip_address': request.remote_addr
                 }
             )
-        
+
         # Return script with proper headers
         response = Response(
             config_js,
@@ -151,9 +151,9 @@ window.PASSIVE_CAPTCHA_CONFIG = {{
                 'Access-Control-Allow-Headers': 'Content-Type'
             }
         )
-        
+
         return response
-        
+
     except Exception as e:
         current_app.logger.error(f"Error generating script: {e}")
         return jsonify({
@@ -182,7 +182,7 @@ def activate_token():
                     'message': 'Script token header is required'
                 }
             }), 400
-        
+
         data = request.get_json()
         if not data:
             return jsonify({
@@ -192,11 +192,11 @@ def activate_token():
                     'message': 'Request data is required'
                 }
             }), 400
-        
+
         website_url = data.get('website_url')
         session_id = data.get('session_id')
         user_agent = data.get('user_agent')
-        
+
         if not all([website_url, session_id]):
             return jsonify({
                 'success': False,
@@ -205,7 +205,7 @@ def activate_token():
                     'message': 'website_url and session_id are required'
                 }
             }), 400
-        
+
         # Get token manager
         token_manager = get_script_token_manager()
         if not token_manager:
@@ -216,7 +216,7 @@ def activate_token():
                     'message': 'Token manager not available'
                 }
             }), 503
-        
+
         # Activate token
         success = token_manager.activate_token(script_token, website_url)
         if not success:
@@ -227,10 +227,10 @@ def activate_token():
                     'message': 'Failed to activate token'
                 }
             }), 400
-        
+
         # Get token details for logging
         token_obj = token_manager.get_token_by_script_token(script_token)
-        
+
         # Log activation
         if logs_pipeline:
             logs_pipeline.log_system_event(
@@ -244,7 +244,7 @@ def activate_token():
                     'ip_address': request.remote_addr
                 }
             )
-        
+
         return jsonify({
             'success': True,
             'data': {
@@ -255,7 +255,7 @@ def activate_token():
             },
             'timestamp': datetime.utcnow().isoformat()
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error activating token: {e}")
         return jsonify({
@@ -284,7 +284,7 @@ def collect_data():
                     'message': 'Script token header is required'
                 }
             }), 400
-        
+
         data = request.get_json()
         if not data:
             return jsonify({
@@ -294,11 +294,11 @@ def collect_data():
                     'message': 'Request data is required'
                 }
             }), 400
-        
+
         website_url = data.get('website_url')
         session_id = data.get('session_id')
         behavioral_data = data.get('data', {})
-        
+
         if not all([website_url, session_id, behavioral_data]):
             return jsonify({
                 'success': False,
@@ -307,7 +307,7 @@ def collect_data():
                     'message': 'website_url, session_id, and data are required'
                 }
             }), 400
-        
+
         # Get token manager and validate token
         token_manager = get_script_token_manager()
         if not token_manager:
@@ -318,7 +318,7 @@ def collect_data():
                     'message': 'Token manager not available'
                 }
             }), 503
-        
+
         is_valid, token_obj = token_manager.validate_token(script_token, website_url)
         if not is_valid or not token_obj:
             return jsonify({
@@ -328,10 +328,10 @@ def collect_data():
                     'message': 'Invalid or expired script token'
                 }
             }), 401
-        
+
         # Extract features for ML prediction
         features = extract_ml_features(behavioral_data)
-        
+
         # Get ML prediction
         try:
             confidence = predict_human_probability(features)
@@ -340,15 +340,15 @@ def collect_data():
             current_app.logger.warning(f"ML prediction failed: {e}")
             confidence = 0.5  # Default neutral confidence
             is_human = True   # Default to human when ML fails
-        
+
         # Get additional request information
         ip_address = request.remote_addr
         user_agent = request.headers.get('User-Agent', '')
         country_code = get_country_from_ip(ip_address)
-        
+
         # Calculate response time (time since page load)
         response_time = behavioral_data.get('timing', {}).get('sessionDuration', 0)
-        
+
         # Log verification to database
         try:
             log_verification(
@@ -363,7 +363,7 @@ def collect_data():
             )
         except Exception as e:
             current_app.logger.error(f"Failed to log verification: {e}")
-        
+
         # Log to pipeline for real-time updates
         if logs_pipeline:
             logs_pipeline.log_verification(
@@ -382,7 +382,7 @@ def collect_data():
                     'extracted_features': features
                 }
             )
-        
+
         # Respond with verification result
         return jsonify({
             'success': True,
@@ -403,7 +403,7 @@ def collect_data():
             },
             'timestamp': datetime.utcnow().isoformat()
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error collecting data: {e}")
         return jsonify({
@@ -423,7 +423,7 @@ def extract_ml_features(behavioral_data):
     Extract features from behavioral data for ML prediction
     """
     features = {}
-    
+
     # Mouse features
     mouse_data = behavioral_data.get('mouse', {})
     features.update({
@@ -433,7 +433,7 @@ def extract_ml_features(behavioral_data):
         'mouse_avg_acceleration': mouse_data.get('avgAcceleration', 0),
         'mouse_entropy': mouse_data.get('entropy', 0)
     })
-    
+
     # Keyboard features
     keyboard_data = behavioral_data.get('keyboard', {})
     features.update({
@@ -441,7 +441,7 @@ def extract_ml_features(behavioral_data):
         'keyboard_avg_typing_speed': keyboard_data.get('avgTypingSpeed', 0),
         'keyboard_rhythm': keyboard_data.get('rhythm', 0)
     })
-    
+
     # Scroll features
     scroll_data = behavioral_data.get('scroll', {})
     features.update({
@@ -449,7 +449,7 @@ def extract_ml_features(behavioral_data):
         'scroll_avg_velocity': scroll_data.get('avgVelocity', 0),
         'scroll_consistency': scroll_data.get('consistency', 0)
     })
-    
+
     # Timing features
     timing_data = behavioral_data.get('timing', {})
     features.update({
@@ -458,13 +458,13 @@ def extract_ml_features(behavioral_data):
         'first_interaction_time': timing_data.get('firstInteractionTime', 0),
         'session_duration': timing_data.get('sessionDuration', 0)
     })
-    
+
     # Device features
     device_data = behavioral_data.get('device', {})
     if device_data:
         screen_res = device_data.get('screenResolution', {})
         viewport = device_data.get('viewport', {})
-        
+
         features.update({
             'screen_width': screen_res.get('width', 0),
             'screen_height': screen_res.get('height', 0),
@@ -478,7 +478,7 @@ def extract_ml_features(behavioral_data):
             'font_count': len(device_data.get('fonts', [])),
             'plugin_count': len(device_data.get('plugins', []))
         })
-    
+
     # Behavioral metrics
     behavioral_metrics = behavioral_data.get('behavioral_metrics', {})
     features.update({
@@ -487,7 +487,7 @@ def extract_ml_features(behavioral_data):
         'keyboard_rhythm_score': behavioral_metrics.get('keyboardRhythm', 0),
         'scroll_consistency_score': behavioral_metrics.get('scrollConsistency', 0)
     })
-    
+
     return features
 
 
@@ -505,7 +505,7 @@ def get_country_from_ip(ip_address):
                     return response.country.iso_code
         except Exception:
             pass
-    
+
     # Fallback to simple IP-based country detection (for demo)
     if ip_address.startswith('127.') or ip_address.startswith('192.168.') or ip_address.startswith('10.'):
         return 'LOCAL'
@@ -537,7 +537,7 @@ def parse_user_agent(user_agent_string):
             }
         except Exception:
             pass
-    
+
     # Fallback when user-agents library is not available
     return {
         'browser': 'Unknown',

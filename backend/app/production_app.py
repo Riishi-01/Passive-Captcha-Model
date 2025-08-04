@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Production-Grade Passive CAPTCHA Application
 Integrates all components: ML endpoints, WebSocket, logs pipeline, caching
@@ -34,14 +35,14 @@ def create_production_app(config_name='production'):
     # Configure Flask app to serve static frontend files
     # Get the absolute path to the frontend dist folder
     backend_dir = os.path.dirname(os.path.dirname(__file__))  # app/ parent directory
-    project_root = os.path.dirname(backend_dir)  # backend/ parent directory  
+    project_root = os.path.dirname(backend_dir)  # backend/ parent directory
     static_folder = os.path.join(project_root, 'frontend', 'dist')
-    
+
     print(f"Backend dir: {backend_dir}")
     print(f"Project root: {project_root}")
     print(f"Static folder: {static_folder}")
     print(f"Static folder exists: {os.path.exists(static_folder)}")
-    
+
     # Additional path checking for Render environment
     if not os.path.exists(static_folder):
         # Try alternative paths for Render deployment (in priority order)
@@ -54,7 +55,7 @@ def create_production_app(config_name='production'):
             '/opt/render/project/src/backend/static',
             'static'  # Relative path fallback
         ]
-        
+
         for alt_path in alternative_paths:
             abs_alt_path = os.path.abspath(alt_path)
             print(f"Checking alternative path: {abs_alt_path}")
@@ -65,7 +66,7 @@ def create_production_app(config_name='production'):
         else:
             static_folder = None
             print("Static folder not found in any location, serving without frontend")
-    
+
     # Log static folder contents if found
     if static_folder and os.path.exists(static_folder):
         try:
@@ -73,12 +74,12 @@ def create_production_app(config_name='production'):
             print(f"Static folder contains {len(files)} files: {files[:5]}{'...' if len(files) > 5 else ''}")
         except Exception as e:
             print(f"Could not list static folder contents: {e}")
-    
+
     # Configure Flask with proper static folder and URL path for SPA
-    app = Flask(__name__, 
-                static_folder=static_folder, 
+    app = Flask(__name__,
+                static_folder=static_folder,
                 static_url_path='')  # This allows /assets/* to be served from static_folder/assets/*
-    
+
     # Production Configuration
     app.config.update({
         'SECRET_KEY': os.getenv('SECRET_KEY', 'passive-captcha-production-secret'),
@@ -94,39 +95,39 @@ def create_production_app(config_name='production'):
         'TESTING': False,
         'JSON_SORT_KEYS': False,
         'JSONIFY_PRETTYPRINT_REGULAR': True,
-        
+
         # WebSocket configuration
         'SOCKETIO_ASYNC_MODE': 'threading',
         'SOCKETIO_CORS_ALLOWED_ORIGINS': "*",
-        
+
         # Logging configuration
         'LOG_LEVEL': os.getenv('LOG_LEVEL', 'INFO'),
         'LOG_FILE': os.getenv('LOG_FILE', 'logs/app.log'),
         'LOG_MAX_SIZE': int(os.getenv('LOG_MAX_SIZE', '10485760')),  # 10MB
         'LOG_BACKUP_COUNT': int(os.getenv('LOG_BACKUP_COUNT', '10'))
     })
-    
+
     # Setup logging
     setup_logging(app)
-    
+
     # CORS configuration for production
     # Get the current Render URL dynamically if available
     render_url = os.getenv('RENDER_EXTERNAL_URL', '')
-    
+
     default_origins = [
         'http://localhost:3000',
         'http://localhost:5003',
         'http://frontend:80',
         'https://passive-captcha.onrender.com'
     ]
-    
+
     # Add dynamic Render URL if available and different from default
     if render_url and render_url not in default_origins:
         default_origins.append(render_url)
-    
+
     allowed_origins_str = os.getenv('ALLOWED_ORIGINS', ','.join(default_origins))
     cors_origins = allowed_origins_str.split(',') if allowed_origins_str != '*' else "*"
-    
+
     CORS(app, resources={
         r"/api/*": {
             "origins": cors_origins,
@@ -146,7 +147,7 @@ def create_production_app(config_name='production'):
             "allow_headers": ["Content-Type"]
         }
     })
-    
+
     # Initialize Redis client
     try:
         redis_client = redis.Redis.from_url(app.config['REDIS_URL'], decode_responses=True)
@@ -155,7 +156,7 @@ def create_production_app(config_name='production'):
     except Exception as e:
         app.logger.warning(f"Redis unavailable, using in-memory fallback: {e}")
         redis_client = None
-    
+
     # Initialize SocketIO
     socketio = SocketIO(
         app,
@@ -164,7 +165,7 @@ def create_production_app(config_name='production'):
         logger=False,  # Disable SocketIO logging to avoid conflicts
         engineio_logger=False
     )
-    
+
     # Rate limiting with Redis backend
     if redis_client:
         limiter = Limiter(
@@ -177,9 +178,9 @@ def create_production_app(config_name='production'):
             key_func=get_remote_address,
             default_limits=[f"{app.config['RATE_LIMIT_REQUESTS']} per hour"]
         )
-    
+
     limiter.init_app(app)
-    
+
     # Initialize database
     from app.database import init_db
     with app.app_context():
@@ -189,7 +190,7 @@ def create_production_app(config_name='production'):
         except Exception as e:
             app.logger.error(f"Database initialization failed: {e}")
             raise
-    
+
     # Initialize ML model
     try:
         from app.ml import load_model
@@ -202,7 +203,7 @@ def create_production_app(config_name='production'):
                 # Don't raise - app can still function without ML model
     except ImportError as e:
         app.logger.warning(f"ML module not available: {e}. App will run without ML functionality.")
-    
+
     # Initialize logs pipeline
     logs_pipeline = None
     try:
@@ -215,7 +216,7 @@ def create_production_app(config_name='production'):
                 app.logger.error(f"Logs pipeline initialization failed: {e}")
     except ImportError as e:
         app.logger.warning(f"Logs pipeline module not available: {e}")
-    
+
     # Initialize WebSocket server
     websocket_manager = None
     try:
@@ -228,7 +229,7 @@ def create_production_app(config_name='production'):
                 app.logger.error(f"WebSocket server initialization failed: {e}")
     except ImportError as e:
         app.logger.warning(f"WebSocket server module not available: {e}")
-    
+
     # Initialize script token manager
     script_token_manager = None
     try:
@@ -246,7 +247,7 @@ def create_production_app(config_name='production'):
     from app.services import init_auth_service, init_website_service
     auth_service = None
     website_service = None
-    
+
     try:
         # Always initialize auth service (works with or without Redis)
         auth_service = init_auth_service(redis_client)
@@ -263,28 +264,28 @@ def create_production_app(config_name='production'):
     from app.admin.dashboard_endpoints import init_dashboard_endpoints
     from app.admin.config_endpoints import init_config_endpoints
     from app.admin.script_management import init_script_management
-    
+
     if redis_client:
         init_ml_endpoints(redis_client)
         init_dashboard_endpoints(redis_client)
         init_config_endpoints(redis_client)
         init_script_management(redis_client)
         app.logger.info("All endpoint modules initialized with Redis caching")
-    
+
     # Register blueprints (avoid duplicates)
     from app.api import api_bp
     from app.api.admin_endpoints import admin_bp as admin_api_bp
     from app.api.script_endpoints import script_bp
-    
+
     # Register main API endpoints
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(script_bp)
     app.logger.info("Core API endpoints registered")
-    
+
     # Register modern admin API endpoints (primary)
     app.register_blueprint(admin_api_bp, url_prefix='/admin')
     app.logger.info("Admin API endpoints registered")
-    
+
     # Register supporting analytics endpoints (non-conflicting)
     from app.admin.analytics_endpoints import analytics_bp
     from app.admin.alerts_endpoints import alerts_bp
@@ -295,11 +296,11 @@ def create_production_app(config_name='production'):
     app.register_blueprint(logs_bp)
     app.register_blueprint(ml_metrics_bp)
     app.logger.info("Analytics and monitoring endpoints registered")
-    
+
     # Skip legacy endpoints that conflict with modern admin API
     # (ml_bp, dashboard_bp, config_bp, script_mgmt_bp have duplicate routes with admin_api_bp)
     app.logger.info("Skipped legacy conflicting blueprints to avoid route conflicts")
-    
+
     # Register temporary endpoint fixes for testing
     try:
         from app.temp_endpoints import missing_bp
@@ -307,12 +308,12 @@ def create_production_app(config_name='production'):
         app.logger.info("Temporary endpoint fixes registered")
     except ImportError:
         app.logger.debug("No temporary endpoint fixes found")
-    
+
     app.logger.info("All blueprints registered successfully")
-    
+
     # Production health check endpoint
 # REMOVED: Duplicate health endpoint - consolidated to main.py at /health
-    
+
     # Frontend serving routes (must be registered last to avoid conflicts)
     def register_frontend_routes(app):
         @app.route('/')
@@ -331,7 +332,7 @@ def create_production_app(config_name='production'):
                                 return f.read()
                     except Exception as e2:
                         app.logger.error(f"Failed to read index.html directly: {e2}")
-            
+
             # Fallback HTML with better styling
             return '''
             <!DOCTYPE html>
@@ -350,15 +351,15 @@ def create_production_app(config_name='production'):
             <body>
                 <h1>🔐 Passive CAPTCHA Admin Dashboard</h1>
                 <div class="status">
-                    <p><strong>✅ API Server Running</strong></p>
+                    <p><strong>[SUCCESS] API Server Running</strong></p>
                     <p>Frontend build pending or failed. API endpoints are fully functional:</p>
                 </div>
                 <div>
-                    <a href="/health" class="api-link">❤️ Health Check</a>
-                    <a href="/admin/login" class="api-link">🔑 Admin Login API</a>
-                    <a href="/admin/analytics" class="api-link">📊 Analytics API</a>
+                    <a href="/health" class="api-link">[HEALTH] Health Check</a>
+                    <a href="/admin/login" class="api-link">[KEY] Admin Login API</a>
+                    <a href="/admin/analytics" class="api-link">[INFO] Analytics API</a>
                 </div>
-                <h3>🔑 Login Form:</h3>
+                <h3>[KEY] Login Form:</h3>
                 <form id="quickLogin" style="margin: 20px 0;">
                     <input type="password" id="adminPassword" placeholder="Enter password (Admin123)" style="padding: 10px; width: 200px;">
                     <button type="submit" style="padding: 10px 20px; margin-left: 10px;">Login</button>
@@ -369,7 +370,7 @@ def create_production_app(config_name='production'):
                     e.preventDefault();
                     const password = document.getElementById('adminPassword').value;
                     const resultDiv = document.getElementById('loginResult');
-                    
+
                     try {
                         const response = await fetch('/admin/login', {
                             method: 'POST',
@@ -377,15 +378,15 @@ def create_production_app(config_name='production'):
                             body: JSON.stringify({ password: password })
                         });
                         const data = await response.json();
-                        
+
                         if (data.success) {
-                            resultDiv.innerHTML = '<span style="color: green;">✅ Login successful!</span>';
+                            resultDiv.innerHTML = '<span style="color: green;">[SUCCESS] Login successful!</span>';
                             localStorage.setItem('admin_token', data.data.token);
                         } else {
-                            resultDiv.innerHTML = '<span style="color: red;">❌ ' + (data.error?.message || 'Login failed') + '</span>';
+                            resultDiv.innerHTML = '<span style="color: red;">[ERROR] ' + (data.error?.message || 'Login failed') + '</span>';
                         }
                     } catch (error) {
-                        resultDiv.innerHTML = '<span style="color: red;">❌ Error: ' + error.message + '</span>';
+                        resultDiv.innerHTML = '<span style="color: red;">[ERROR] Error: ' + error.message + '</span>';
                     }
                 });
                 </script>
@@ -401,10 +402,10 @@ def create_production_app(config_name='production'):
             </body>
             </html>
             '''
-        
+
         # REMOVED: Duplicate login route - now handled by modern admin API at /admin/login
         # All login functionality consolidated to app/api/admin_endpoints.py
-        
+
         # Add explicit asset handling for Vue.js build files
         @app.route('/assets/<path:filename>')
         def serve_assets(filename):
@@ -422,7 +423,7 @@ def create_production_app(config_name='production'):
                             mimetype = 'application/json'
                         else:
                             mimetype = 'application/octet-stream'
-                        
+
                         with open(asset_path, 'rb') as f:
                             response = app.response_class(
                                 f.read(),
@@ -441,7 +442,7 @@ def create_production_app(config_name='production'):
                     return {'error': {'code': 'SERVER_ERROR', 'message': 'Asset serving error'}, 'success': False}, 500
             else:
                 return {'error': {'code': 'NOT_FOUND', 'message': 'Static folder not available'}, 'success': False}, 404
-        
+
         @app.route('/<path:path>')
         def serve_static_files(path):
             """Serve static assets or fallback to index.html for SPA routing"""
@@ -454,25 +455,25 @@ def create_production_app(config_name='production'):
                         # Enhanced SPA routing for Vue.js
                         # Define routes that should NOT serve the SPA (API endpoints)
                         api_prefixes = ('api/', 'admin/', 'health', 'socket.io/', 'static/', 'assets/')
-                        
+
                         # Define frontend routes that should serve index.html
                         frontend_routes = ('dashboard', 'login', 'websites', 'analytics', 'logs', 'settings', 'profile')
-                        
+
                         # Check if this is an API call or file request
                         is_api_call = (
-                            path.startswith(api_prefixes) or 
+                            path.startswith(api_prefixes) or
                             ('.' in path and not path.endswith(('.html', '.htm'))) or
                             path in ('favicon.ico', 'robots.txt', 'sitemap.xml')
                         )
-                        
+
                         # Check if this looks like a frontend route
                         is_frontend_route = (
-                            path in frontend_routes or 
+                            path in frontend_routes or
                             any(path.startswith(f'{route}/') for route in frontend_routes) or
                             path == '' or
                             '/' not in path  # Simple paths without extensions
                         )
-                        
+
                         if not is_api_call and (is_frontend_route or not ('.' in path)):
                             # This is likely a frontend route, serve index.html
                             app.logger.info(f"Serving index.html for SPA route: /{path}")
@@ -497,7 +498,7 @@ def create_production_app(config_name='production'):
                             except Exception as e:
                                 app.logger.error(f"Failed to serve index.html for SPA route {path}: {e}")
                                 return serve_root()
-                        
+
                         # Return 404 for unknown API routes or file requests
                         app.logger.warning(f"404 for unknown route: /{path}")
                         return {'error': {'code': 'NOT_FOUND', 'message': f'Endpoint /{path} not found'}, 'success': False}, 404
@@ -507,7 +508,7 @@ def create_production_app(config_name='production'):
             else:
                 # Return 404 for unknown routes when frontend not available
                 return {'error': {'code': 'NOT_FOUND', 'message': f'Endpoint /{path} not found (frontend not available)'}, 'success': False}, 404
-    
+
     # Error handlers
     @app.errorhandler(400)
     def bad_request(error):
@@ -518,7 +519,7 @@ def create_production_app(config_name='production'):
                 'message': 'Invalid request format or parameters'
             }
         }), 400
-    
+
     @app.errorhandler(404)
     def not_found(error):
         return jsonify({
@@ -528,7 +529,7 @@ def create_production_app(config_name='production'):
                 'message': 'Endpoint not found'
             }
         }), 404
-    
+
     @app.errorhandler(422)
     def validation_error(error):
         return jsonify({
@@ -538,7 +539,7 @@ def create_production_app(config_name='production'):
                 'message': 'Request validation failed'
             }
         }), 422
-    
+
     @app.errorhandler(429)
     def rate_limit_handler(error):
         return jsonify({
@@ -549,7 +550,7 @@ def create_production_app(config_name='production'):
                 'retry_after': getattr(error, 'retry_after', None)
             }
         }), 429
-    
+
     @app.errorhandler(500)
     def internal_error(error):
         app.logger.error(f"Internal server error: {error}")
@@ -560,7 +561,7 @@ def create_production_app(config_name='production'):
                 'message': 'An unexpected error occurred. Please try again later.'
             }
         }), 500
-    
+
     # Handle JSON parsing errors
     @app.errorhandler(Exception)
     def handle_json_error(error):
@@ -574,11 +575,11 @@ def create_production_app(config_name='production'):
             }), 400
         # Re-raise if it's not a JSON error
         raise error
-    
+
     # Set application start time for uptime calculation
     import time
     app.start_time = time.time()
-    
+
     # Store references for access in other modules
     app.redis_client = redis_client
     app.socketio = socketio
@@ -587,26 +588,26 @@ def create_production_app(config_name='production'):
     app.script_token_manager = script_token_manager
     app.auth_service = auth_service
     app.website_service = website_service
-    
+
     # Register frontend routes (must be last to avoid conflicts)
     register_frontend_routes(app)
-    
+
     app.logger.info("Production application created successfully")
     return app, socketio
 
 
 def setup_logging(app):
     """Setup comprehensive logging for production"""
-    
+
     # Create logs directory if it doesn't exist
     log_dir = os.path.dirname(app.config['LOG_FILE'])
     if log_dir and not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    
+
     # Set log level
     log_level = getattr(logging, app.config['LOG_LEVEL'].upper(), logging.INFO)
     app.logger.setLevel(log_level)
-    
+
     # Create file handler with rotation
     if not app.config['DEBUG']:
         file_handler = RotatingFileHandler(
@@ -614,35 +615,35 @@ def setup_logging(app):
             maxBytes=app.config['LOG_MAX_SIZE'],
             backupCount=app.config['LOG_BACKUP_COUNT']
         )
-        
+
         file_handler.setLevel(log_level)
-        
+
         # Create formatter
         formatter = logging.Formatter(
             '%(asctime)s %(levelname)s %(name)s: %(message)s [in %(pathname)s:%(lineno)d]'
         )
         file_handler.setFormatter(formatter)
-        
+
         # Add handler to app logger
         app.logger.addHandler(file_handler)
-        
+
         # Also set up root logger for other modules
         root_logger = logging.getLogger()
         root_logger.setLevel(log_level)
         root_logger.addHandler(file_handler)
-    
+
     app.logger.info("Logging configured successfully")
 
 
 def run_production_server():
     """Run the production server with SocketIO"""
     app, socketio = create_production_app('production')
-    
+
     port = int(os.getenv('PORT', 5003))
     host = os.getenv('HOST', '0.0.0.0')
-    
+
     app.logger.info(f"Starting production server on {host}:{port}")
-    
+
     # Run with SocketIO
     socketio.run(
         app,
