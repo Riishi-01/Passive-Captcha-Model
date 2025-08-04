@@ -136,81 +136,83 @@ class ScriptTokenManager:
         """
         Generate a new script token for a website (one-time only)
         """
+        session = None
         try:
-            session = get_db_session()
-            # Get website details
-            website = session.query(Website).filter(Website.website_id == website_id).first()
-            if not website:
-                # For testing, create a mock website
+            # Try to get database session and website details
+            try:
+                session = get_db_session()
+                website = session.query(Website).filter(Website.website_id == website_id).first()
+                if not website:
+                    # For testing, create a mock website
+                    website = type('MockWebsite', (), {
+                        'website_id': website_id,
+                        'website_name': f'Website {website_id}',
+                        'website_url': f'https://example-{website_id}.com'
+                    })()
+            except Exception as db_error:
+                logger.warning(f"Database not available, using mock website: {db_error}")
+                # Create a mock website for testing/offline use
                 website = type('MockWebsite', (), {
                     'website_id': website_id,
                     'website_name': f'Website {website_id}',
                     'website_url': f'https://example-{website_id}.com'
                 })()
-        except Exception as db_error:
-            logger.warning(f"Database not available, using mock website: {db_error}")
-            # Create a mock website for testing/offline use
-            website = type('MockWebsite', (), {
-                'website_id': website_id,
-                'website_name': f'Website {website_id}',
-                'website_url': f'https://example-{website_id}.com'
-            })()
-            session = None
+                session = None
 
-        # Check if token already exists for this website (moved outside try block)
-        try:
-            existing_token = self.get_website_token(website_id)
-            if existing_token:
-                raise ValueError(f"Script token already exists for website {website.website_name}")
-        except Exception:
-            # If check fails, continue with generation
-            pass
+            # Check if token already exists for this website
+            try:
+                existing_token = self.get_website_token(website_id)
+                if existing_token:
+                    raise ValueError(f"Script token already exists for website {website.website_name}")
+            except Exception:
+                # If check fails, continue with generation
+                pass
 
-        # Generate unique tokens
-        token_id = str(uuid.uuid4())
-        script_token = f"pcs_{secrets.token_urlsafe(32)}"  # Passive CAPTCHA Script
-        integration_key = f"pck_{secrets.token_urlsafe(24)}"  # Passive CAPTCHA Key
+            # Generate unique tokens
+            token_id = str(uuid.uuid4())
+            script_token = f"pcs_{secrets.token_urlsafe(32)}"  # Passive CAPTCHA Script
+            integration_key = f"pck_{secrets.token_urlsafe(24)}"  # Passive CAPTCHA Key
 
-        # Set expiration (tokens don't expire unless manually revoked)
-        expires_at = None  # No expiration for script tokens
+            # Set expiration (tokens don't expire unless manually revoked)
+            expires_at = None  # No expiration for script tokens
 
-        # Build default configuration based on environment
-        default_config = self._get_default_config(environment, script_version)
-        if custom_config:
-            default_config.update(custom_config)
+            # Build default configuration based on environment
+            default_config = self._get_default_config(environment, script_version)
+            if custom_config:
+                default_config.update(custom_config)
 
-        # Build advanced configurations
-        rate_limit_config = self._get_default_rate_limit_config(environment)
-        security_config = self._get_default_security_config(environment)
-        monitoring_config = self._get_default_monitoring_config(environment)
-        notification_config = self._get_default_notification_config()
+            # Build advanced configurations
+            rate_limit_config = self._get_default_rate_limit_config(environment)
+            security_config = self._get_default_security_config(environment)
+            monitoring_config = self._get_default_monitoring_config(environment)
+            notification_config = self._get_default_notification_config()
 
-        # Create script token
-        script_token_obj = ScriptToken(
-                token_id=token_id,
-                website_id=website_id,
-                website_name=website.website_name,
-                website_url=website.website_url,
-                script_token=script_token,
-                integration_key=integration_key,
-                status=TokenStatus.PENDING,
-                script_version=script_version,
-                created_at=datetime.utcnow(),
-                expires_at=expires_at,
-                config=default_config,
+            # Create script token
+            script_token_obj = ScriptToken(
+                    token_id=token_id,
+                    website_id=website_id,
+                    website_name=website.website_name,
+                    website_url=website.website_url,
+                    script_token=script_token,
+                    integration_key=integration_key,
+                    status=TokenStatus.PENDING,
+                    script_version=script_version,
+                    created_at=datetime.utcnow(),
+                    expires_at=expires_at,
+                    config=default_config,
 
-                # Enhanced management fields
-                environment=environment,
-                rate_limit_config=rate_limit_config,
-                security_config=security_config,
-                monitoring_config=monitoring_config,
-                notification_config=notification_config,
-                metadata={
-                    'created_by': admin_user or 'system',
-                    'creation_ip': 'unknown',  # Could be passed from request
-                    'creation_user_agent': 'admin_dashboard',
-                    'website_domain': website.website_url.split('://')[1] if '://' in website.website_url else website.website_url
-                }
+                    # Enhanced management fields
+                    environment=environment,
+                    rate_limit_config=rate_limit_config,
+                    security_config=security_config,
+                    monitoring_config=monitoring_config,
+                    notification_config=notification_config,
+                    metadata={
+                        'created_by': admin_user or 'system',
+                        'creation_ip': 'unknown',  # Could be passed from request
+                        'creation_user_agent': 'admin_dashboard',
+                        'website_domain': website.website_url.split('://')[1] if '://' in website.website_url else website.website_url
+                    }
             )
 
             # Store in Redis
@@ -229,6 +231,9 @@ class ScriptTokenManager:
             logger.info(f"Generated script token for website {website.website_name}")
             return script_token_obj
 
+        except Exception as e:
+            logger.error(f"Error generating script token: {e}")
+            raise
         finally:
             if session:
                 session.close()

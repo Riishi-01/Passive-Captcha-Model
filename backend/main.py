@@ -255,12 +255,21 @@ def create_app(config_name='production'):
 
         app.logger.info(f"Initializing auth service with Redis: {redis_client is not None}")
         app.logger.info(f"ADMIN_SECRET in app.config: {app.config.get('ADMIN_SECRET')}")
-        auth_service = init_auth_service(redis_client)
-        app.logger.info(f"Auth service initialized: {auth_service is not None}")
-        if auth_service:
-            app.logger.info(f"Auth service admin_secret: {auth_service.admin_secret}")
-        else:
-            app.logger.error("Auth service is None after initialization!")
+        
+        # Use robust auth service if available, fallback to old one
+        try:
+            from app.services.robust_auth_service import get_robust_auth_service
+            auth_service = get_robust_auth_service()
+            if auth_service and hasattr(auth_service, 'admin_secret'):
+                app.logger.info(f"Using robust auth service with admin_secret: {auth_service.admin_secret}")
+            else:
+                # Fallback to old auth service
+                auth_service = init_auth_service(redis_client)
+                app.logger.info(f"Using fallback auth service initialized: {auth_service is not None}")
+        except Exception as auth_error:
+            app.logger.warning(f"Robust auth service not available, using fallback: {auth_error}")
+            auth_service = init_auth_service(redis_client)
+            app.logger.info(f"Fallback auth service initialized: {auth_service is not None}")
 
         # Always initialize website service (with or without Redis)
         website_service = init_website_service(redis_client)
