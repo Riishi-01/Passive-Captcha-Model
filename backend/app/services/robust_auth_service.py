@@ -141,7 +141,9 @@ class RobustAuthService:
         secret = os.getenv('JWT_SECRET_KEY')
         if not secret:
             secret = secrets.token_urlsafe(64)
-            logger.warning("JWT_SECRET_KEY not set, using generated secret (not persistent)")
+            logger.info("🔑 JWT_SECRET_KEY not set in environment, using generated secret (development mode)")
+        else:
+            logger.info("🔑 JWT_SECRET_KEY loaded from environment")
         return secret
     
     def _ensure_default_admin(self):

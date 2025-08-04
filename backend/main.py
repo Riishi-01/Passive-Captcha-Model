@@ -185,7 +185,7 @@ def create_app(config_name='production'):
         redis_client.ping()
         app.logger.info("Redis connection established successfully")
     except Exception as e:
-        app.logger.warning(f"Redis unavailable, running without caching: {e}")
+        app.logger.info(f"💾 Redis unavailable, running without caching (development mode): {type(e).__name__}")
 
     # Initialize SocketIO (optional)
     socketio = None

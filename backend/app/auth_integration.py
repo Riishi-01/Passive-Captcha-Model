@@ -480,7 +480,7 @@ def integrate_with_existing_app(app: Flask) -> bool:
             redis_client.ping()  # Test connection
             logger.info("✅ Redis connection established")
         except Exception as e:
-            logger.warning(f"⚠️  Redis not available, using in-memory auth: {e}")
+            logger.info(f"💾 Redis not available, using in-memory auth (development mode): {type(e).__name__}")
             redis_client = None
         
         # Initialize authentication
