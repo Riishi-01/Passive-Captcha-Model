@@ -648,31 +648,170 @@ def register_frontend_routes(app, static_folder):
                 with open(uidai_path, 'r', encoding='utf-8') as f:
                     content = f.read()
                 
-                # Inject passive captcha script and admin access into UIDAI site
+                # Enhanced passive captcha script with full analytics integration
                 passive_script = '''
-                <!-- Passive CAPTCHA Integration for UIDAI Government Portal -->
+                <!-- Enhanced Passive CAPTCHA Integration for UIDAI Government Portal -->
+                <script>
+                    // Global configuration for passive CAPTCHA
+                    window.PASSIVE_CAPTCHA_CONFIG = {
+                        apiUrl: '/prototype/api/verify',
+                        websiteId: 'uidai-gov-in',
+                        enabled: true,
+                        debug: true,
+                        collectAll: true,
+                        realTimeAnalytics: true
+                    };
+                </script>
                 <script src="/passive-captcha-script.js"></script>
                 <script>
-                    // Initialize passive captcha for UIDAI government site
-                    if (typeof PassiveCaptcha !== 'undefined') {
-                        PassiveCaptcha.init({
-                            websiteId: 'uidai-gov-in',
-                            apiEndpoint: '/prototype/api/verify',
-                            enableRealTimeMonitoring: true,
-                            collectTouchPatterns: true,
-                            monitorFocusEvents: true,
-                            trackFormInteractions: true
+                    // Enhanced UIDAI analytics and tracking
+                    document.addEventListener('DOMContentLoaded', function() {
+                        console.log('🏛️ UIDAI Portal loaded with Advanced Passive CAPTCHA Protection');
+                        
+                        // Initialize passive captcha with enhanced configuration
+                        if (typeof PassiveCaptcha !== 'undefined') {
+                            PassiveCaptcha.init({
+                                websiteId: 'uidai-gov-in',
+                                apiEndpoint: '/prototype/api/verify',
+                                enableRealTimeMonitoring: true,
+                                collectTouchPatterns: true,
+                                monitorFocusEvents: true,
+                                trackFormInteractions: true,
+                                analyticsEndpoint: '/prototype/api/analytics'
+                            });
+                            console.log('✅ Passive CAPTCHA System Active');
+                        }
+                        
+                        // Track comprehensive page analytics
+                        var sessionData = {
+                            sessionId: 'uidai_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                            startTime: Date.now(),
+                            pageUrl: window.location.href,
+                            referrer: document.referrer || 'direct',
+                            userAgent: navigator.userAgent,
+                            screen: screen.width + 'x' + screen.height,
+                            viewport: window.innerWidth + 'x' + window.innerHeight,
+                            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                            language: navigator.language,
+                            platform: navigator.platform
+                        };
+                        
+                        // Send initial page view analytics
+                        function sendAnalytics(eventData) {
+                            if (window.fetch) {
+                                fetch('/prototype/api/analytics', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-Website-URL': window.location.href,
+                                        'X-Passive-Captcha-Token': 'uidai-portal-' + Date.now()
+                                    },
+                                    body: JSON.stringify(eventData)
+                                }).then(function(response) {
+                                    if (response.ok) {
+                                        console.log('📊 Analytics sent successfully');
+                                    }
+                                }).catch(function(err) {
+                                    console.log('⚠️ Analytics error:', err);
+                                });
+                            }
+                        }
+                        
+                        // Initial page view
+                        sendAnalytics({
+                            event: 'uidai_page_view',
+                            timestamp: Date.now(),
+                            session: sessionData,
+                            page: 'uidai_homepage'
                         });
-                        console.log('🛡️ Passive CAPTCHA activated for UIDAI Government Portal');
-                    }
+                        
+                        // Track user interactions
+                        var interactionCount = 0;
+                        function trackInteraction(type, details) {
+                            interactionCount++;
+                            if (interactionCount % 3 === 0) {
+                                sendAnalytics({
+                                    event: 'uidai_interaction',
+                                    type: type,
+                                    details: details,
+                                    count: interactionCount,
+                                    timestamp: Date.now(),
+                                    sessionId: sessionData.sessionId
+                                });
+                            }
+                        }
+                        
+                        // Attach interaction listeners
+                        document.addEventListener('click', function(e) {
+                            trackInteraction('click', {
+                                target: e.target.tagName,
+                                x: e.clientX,
+                                y: e.clientY
+                            });
+                        });
+                        
+                        document.addEventListener('scroll', function() {
+                            trackInteraction('scroll', {
+                                scrollTop: window.pageYOffset,
+                                scrollLeft: window.pageXOffset
+                            });
+                        });
+                        
+                        document.addEventListener('keydown', function(e) {
+                            trackInteraction('keydown', {
+                                key: e.key,
+                                code: e.code
+                            });
+                        });
+                        
+                        // Track page unload
+                        window.addEventListener('beforeunload', function() {
+                            var timeOnPage = Date.now() - sessionData.startTime;
+                            if (navigator.sendBeacon) {
+                                navigator.sendBeacon('/prototype/api/analytics', JSON.stringify({
+                                    event: 'uidai_page_unload',
+                                    sessionId: sessionData.sessionId,
+                                    timeOnPage: timeOnPage,
+                                    interactions: interactionCount,
+                                    timestamp: Date.now()
+                                }));
+                            }
+                        });
+                        
+                        console.log('🔐 Real-time monitoring active for UIDAI portal');
+                    });
                 </script>
                 
-                <!-- Admin Access Panel - Styled for Government Portal -->
-                <div style="position: fixed; top: 20px; right: 20px; background: rgba(0,0,70,0.9); color: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999; font-family: Arial, sans-serif; text-align: center;">
-                    <div style="font-size: 12px; margin-bottom: 8px; opacity: 0.8;">🛡️ SYSTEM ADMIN</div>
-                    <a href="/" style="display: block; background: #1cb5e0; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; margin: 2px 0; font-size: 12px;">📊 Dashboard</a>
-                    <a href="/admin/analytics" style="display: block; background: #28a745; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; margin: 2px 0; font-size: 12px;">📈 Analytics</a>
+                <!-- Enhanced Admin Access Panel -->
+                <div id="uidai-admin-panel" style="position: fixed; top: 15px; right: 15px; background: linear-gradient(135deg, #000046 0%, #1cb5e0 100%); color: white; padding: 16px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 99999; font-family: 'Segoe UI', sans-serif; text-align: center; cursor: pointer; transition: all 0.3s ease; min-width: 200px;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="font-size: 11px; margin-bottom: 8px; opacity: 0.9; font-weight: 600;">🛡️ UIDAI ADMIN SYSTEM</div>
+                    <a href="/" style="display: block; background: rgba(255,255,255,0.2); color: white; padding: 10px 14px; text-decoration: none; border-radius: 6px; margin: 4px 0; font-size: 13px; font-weight: 500; border: 1px solid rgba(255,255,255,0.3); transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">📊 Analytics Dashboard</a>
+                    <a href="/api/health" style="display: block; background: rgba(255,255,255,0.2); color: white; padding: 10px 14px; text-decoration: none; border-radius: 6px; margin: 4px 0; font-size: 13px; font-weight: 500; border: 1px solid rgba(255,255,255,0.3); transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">🔍 System Health</a>
+                    <div style="font-size: 10px; margin-top: 8px; opacity: 0.7;">🟢 Active Monitoring</div>
                 </div>
+                
+                <!-- UIDAI Portal Enhancement Styles -->
+                <style>
+                    /* Enhanced styling for government portal */
+                    body { 
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+                    }
+                    
+                    /* Responsive admin panel */
+                    @media (max-width: 768px) {
+                        #uidai-admin-panel {
+                            top: 10px !important;
+                            right: 10px !important;
+                            left: 10px !important;
+                            min-width: auto !important;
+                            padding: 12px !important;
+                        }
+                        #uidai-admin-panel a {
+                            font-size: 12px !important;
+                            padding: 8px 12px !important;
+                        }
+                    }
+                </style>
                 '''
                 
                 # Inject before closing body tag
