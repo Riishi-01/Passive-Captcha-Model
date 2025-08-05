@@ -14,7 +14,7 @@ const DashboardPage = () => import('@/app/dashboard/page.vue')
 const WebsitesPage = () => import('@/app/dashboard/websites/page.vue')
 const WebsiteDetailPage = () => import('@/app/dashboard/websites/[id]/page.vue')
 const AnalyticsPage = () => import('@/app/dashboard/analytics/page.vue')
-const LogsPage = () => import('@/app/dashboard/logs/page.vue')
+// const LogsPage = () => import('@/app/dashboard/logs/page.vue') // Commented out - file missing
 const SettingsPage = () => import('@/app/dashboard/settings/page.vue')
 const ProfilePage = () => import('@/app/dashboard/profile/page.vue')
 
@@ -87,14 +87,15 @@ const routes: RouteRecordRaw[] = [
               title: 'Analytics - Passive CAPTCHA Admin'
             }
           },
-          {
-            path: 'logs',
-            name: 'Logs',
-            component: LogsPage,
-            meta: {
-              title: 'Logs - Passive CAPTCHA Admin'
-            }
-          },
+          // Logs route temporarily disabled - missing component
+          // {
+          //   path: 'logs',
+          //   name: 'Logs', 
+          //   component: LogsPage,
+          //   meta: {
+          //     title: 'Logs - Passive CAPTCHA Admin'
+          //   }
+          // },
           {
             path: 'settings',
             name: 'Settings',

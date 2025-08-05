@@ -50,6 +50,60 @@
           />
         </div>
 
+        <!-- UIDAI Portal Integration -->
+        <div class="mb-8">
+          <div class="card p-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-4">
+                <div class="p-3 bg-white/20 rounded-lg">
+                  <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="text-xl font-bold">UIDAI Government Portal</h3>
+                  <p class="text-blue-100">Protected by Passive CAPTCHA • Real-time Monitoring Active</p>
+                </div>
+              </div>
+              <div class="flex space-x-3">
+                <a
+                  href="/uidai"
+                  target="_blank"
+                  class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors flex items-center space-x-2"
+                >
+                  <span>Visit Portal</span>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+                <router-link
+                  to="/analytics"
+                  class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors flex items-center space-x-2"
+                >
+                  <span>View Analytics</span>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </router-link>
+              </div>
+            </div>
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="text-center p-3 bg-white/10 rounded-lg">
+                <div class="text-2xl font-bold">{{ uidaiStats.totalSessions || '---' }}</div>
+                <div class="text-sm text-blue-100">Total Sessions</div>
+              </div>
+              <div class="text-center p-3 bg-white/10 rounded-lg">
+                <div class="text-2xl font-bold">{{ uidaiStats.verifiedUsers || '---' }}</div>
+                <div class="text-sm text-blue-100">Verified Users</div>
+              </div>
+              <div class="text-center p-3 bg-white/10 rounded-lg">
+                <div class="text-2xl font-bold">{{ uidaiStats.detectionRate || '---' }}%</div>
+                <div class="text-sm text-blue-100">Detection Rate</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Charts Row -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <!-- Verification Trends Chart -->
@@ -159,6 +213,11 @@ const websiteStore = useWebsiteStore()
 const selectedTimeRange = ref('24h')
 const activeLogFilter = ref('active')
 const isLoadingLogs = ref(false)
+const uidaiStats = ref({
+  totalSessions: 0,
+  verifiedUsers: 0,
+  detectionRate: 0
+})
 
 // Computed
 const stats = computed(() => dashboardStore.stats)
@@ -170,6 +229,24 @@ const systemHealth = computed(() => dashboardStore.systemHealth)
 const timelineLogs = computed(() => dashboardStore.timelineLogs)
 
 // Methods
+async function fetchUidaiStats() {
+  try {
+    // Fetch UIDAI portal specific analytics
+    const response = await fetch('/prototype/api/analytics?website=uidai-gov-in')
+    if (response.ok) {
+      const data = await response.json()
+      uidaiStats.value = {
+        totalSessions: data.total_verifications || 0,
+        verifiedUsers: data.verified_users || 0,
+        detectionRate: Math.round(data.detection_rate || 0)
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching UIDAI stats:', error)
+    // Keep default values on error
+  }
+}
+
 async function refreshDashboard() {
   appStore.setLoading(true)
   try {
@@ -179,7 +256,8 @@ async function refreshDashboard() {
       dashboardStore.fetchDetectionData(selectedTimeRange.value),
       websiteStore.fetchActiveWebsites(),
       dashboardStore.fetchRecentAlerts(),
-      dashboardStore.fetchSystemHealth()
+      dashboardStore.fetchSystemHealth(),
+      fetchUidaiStats()
     ])
   } catch (error) {
     console.error('Error refreshing dashboard:', error)

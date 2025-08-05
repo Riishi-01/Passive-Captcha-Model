@@ -325,8 +325,8 @@ import {
   Cog6ToothIcon
 } from '@heroicons/vue/24/outline'
 import { apiService } from '@/services/api'
-import ScriptGeneratorModal from '../_components/ScriptGeneratorModal.vue'
-import ScriptAnalyticsDashboard from '../_components/ScriptAnalyticsDashboard.vue'
+import ScriptGeneratorModal from '../../_components/ScriptGeneratorModal.vue'
+import ScriptAnalyticsDashboard from '../../_components/ScriptAnalyticsDashboard.vue'
 
 const route = useRoute()
 const router = useRouter()

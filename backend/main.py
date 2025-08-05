@@ -569,27 +569,173 @@ def create_app(config_name='production'):
 
 
 def register_frontend_routes(app, static_folder):
-    """Register frontend serving routes"""
+    """Register integrated routing architecture with existing dashboard"""
 
     @app.route('/')
     def serve_root():
-        """Serve Vue.js frontend root"""
+        """Serve existing Vue.js dashboard at root - no changes needed"""
         try:
-            return app.send_static_file('index.html')
-        except Exception as e:
-            app.logger.error(f"Failed to serve index.html: {e}")
+            # Use app's static folder directly
+            if app.static_folder:
+                index_path = os.path.join(app.static_folder, 'index.html')
+                app.logger.info(f"Attempting to serve index.html from: {index_path}")
+                if os.path.exists(index_path):
+                    with open(index_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    app.logger.info("Successfully served Vue.js dashboard")
+                    return content
+                else:
+                    app.logger.error(f"index.html not found at {index_path}")
+            else:
+                app.logger.error("No static folder configured")
+            
+            # Fallback to dashboard placeholder
+            app.logger.info("Serving fallback dashboard")
             return '''
             <!DOCTYPE html>
-            <html><head><title>Passive CAPTCHA</title></head>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Passive CAPTCHA Admin Dashboard</title>
+                <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+                    .container { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
+                    .header { color: #4338ca; margin-bottom: 20px; }
+                    .nav-link { display: inline-block; background: #4338ca; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 8px; transition: all 0.3s; }
+                    .nav-link:hover { background: #3730a3; transform: translateY(-2px); }
+                    .status { color: #059669; font-size: 14px; margin-top: 20px; }
+                </style>
+            </head>
             <body>
-                <h1>🔐 Passive CAPTCHA API</h1>
-                <p>[SUCCESS] API Server Running</p>
-                <div>
-                    <a href="/health">[HEALTH] Health Check</a> |
-                    <a href="/admin/login">[KEY] Admin Login</a>
+                <div class="container">
+                    <div class="header">
+                        <h1>🛡️ Passive CAPTCHA Dashboard</h1>
+                        <p>Advanced Behavioral Authentication System</p>
+                    </div>
+                    <div>
+                        <a href="/uidai" class="nav-link">🏛️ UIDAI Portal</a>
+                        <a href="/api/health" class="nav-link">📊 System Health</a>
+                    </div>
+                    <div class="status">
+                        ⚡ Server Running • Frontend Load Error
+                    </div>
                 </div>
+            </body>
+            </html>
+            '''
+        except Exception as e:
+            app.logger.error(f"Failed to serve dashboard: {e}")
+            return f'''
+            <!DOCTYPE html>
+            <html><head><title>Server Error</title></head>
+            <body>
+                <h1>Server Error</h1>
+                <p>Error: {e}</p>
+                <a href="/uidai">Visit UIDAI Portal</a>
             </body></html>
             '''
+
+    @app.route('/uidai')
+    def serve_uidai_portal():
+        """Serve UIDAI Government Site at dedicated route"""
+        try:
+            # Serve the UIDAI site at /uidai route
+            uidai_path = os.path.join(os.path.dirname(__file__), '..', 'site', 'Home - Unique Identification Authority of India .html')
+            app.logger.info(f"Serving UIDAI portal from: {uidai_path}")
+            
+            if os.path.exists(uidai_path):
+                with open(uidai_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Inject passive captcha script and admin access into UIDAI site
+                passive_script = '''
+                <!-- Passive CAPTCHA Integration for UIDAI Government Portal -->
+                <script src="/passive-captcha-script.js"></script>
+                <script>
+                    // Initialize passive captcha for UIDAI government site
+                    if (typeof PassiveCaptcha !== 'undefined') {
+                        PassiveCaptcha.init({
+                            websiteId: 'uidai-gov-in',
+                            apiEndpoint: '/prototype/api/verify',
+                            enableRealTimeMonitoring: true,
+                            collectTouchPatterns: true,
+                            monitorFocusEvents: true,
+                            trackFormInteractions: true
+                        });
+                        console.log('🛡️ Passive CAPTCHA activated for UIDAI Government Portal');
+                    }
+                </script>
+                
+                <!-- Admin Access Panel - Styled for Government Portal -->
+                <div style="position: fixed; top: 20px; right: 20px; background: rgba(0,0,70,0.9); color: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999; font-family: Arial, sans-serif; text-align: center;">
+                    <div style="font-size: 12px; margin-bottom: 8px; opacity: 0.8;">🛡️ SYSTEM ADMIN</div>
+                    <a href="/" style="display: block; background: #1cb5e0; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; margin: 2px 0; font-size: 12px;">📊 Dashboard</a>
+                    <a href="/admin/analytics" style="display: block; background: #28a745; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; margin: 2px 0; font-size: 12px;">📈 Analytics</a>
+                </div>
+                '''
+                
+                # Inject before closing body tag
+                if '</body>' in content:
+                    content = content.replace('</body>', passive_script + '\n</body>')
+                else:
+                    content += passive_script
+                
+                return content
+            else:
+                app.logger.warning(f"UIDAI site not found at {uidai_path}, serving fallback")
+                return '''
+                <!DOCTYPE html>
+                <html><head><title>UIDAI - Government of India</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 40px; background: #f5f7fa; }
+                    .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+                    .header { text-align: center; color: #000046; margin-bottom: 30px; }
+                    .admin-link { display: inline-block; background: linear-gradient(135deg, #000046 0%, #1cb5e0 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px; transition: transform 0.2s; }
+                    .admin-link:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+                    .back-link { text-align: center; margin-top: 30px; }
+                    .back-link a { color: #1cb5e0; text-decoration: none; }
+                </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>🏛️ Unique Identification Authority of India</h1>
+                            <p>Government of India - Digital Identity Platform</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <a href="/" class="admin-link">📊 Admin Dashboard</a>
+                            <a href="/api/health" class="admin-link">🔍 System Health</a>
+                        </div>
+                        <div class="back-link">
+                            <a href="/">← Return to Admin Dashboard</a>
+                        </div>
+                    </div>
+                    <script src="/passive-captcha-script.js"></script>
+                    <script>
+                        if (typeof PassiveCaptcha !== 'undefined') {
+                            PassiveCaptcha.init({
+                                websiteId: 'uidai-gov-in-fallback',
+                                apiEndpoint: '/prototype/api/verify',
+                                enableRealTimeMonitoring: true
+                            });
+                        }
+                    </script>
+                </body></html>
+                '''
+        except Exception as e:
+            app.logger.error(f"Failed to serve UIDAI portal: {e}")
+            return '''
+            <!DOCTYPE html>
+            <html><head><title>UIDAI Portal - Error</title></head>
+            <body>
+                <h1>🏛️ UIDAI Government Portal</h1>
+                <p>Temporary service unavailable</p>
+                <div><a href="/">← Return to Dashboard</a></div>
+            </body></html>
+            '''
+    
+
 
     @app.route('/assets/<path:filename>')
     def serve_assets(filename):
