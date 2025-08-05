@@ -940,24 +940,8 @@ def send_periodic_updates(socketio):
 def register_prototype(app, socketio):
     """Register prototype blueprint and initialize WebSocket events"""
     
-    # Add static script serving route
-    @app.route('/static/passive-captcha-script.js')
-    def serve_passive_captcha_script():
-        """Serve the passive captcha script directly"""
-        try:
-            script_path = os.path.join(os.path.dirname(__file__), 'static', 'passive-captcha-script.js')
-            with open(script_path, 'r', encoding='utf-8') as f:
-                script_content = f.read()
-            
-            return script_content, 200, {
-                'Content-Type': 'application/javascript; charset=utf-8',
-                'Cache-Control': 'public, max-age=3600',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Headers': 'Content-Type'
-            }
-        except Exception as e:
-            app.logger.error(f'Error serving passive captcha script: {e}')
-            return f'// Script not found: {e}', 404, {'Content-Type': 'application/javascript'}
+    # Static script serving moved to main.py to avoid conflicts
+    # @app.route('/static/passive-captcha-script.js') - REMOVED DUPLICATE
     
     app.register_blueprint(prototype_bp)
     init_websocket_events(socketio)

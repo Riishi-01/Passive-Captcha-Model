@@ -523,50 +523,16 @@ def create_app(config_name='production'):
     except Exception as e:
         app.logger.error(f'Failed to register site routes: {e}')
     
-    # Register static file routes for passive captcha script
-    @app.route('/static/<path:filename>')
-    def serve_static_files(filename):
-        """Serve static files including passive captcha script"""
-        try:
-            static_dir = os.path.join(os.path.dirname(__file__), 'app', 'static')
-            full_path = os.path.join(static_dir, filename)
-            
-            app.logger.info(f'Serving static file: {filename} from {static_dir}')
-            
-            if filename == 'passive-captcha-script.js':
-                # Special handling for the main script
-                if os.path.exists(full_path):
-                    with open(full_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                    return content, 200, {
-                        'Content-Type': 'application/javascript; charset=utf-8',
-                        'Cache-Control': 'public, max-age=3600',
-                        'Access-Control-Allow-Origin': '*'
-                    }
-                else:
-                    app.logger.error(f'Script file not found at: {full_path}')
-                    return f'// Script file not found at: {full_path}', 404, {'Content-Type': 'application/javascript'}
-            
-            # Serve other static files normally
-            if os.path.exists(full_path):
-                return send_from_directory(static_dir, filename)
-            else:
-                app.logger.error(f'Static file not found: {full_path}')
-                return f'File not found: {filename}', 404
-                
-        except Exception as e:
-            app.logger.error(f'Error serving static file {filename}: {e}')
-            return f'// Error serving file: {filename}', 500, {'Content-Type': 'application/javascript'}
-            
-    # Also provide direct script access
+    # Register script serving routes BEFORE other routes to avoid conflicts
+    @app.route('/app/static/passive-captcha-script.js')
+    @app.route('/backend/app/static/passive-captcha-script.js')
+    @app.route('/static/passive-captcha-script.js')
     @app.route('/passive-captcha-script.js')
-    def serve_script_direct():
-        """Direct access to passive captcha script"""
+    def serve_passive_captcha_script():
+        """Serve the passive captcha script via multiple routes"""
         try:
             static_dir = os.path.join(os.path.dirname(__file__), 'app', 'static')
             script_path = os.path.join(static_dir, 'passive-captcha-script.js')
-            
-            app.logger.info(f'Direct script access from: {script_path}')
             
             if os.path.exists(script_path):
                 with open(script_path, 'r', encoding='utf-8') as f:
@@ -577,12 +543,26 @@ def create_app(config_name='production'):
                     'Access-Control-Allow-Origin': '*'
                 }
             else:
-                app.logger.error(f'Script not found at: {script_path}')
                 return f'// Script not found at: {script_path}', 404, {'Content-Type': 'application/javascript'}
                 
         except Exception as e:
-            app.logger.error(f'Error serving script directly: {e}')
             return f'// Script error: {e}', 500, {'Content-Type': 'application/javascript'}
+    
+    # Generic static file serving (for other files)
+    @app.route('/static/<path:filename>')
+    def serve_other_static_files(filename):
+        """Serve other static files"""
+        try:
+            static_dir = os.path.join(os.path.dirname(__file__), 'app', 'static')
+            full_path = os.path.join(static_dir, filename)
+            
+            if os.path.exists(full_path):
+                return send_from_directory(static_dir, filename)
+            else:
+                return f'File not found: {filename}', 404
+                
+        except Exception as e:
+            return f'Error serving file: {filename}', 500
     
     app.logger.info("Application created successfully")
     return app, socketio
