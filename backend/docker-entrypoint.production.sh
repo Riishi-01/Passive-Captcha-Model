@@ -96,7 +96,7 @@ echo "✅ Production server initialization complete"
 if [ $# -eq 0 ]; then
     echo "🌟 Starting with default command: python main.py"
     PORT=${PORT:-5000}
-    exec python main.py --host 0.0.0.0 --port $PORT --gunicorn
+    exec python main.py --host 0.0.0.0 --gunicorn
 else
     echo "🌟 Starting application with: $@"
     exec "$@"
