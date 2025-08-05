@@ -20,7 +20,7 @@ restartPolicyMaxRetries = 3
 [services.variables]
 ENV = "production"
 FLASK_ENV = "production"
-PYTHONPATH = "/app/backend"
+PYTHONPATH = "/app"
 API_BASE_URL = "https://${{RAILWAY_PUBLIC_DOMAIN}}"
 ALLOWED_ORIGINS = "https://${{RAILWAY_PUBLIC_DOMAIN}},https://*.railway.app,https://passive-captcha-model-production.up.railway.app"
 

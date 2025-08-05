@@ -15,7 +15,7 @@
       "variables": {
         "ENV": "production",
         "FLASK_ENV": "production",
-        "PYTHONPATH": "/app/backend",
+        "PYTHONPATH": "/app",
         "API_BASE_URL": "https://$RAILWAY_PUBLIC_DOMAIN",
         "ALLOWED_ORIGINS": "https://$RAILWAY_PUBLIC_DOMAIN,https://*.railway.app",
         "JWT_SECRET": "$JWT_SECRET",
@@ -41,27 +41,12 @@
         "branch": "main"
       },
       "build": {
-        "builder": "DOCKERFILE"
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "backend/Dockerfile.production"
       },
       "deploy": {
         "startCommand": "python main.py --host 0.0.0.0 --port $PORT --gunicorn",
         "healthcheckPath": "/health"
-      }
-    },
-    {
-      "name": "passive-captcha-frontend", 
-      "source": {
-        "repo": "Riishi-01/Passive-Captcha-Model",
-        "branch": "main",
-        "directory": "frontend"
-      },
-      "build": {
-        "builder": "DOCKERFILE",
-        "dockerfilePath": "Dockerfile.production"
-      },
-      "deploy": {
-        "startCommand": "nginx -g 'daemon off;'",
-        "healthcheckPath": "/"
       }
     }
   ],
