@@ -805,14 +805,41 @@ def register_frontend_routes(app, static_folder):
             </body>
             </html>
             '''
-                
-                # Enhanced passive captcha script with full analytics integration
-                passive_script = '''
-                <!-- Enhanced Passive CAPTCHA Integration for UIDAI Government Portal -->
-                <script>
-                    // Global configuration for passive CAPTCHA
-                    window.PASSIVE_CAPTCHA_CONFIG = {
-                        apiUrl: '/prototype/api/verify',
+        except Exception as e:
+            app.logger.error(f"Failed to serve admin dashboard: {e}")
+            return '''
+            <!DOCTYPE html>
+            <html><head><title>Admin Dashboard - Error</title></head>
+            <body>
+                <h1>🛡️ Admin Dashboard</h1>
+                <p>Dashboard temporarily unavailable.</p>
+                <a href="/">Return to UIDAI Portal</a>
+            </body></html>
+            '''
+
+    @app.route('/assets/<path:filename>')
+    def serve_assets(filename):
+        """Serve Vue.js build assets"""
+        try:
+            asset_path = os.path.join(static_folder, 'assets', filename)
+            if os.path.exists(asset_path):
+                mimetype = 'application/javascript' if filename.endswith('.js') else \
+                          'text/css' if filename.endswith('.css') else \
+                          'application/json' if filename.endswith('.map') else \
+                          'application/octet-stream'
+
+                with open(asset_path, 'rb') as f:
+                    response = app.response_class(
+                        f.read(),
+                        mimetype=mimetype,
+                        headers={'Cache-Control': 'public, max-age=31536000, immutable'}
+                    )
+                    return response
+            else:
+                abort(404)
+        except Exception as e:
+            app.logger.error(f"Error serving asset {filename}: {e}")
+            abort(500)
                         websiteId: 'uidai-gov-in',
                         enabled: true,
                         debug: true,
