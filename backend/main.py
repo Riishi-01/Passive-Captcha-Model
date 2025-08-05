@@ -654,8 +654,33 @@ def setup_logging(app):
 
 def get_wsgi_app():
     """Get WSGI application for production servers like gunicorn"""
-    app, socketio = create_app('production')
-    return socketio if socketio else app
+    try:
+        app, socketio = create_app('production')
+        
+        print(f"[WSGI] Flask app type: {type(app)}")
+        print(f"[WSGI] Flask app callable: {callable(app)}")
+        print(f"[WSGI] SocketIO type: {type(socketio) if socketio else 'None'}")
+        print(f"[WSGI] SocketIO callable: {callable(socketio) if socketio else 'None'}")
+        
+        # For Gunicorn with eventlet workers, return the Flask app
+        # SocketIO functionality will still work through the app.socketio instance
+        print(f"[WSGI] Returning Flask app for Gunicorn compatibility")
+        return app
+            
+    except Exception as e:
+        print(f"[ERROR] Failed to create WSGI app: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # Emergency fallback - create minimal Flask app
+        from flask import Flask
+        emergency_app = Flask(__name__)
+        
+        @emergency_app.route('/health')
+        def health():
+            return {'status': 'error', 'message': 'Application failed to initialize properly'}
+            
+        return emergency_app
 
 
 def run_app(host='0.0.0.0', port=None, debug=False):
