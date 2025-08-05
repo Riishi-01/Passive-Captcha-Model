@@ -1,66 +1,193 @@
 /**
  * Passive CAPTCHA Data Collection Script
- * Version: 2.0.0
+ * Version: 3.0.0 - Cross-Browser Compatible
  * 
  * This script collects passive behavioral data to detect bots
  * without user interaction. It monitors mouse movements, keyboard patterns,
- * scroll behavior, timing data, and device characteristics.
+ * scroll behavior, timing data, and device characteristics across all browsers.
  */
 
 (function() {
     'use strict';
     
-    // Configuration
+    // Cross-browser compatibility utilities
+    const utils = {
+        // Cross-browser event listener
+        addEventListener: function(element, event, handler, useCapture) {
+            if (element.addEventListener) {
+                element.addEventListener(event, handler, useCapture || false);
+            } else if (element.attachEvent) {
+                element.attachEvent('on' + event, handler);
+            } else {
+                element['on' + event] = handler;
+            }
+        },
+        
+        // Cross-browser remove event listener
+        removeEventListener: function(element, event, handler, useCapture) {
+            if (element.removeEventListener) {
+                element.removeEventListener(event, handler, useCapture || false);
+            } else if (element.detachEvent) {
+                element.detachEvent('on' + event, handler);
+            } else {
+                element['on' + event] = null;
+            }
+        },
+        
+        // Cross-browser timestamp
+        now: function() {
+            return Date.now ? Date.now() : new Date().getTime();
+        },
+        
+        // Cross-browser AJAX
+        createXHR: function() {
+            var xhr = null;
+            try {
+                xhr = new XMLHttpRequest();
+            } catch (e) {
+                try {
+                    xhr = new ActiveXObject('Msxml2.XMLHTTP');
+                } catch (e) {
+                    try {
+                        xhr = new ActiveXObject('Microsoft.XMLHTTP');
+                    } catch (e) {
+                        xhr = null;
+                    }
+                }
+            }
+            return xhr;
+        },
+        
+        // Cross-browser JSON
+        stringifyJSON: function(obj) {
+            if (window.JSON && window.JSON.stringify) {
+                return window.JSON.stringify(obj);
+            }
+            // Fallback for older browsers
+            return this.simpleStringify(obj);
+        },
+        
+        simpleStringify: function(obj) {
+            try {
+                if (typeof obj === 'string') return '"' + obj.replace(/"/g, '\\"') + '"';
+                if (typeof obj === 'number') return obj.toString();
+                if (typeof obj === 'boolean') return obj.toString();
+                if (obj === null) return 'null';
+                if (obj === undefined) return 'undefined';
+                if (typeof obj === 'object') {
+                    if (obj instanceof Array) {
+                        var result = '[';
+                        for (var i = 0; i < obj.length; i++) {
+                            if (i > 0) result += ',';
+                            result += this.simpleStringify(obj[i]);
+                        }
+                        return result + ']';
+                    } else {
+                        var result = '{';
+                        var first = true;
+                        for (var key in obj) {
+                            if (obj.hasOwnProperty && obj.hasOwnProperty(key)) {
+                                if (!first) result += ',';
+                                result += '"' + key + '":' + this.simpleStringify(obj[key]);
+                                first = false;
+                            }
+                        }
+                        return result + '}';
+                    }
+                }
+                return '""';
+            } catch (e) {
+                return '{}';
+            }
+        }
+    };
+    
+    // Configuration with enhanced cross-browser support
     const CONFIG = window.PASSIVE_CAPTCHA_CONFIG || {
         apiEndpoint: '{API_ENDPOINT}',
         scriptToken: '{SCRIPT_TOKEN}',
-        websiteUrl: window.location.origin,
+        websiteUrl: window.location.href.split('/')[0] + '//' + window.location.href.split('/')[2],
         collectMouseMovements: true,
         collectKeyboardPatterns: true,
         collectScrollBehavior: true,
+        collectTouchPatterns: true,
         collectTimingData: true,
         collectDeviceInfo: true,
-        samplingRate: 0.1, // 10% of interactions
-        batchSize: 50,
-        sendInterval: 30000, // 30 seconds
+        monitorFocusEvents: true,
+        trackFormInteractions: true,
+        samplingRate: 0.15, // 15% of interactions for better accuracy
+        batchSize: 75,
+        sendInterval: 25000, // 25 seconds
+        maxRetries: 3,
         debugMode: false
     };
     
-    // Data collection state
+    // Enhanced data collection state with cross-browser support
     const state = {
         sessionId: generateSessionId(),
         isInitialized: false,
         dataQueue: [],
-        lastSendTime: Date.now(),
+        lastSendTime: utils.now(),
+        retryCount: 0,
         mouseData: {
             movements: [],
             clicks: [],
             lastPosition: { x: 0, y: 0 },
             velocity: [],
-            acceleration: []
+            acceleration: [],
+            entropy: 0,
+            naturalness: 0
         },
         keyboardData: {
             keystrokes: [],
             timingPatterns: [],
-            typingSpeed: []
+            typingSpeed: [],
+            rhythm: [],
+            dwellTime: []
         },
         scrollData: {
             scrollEvents: [],
             scrollVelocity: [],
-            scrollPattern: []
+            scrollPattern: [],
+            scrollAcceleration: []
+        },
+        touchData: {
+            touchEvents: [],
+            touchPressure: [],
+            touchArea: [],
+            multiTouch: []
+        },
+        focusData: {
+            focusEvents: [],
+            blurEvents: [],
+            visibilityChanges: []
+        },
+        formData: {
+            formInteractions: [],
+            fieldFocus: [],
+            inputPatterns: []
         },
         timingData: {
             pageLoadTime: null,
             domReadyTime: null,
             firstInteractionTime: null,
-            sessionDuration: 0
+            sessionDuration: 0,
+            responseDelays: []
         },
         deviceInfo: null,
         behaviorMetrics: {
             mouseEntropy: 0,
             keyboardRhythm: 0,
             scrollConsistency: 0,
-            humanLikelihood: 0
+            touchNaturalness: 0,
+            humanLikelihood: 0,
+            botProbability: 0
+        },
+        verification: {
+            lastResult: null,
+            isBot: false,
+            confidence: 0,
+            timestamp: null
         }
     };
     
@@ -130,13 +257,16 @@
         let lastMouseTime = Date.now();
         let mouseMoveCount = 0;
         
-        document.addEventListener('mousemove', function(event) {
+        utils.addEventListener(document, 'mousemove', function(event) {
+            event = event || window.event; // IE fallback
             if (!shouldSample()) return;
             
-            const now = Date.now();
+            const now = utils.now();
             const deltaTime = now - lastMouseTime;
-            const deltaX = event.clientX - state.mouseData.lastPosition.x;
-            const deltaY = event.clientY - state.mouseData.lastPosition.y;
+            const x = event.clientX || event.pageX || 0;
+            const y = event.clientY || event.pageY || 0;
+            const deltaX = x - state.mouseData.lastPosition.x;
+            const deltaY = y - state.mouseData.lastPosition.y;
             const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
             const velocity = deltaTime > 0 ? distance / deltaTime : 0;
             
@@ -147,8 +277,8 @@
             
             // Store movement data
             state.mouseData.movements.push({
-                x: event.clientX,
-                y: event.clientY,
+                x: x,
+                y: y,
                 timestamp: now,
                 velocity: velocity,
                 acceleration: acceleration,
@@ -158,7 +288,7 @@
             
             state.mouseData.velocity.push(velocity);
             state.mouseData.acceleration.push(acceleration);
-            state.mouseData.lastPosition = { x: event.clientX, y: event.clientY };
+            state.mouseData.lastPosition = { x: x, y: y };
             
             // Limit data size
             if (state.mouseData.movements.length > 200) {
@@ -498,7 +628,7 @@
         });
     }
     
-    // Send collected data to server
+    // Send collected data to server with cross-browser compatibility
     function sendCollectedData() {
         if (!state.isInitialized) return;
         
@@ -506,58 +636,125 @@
         calculateBehaviorMetrics();
         
         const payload = {
-            session_id: state.sessionId,
-            website_url: CONFIG.websiteUrl,
-            timestamp: Date.now(),
-            data: {
-                mouse: {
-                    movementCount: state.mouseData.movements.length,
-                    clickCount: state.mouseData.clicks.length,
-                    avgVelocity: state.mouseData.velocity.length > 0 ? 
-                        state.mouseData.velocity.reduce((a, b) => a + b, 0) / state.mouseData.velocity.length : 0,
-                    avgAcceleration: state.mouseData.acceleration.length > 0 ?
-                        state.mouseData.acceleration.reduce((a, b) => a + b, 0) / state.mouseData.acceleration.length : 0,
-                    entropy: state.behaviorMetrics.mouseEntropy
-                },
-                keyboard: {
-                    keystrokeCount: state.keyboardData.keystrokes.length,
-                    avgTypingSpeed: state.keyboardData.typingSpeed.length > 0 ?
-                        state.keyboardData.typingSpeed.reduce((a, b) => a + b, 0) / state.keyboardData.typingSpeed.length : 0,
-                    rhythm: state.behaviorMetrics.keyboardRhythm
-                },
-                scroll: {
-                    scrollEventCount: state.scrollData.scrollEvents.length,
-                    avgVelocity: state.scrollData.scrollVelocity.length > 0 ?
-                        state.scrollData.scrollVelocity.reduce((a, b) => a + b, 0) / state.scrollData.scrollVelocity.length : 0,
-                    consistency: state.behaviorMetrics.scrollConsistency
-                },
-                timing: state.timingData,
-                device: state.deviceInfo,
-                behavioral_metrics: state.behaviorMetrics
-            }
+            sessionData: {
+                mouseMovements: state.mouseData.movements.slice(-30),
+                keyboardEvents: state.keyboardData.keystrokes.slice(-20),
+                scrollEvents: state.scrollData.scrollEvents.slice(-15),
+                clickEvents: state.mouseData.clicks.slice(-10),
+                focusEvents: state.focusData.focusEvents.slice(-5),
+                touchEvents: state.touchData.touchEvents.slice(-10),
+                formEvents: state.formData.formInteractions.slice(-10)
+            },
+            websiteId: CONFIG.websiteUrl.replace(/[^a-zA-Z0-9]/g, '-'),
+            sessionId: state.sessionId,
+            timestamp: utils.now(),
+            userAgent: navigator.userAgent || 'Unknown',
+            metrics: {
+                mouseEntropy: state.behaviorMetrics.mouseEntropy || 0,
+                keyboardRhythm: state.behaviorMetrics.keyboardRhythm || 0,
+                scrollConsistency: state.behaviorMetrics.scrollConsistency || 0,
+                humanLikelihood: state.behaviorMetrics.humanLikelihood || 0
+            },
+            deviceInfo: state.deviceInfo || {},
+            timing: state.timingData || {}
         };
         
-        // Send data
-        fetch(CONFIG.apiEndpoint + '/api/script/collect', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Script-Token': CONFIG.scriptToken
-            },
-            body: JSON.stringify(payload)
-        }).then(response => {
-            if (response.ok) {
-                log('Data sent successfully');
-                state.lastSendTime = Date.now();
-                
-                // Clear some data to prevent memory buildup
-                clearOldData();
-            } else {
-                console.error('Failed to send data');
+        // Use cross-browser sending method
+        sendViaPrototypeAPI(payload);
+    }
+    
+    // Send via prototype API endpoint
+    function sendViaPrototypeAPI(payload) {
+        var endpoint = '/prototype/api/verify';
+        
+        // Try modern methods first
+        if (window.fetch) {
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Passive-Captcha-Token': CONFIG.scriptToken || '',
+                    'X-Website-URL': CONFIG.websiteUrl || ''
+                },
+                body: utils.stringifyJSON(payload),
+                credentials: 'same-origin'
+            }).then(function(response) {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Response not ok: ' + response.status);
+            }).then(function(result) {
+                handleVerificationResult(result);
+            }).catch(function(error) {
+                if (CONFIG.debugMode) console.error('Fetch error:', error);
+                sendViaXHRFallback(payload);
+            });
+        } else {
+            // Fallback to XHR
+            sendViaXHRFallback(payload);
+        }
+    }
+    
+    // XHR fallback for older browsers
+    function sendViaXHRFallback(payload) {
+        try {
+            var xhr = utils.createXHR();
+            if (!xhr) return;
+            
+            xhr.open('POST', '/prototype/api/verify', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            if (CONFIG.scriptToken) {
+                xhr.setRequestHeader('X-Passive-Captcha-Token', CONFIG.scriptToken);
             }
-        }).catch(error => {
-            console.error('Data sending error:', error);
-        });
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        try {
+                            var result = window.JSON ? JSON.parse(xhr.responseText) : null;
+                            handleVerificationResult(result);
+                        } catch (e) {
+                            if (CONFIG.debugMode) console.error('Parse error:', e);
+                        }
+                    } else if (CONFIG.debugMode) {
+                        console.error('XHR failed:', xhr.status);
+                    }
+                }
+            };
+            
+            xhr.send(utils.stringifyJSON(payload));
+            
+        } catch (error) {
+            if (CONFIG.debugMode) console.error('XHR fallback error:', error);
+        }
+    }
+    
+    // Handle verification result
+    function handleVerificationResult(result) {
+        try {
+            if (result && result.verification) {
+                state.verification = result.verification;
+                state.lastSendTime = utils.now();
+                state.retryCount = 0; // Reset retry count on success
+                
+                log('Verification result: ' + 
+                    (result.verification.isBot ? 'Bot detected' : 'Human verified') + 
+                    ' (confidence: ' + (result.verification.confidence * 100).toFixed(1) + '%)');
+                
+                // Clear old data
+                clearOldData();
+                
+                // Trigger custom event for integration
+                if (window.CustomEvent) {
+                    var event = new CustomEvent('passiveCaptchaVerification', {
+                        detail: result.verification
+                    });
+                    document.dispatchEvent(event);
+                }
+            }
+        } catch (error) {
+            if (CONFIG.debugMode) console.error('Result handling error:', error);
+        }
     }
     
     // Clear old data to prevent memory issues

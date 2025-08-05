@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html class="no-js" lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="generator" content="Drupal 7 (http://drupal.org)">
+<link rel="canonical" href="https://uidai.gov.in/">
+<link rel="shortlink" href="https://uidai.gov.in/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="apple-touch-icon" sizes="57x57" href="/sites/all/themes/uidai_theme/apple-icon-57x57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="/sites/all/themes/uidai_theme/apple-icon-60x60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="/sites/all/themes/uidai_theme/apple-icon-72x72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="/sites/all/themes/uidai_theme/apple-icon-76x76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="/sites/all/themes/uidai_theme/apple-icon-114x114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/sites/all/themes/uidai_theme/apple-icon-120x120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="/sites/all/themes/uidai_theme/apple-icon-144x144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/sites/all/themes/uidai_theme/apple-icon-152x152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/sites/all/themes/uidai_theme/apple-icon-180x180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/sites/all/themes/uidai_theme/android-icon-192x192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/sites/all/themes/uidai_theme/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="96x96" href="/sites/all/themes/uidai_theme/favicon-96x96.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/sites/all/themes/uidai_theme/favicon-16x16.png">
+<link rel="manifest" href="/sites/all/themes/uidai_theme/manifest.json">
+<meta name="msapplication-TileColor" content="#ffffff">
+<meta name="msapplication-TileImage" content="/sites/all/themes/uidai_theme/ms-icon-144x144.png">
+<meta name="theme-color" content="#ffffff">
+<title>UIDAI Demo Site - Passive Captcha Protected | Government of India</title>
+
+<!-- Passive Captcha Integration -->
+<script src="https://passive-captcha-model-production.up.railway.app/static/passive-captcha-script.js" defer></script>
+<style>
+/* Enhanced UI for demonstration */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+.demo-header {
+    background: rgba(255,255,255,0.95);
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+    border-bottom: 3px solid #007bff;
+}
+
+.demo-header h1 {
+    color: #2c3e50;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.security-badge {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    color: white;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    font-weight: bold;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.main-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+}
+
+.content-section {
+    background: rgba(255,255,255,0.95);
+    border-radius: 15px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+}
+
+.uidai-services {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+}
+
+.service-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.service-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    text-align: center;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.service-card:hover {
+    border-color: #007bff;
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0,123,255,0.2);
+}
+
+.security-panel {
+    background: rgba(255,255,255,0.95);
+    border-radius: 15px;
+    padding: 1.5rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+    height: fit-content;
+}
+
+.security-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #d4edda;
+    border-left: 4px solid #28a745;
+    border-radius: 5px;
+}
+
+.security-metrics {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.metric-item {
+    display: flex;
+    justify-content: space-between;
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 5px;
+}
+
+.demo-form {
+    background: #e9ecef;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    color: #495057;
+}
+
+.form-group input, .form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+.submit-btn {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    color: white;
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,123,255,0.4);
+}
+
+.live-feed {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+}
+
+.feed-item {
+    padding: 0.5rem;
+    margin: 0.25rem 0;
+    border-left: 3px solid #007bff;
+    background: white;
+    border-radius: 0 5px 5px 0;
+    font-size: 0.9rem;
+}
+
+.feed-bot {
+    border-left-color: #dc3545;
+    background: #f8d7da;
+}
+
+.footer {
+    text-align: center;
+    padding: 2rem;
+    color: rgba(255,255,255,0.8);
+    margin-top: 2rem;
+}
+
+@media (max-width: 768px) {
+    .main-container {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+</style>
+
+</head>
+<body>
+    <div class="demo-header">
+        <h1>
+            🏛️ UIDAI Service Portal
+            <span class="security-badge">🛡️ SECURED BY PASSIVE CAPTCHA</span>
+        </h1>
+        <p style="margin: 0.5rem 0 0 0; color: #6c757d;">
+            Unique Identification Authority of India - Real-time Bot Protection Demo
+        </p>
+    </div>
+
+    <div class="main-container">
+        <div class="content-section">
+            <h2>🇮🇳 Welcome to UIDAI Services</h2>
+            <p>The Unique Identification Authority of India (UIDAI) is a statutory authority established under the provisions of the Aadhaar Act 2016 on 12 July 2016 by the Government of India, under the Ministry of Electronics and Information Technology (MeitY).</p>
+
+            <div class="uidai-services">
+                <h3>Available Services</h3>
+                <div class="service-grid">
+                    <div class="service-card" onclick="selectService('download')">
+                        <h4>📄 Download Aadhaar</h4>
+                        <p>Download your Aadhaar card</p>
+                    </div>
+                    <div class="service-card" onclick="selectService('update')">
+                        <h4>✏️ Update Information</h4>
+                        <p>Update your details</p>
+                    </div>
+                    <div class="service-card" onclick="selectService('verify')">
+                        <h4>✅ Verify Aadhaar</h4>
+                        <p>Verify Aadhaar number</p>
+                    </div>
+                    <div class="service-card" onclick="selectService('status')">
+                        <h4>📊 Check Status</h4>
+                        <p>Track your application</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-form">
+                <h3>Service Request Form</h3>
+                <form id="uidaiForm">
+                    <div class="form-group">
+                        <label for="aadhaar">Aadhaar Number:</label>
+                        <input type="text" id="aadhaar" name="aadhaar" placeholder="Enter 12-digit Aadhaar number" maxlength="12">
+                    </div>
+                    <div class="form-group">
+                        <label for="mobile">Mobile Number:</label>
+                        <input type="tel" id="mobile" name="mobile" placeholder="Enter registered mobile number">
+                    </div>
+                    <div class="form-group">
+                        <label for="service">Service Type:</label>
+                        <select id="service" name="service">
+                            <option value="">Select service type</option>
+                            <option value="download">Download Aadhaar</option>
+                            <option value="update">Update Information</option>
+                            <option value="verify">Verify Aadhaar</option>
+                            <option value="status">Check Status</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="purpose">Purpose:</label>
+                        <input type="text" id="purpose" name="purpose" placeholder="Describe the purpose of your request">
+                    </div>
+                    <button type="submit" class="submit-btn">🚀 Submit Request</button>
+                </form>
+            </div>
+
+            <div style="background: #e7f3ff; border: 1px solid #bee5eb; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
+                <h4 style="color: #0c5460;">🛡️ Security Notice</h4>
+                <p style="margin: 0; color: #0c5460;">This site is protected by advanced Passive Captcha technology that continuously monitors user interactions to detect and prevent automated bot attacks, ensuring the security of your personal information.</p>
+            </div>
+        </div>
+
+        <div class="security-panel">
+            <h3>🛡️ Passive Captcha Status</h3>
+            
+            <div class="security-status">
+                <span style="font-size: 1.5em;">✅</span>
+                <div>
+                    <strong>Protection Active</strong><br>
+                    <small>Monitoring user behavior</small>
+                </div>
+            </div>
+
+            <div class="security-metrics">
+                <h4>📊 Security Metrics</h4>
+                <div class="metric-item">
+                    <span>Session ID:</span>
+                    <span id="sessionId">PC-Loading...</span>
+                </div>
+                <div class="metric-item">
+                    <span>Risk Level:</span>
+                    <span id="riskLevel" style="color: #28a745;">LOW</span>
+                </div>
+                <div class="metric-item">
+                    <span>Confidence:</span>
+                    <span id="confidence">Calculating...</span>
+                </div>
+                <div class="metric-item">
+                    <span>Mouse Patterns:</span>
+                    <span id="mousePatterns">Monitoring...</span>
+                </div>
+                <div class="metric-item">
+                    <span>Keyboard Timing:</span>
+                    <span id="keyboardTiming">Analyzing...</span>
+                </div>
+            </div>
+
+            <div class="live-feed">
+                <h4>🔴 Live Security Feed</h4>
+                <div id="securityFeed">
+                    <div class="feed-item">System initialized - Monitoring started</div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 1rem;">
+                <button class="submit-btn" onclick="showAnalytics()" style="font-size: 0.9em; padding: 0.5rem 1rem;">
+                    📈 View Live Analytics
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>© 2024 Unique Identification Authority of India. All rights reserved.</p>
+        <p style="font-size: 0.9em;">Protected by Passive Captcha Technology - Real-time Bot Detection</p>
+    </div>
+
+    <script>
+        // Configure Passive Captcha
+        window.PASSIVE_CAPTCHA_CONFIG = {
+            apiEndpoint: 'https://passive-captcha-model-production.up.railway.app/api/verify',
+            scriptToken: 'uidai-demo-site-token',
+            websiteUrl: window.location.origin,
+            websiteId: 'uidai-demo',
+            collectMouseMovements: true,
+            collectKeyboardPatterns: true,
+            collectScrollBehavior: true,
+            detectTouchPatterns: true,
+            monitorFocusEvents: true,
+            trackFormInteractions: true,
+            debugMode: true,
+            realTimeReporting: true,
+            confidenceThreshold: 0.7,
+            blockSuspiciousUsers: false // Allow demo to continue
+        };
+
+        // Initialize demo
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSecurity();
+            setupFormHandling();
+            startSecurityMonitoring();
+        });
+
+        function initializeSecurity() {
+            // Generate session ID
+            const sessionId = 'PC-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+            document.getElementById('sessionId').textContent = sessionId;
+            
+            // Initialize metrics
+            document.getElementById('confidence').textContent = '98.7% Human';
+            document.getElementById('mousePatterns').textContent = 'Natural';
+            document.getElementById('keyboardTiming').textContent = 'Human-like';
+            
+            addSecurityEvent('🟢 Passive Captcha initialized successfully');
+            addSecurityEvent('📊 Starting behavioral analysis...');
+        }
+
+        function setupFormHandling() {
+            const form = document.getElementById('uidaiForm');
+            const inputs = form.querySelectorAll('input, select');
+            
+            // Monitor form interactions
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    addSecurityEvent(`👤 User focused on ${this.name || 'field'}`);
+                });
+                
+                input.addEventListener('input', function() {
+                    addSecurityEvent(`⌨️ Input detected in ${this.name || 'field'}`);
+                    updateRiskLevel();
+                });
+            });
+            
+            // Handle form submission
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleFormSubmission();
+            });
+        }
+
+        function startSecurityMonitoring() {
+            // Simulate real-time monitoring
+            setInterval(() => {
+                const events = [
+                    '👁️ Mouse movement patterns analyzed',
+                    '⌨️ Keyboard timing recorded',
+                    '📱 Touch interaction detected',
+                    '🔄 Scroll behavior monitored',
+                    '📊 Behavioral score updated'
+                ];
+                
+                const randomEvent = events[Math.floor(Math.random() * events.length)];
+                addSecurityEvent(randomEvent);
+                
+                // Randomly update confidence
+                if (Math.random() < 0.3) {
+                    const confidence = (Math.random() * 5 + 95).toFixed(1);
+                    document.getElementById('confidence').textContent = confidence + '% Human';
+                }
+                
+            }, 3000 + Math.random() * 4000); // Random interval 3-7 seconds
+        }
+
+        function selectService(serviceType) {
+            document.getElementById('service').value = serviceType;
+            addSecurityEvent(`🎯 Service selected: ${serviceType}`);
+            
+            // Animate selection
+            const cards = document.querySelectorAll('.service-card');
+            cards.forEach(card => card.style.border = '2px solid #e9ecef');
+            event.target.closest('.service-card').style.border = '2px solid #007bff';
+        }
+
+        function handleFormSubmission() {
+            addSecurityEvent('🔍 Form submission detected - Running verification...');
+            
+            // Simulate verification process
+            setTimeout(() => {
+                const isBot = Math.random() < 0.15; // 15% chance of bot detection
+                
+                if (isBot) {
+                    addSecurityEvent('🤖 BOT DETECTED! Suspicious patterns identified', true);
+                    document.getElementById('riskLevel').textContent = 'HIGH';
+                    document.getElementById('riskLevel').style.color = '#dc3545';
+                    alert('⚠️ Security Alert: Automated behavior detected. Please try again.');
+                } else {
+                    addSecurityEvent('✅ Human verification successful');
+                    addSecurityEvent('📝 Processing UIDAI service request...');
+                    document.getElementById('riskLevel').textContent = 'VERY LOW';
+                    document.getElementById('riskLevel').style.color = '#28a745';
+                    
+                    setTimeout(() => {
+                        alert('✅ Request submitted successfully! You will receive an OTP on your registered mobile number.');
+                        addSecurityEvent('📱 OTP sent to registered mobile');
+                    }, 1500);
+                }
+            }, 2000);
+        }
+
+        function updateRiskLevel() {
+            const riskLevels = ['VERY LOW', 'LOW', 'MEDIUM'];
+            const colors = ['#28a745', '#28a745', '#ffc107'];
+            const randomIndex = Math.floor(Math.random() * riskLevels.length);
+            
+            document.getElementById('riskLevel').textContent = riskLevels[randomIndex];
+            document.getElementById('riskLevel').style.color = colors[randomIndex];
+        }
+
+        function addSecurityEvent(message, isBot = false) {
+            const feed = document.getElementById('securityFeed');
+            const eventItem = document.createElement('div');
+            eventItem.className = isBot ? 'feed-item feed-bot' : 'feed-item';
+            eventItem.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> ${message}`;
+            
+            feed.insertBefore(eventItem, feed.firstChild);
+            
+            // Keep only last 10 events
+            while (feed.children.length > 10) {
+                feed.removeChild(feed.lastChild);
+            }
+        }
+
+        function showAnalytics() {
+            window.open('https://passive-captcha-model-production.up.railway.app/prototype', '_blank');
+        }
+
+        // Simulate mouse tracking
+        document.addEventListener('mousemove', function(e) {
+            if (Math.random() < 0.01) { // 1% chance on mouse move
+                addSecurityEvent('🖱️ Mouse coordinates tracked');
+            }
+        });
+
+        // Simulate scroll tracking
+        document.addEventListener('scroll', function() {
+            if (Math.random() < 0.05) { // 5% chance on scroll
+                addSecurityEvent('📜 Scroll behavior recorded');
+            }
+        });
+    </script>
+</body>
+</html>

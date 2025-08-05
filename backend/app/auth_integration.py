@@ -125,6 +125,7 @@ def require_admin_auth(f):
 def create_enhanced_auth_endpoints(app: Flask):
     """Create enhanced authentication endpoints"""
     
+    @app.route('/api/auth/login', methods=['POST'])
     @app.route('/api/admin/login', methods=['POST'])
     def enhanced_login():
         """Enhanced login endpoint with robust authentication"""
@@ -209,6 +210,14 @@ def create_enhanced_auth_endpoints(app: Flask):
             
             return jsonify({
                 'success': True,
+                'access_token': jwt_token,  # Frontend expects this key
+                'token': jwt_token,  # Backward compatibility
+                'expires_in': int(auth_service.session_timeout.total_seconds()),
+                'user': {
+                    'email': session.email,
+                    'role': session.role.value,
+                    'session_id': session.session_id
+                },
                 'data': {
                     'token': jwt_token,
                     'user': {
