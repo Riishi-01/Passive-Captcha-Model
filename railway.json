@@ -2,10 +2,10 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "Dockerfile.production"
+    "dockerfilePath": "backend/Dockerfile.production"
   },
   "deploy": {
-            "startCommand": "python main.py --host 0.0.0.0 --port $PORT --gunicorn",
+    "startCommand": "cd backend && python main.py --host 0.0.0.0 --port $PORT --gunicorn",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
@@ -39,12 +39,11 @@
       "name": "passive-captcha-backend",
       "source": {
         "repo": "Riishi-01/Passive-Captcha-Model",
-        "branch": "main",
-        "directory": "backend"
+        "branch": "main"
       },
       "build": {
         "builder": "DOCKERFILE",
-        "dockerfilePath": "Dockerfile.production"
+        "dockerfilePath": "backend/Dockerfile.production"
       },
       "deploy": {
         "startCommand": "python main.py --host 0.0.0.0 --port $PORT --gunicorn",

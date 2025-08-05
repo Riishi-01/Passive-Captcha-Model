@@ -16,24 +16,24 @@ RUN apt-get update && apt-get install -y \
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # Copy requirements first for better caching
-COPY requirements.txt ./
+COPY backend/requirements.txt ./
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Copy application code from backend directory
+COPY backend/ .
 
 # Copy production entrypoint script and set permissions
-COPY docker-entrypoint.production.sh /app/
+COPY backend/docker-entrypoint.production.sh /app/
 RUN chmod +x /app/docker-entrypoint.production.sh
 
 # Create necessary directories
 RUN mkdir -p /app/logs /app/uploads /app/tmp && \
     chown -R appuser:appuser /app
 
-# Copy ML models (if they exist)
+# Copy ML models from root directory
 COPY models/ /app/models/
 
 # Set environment variables

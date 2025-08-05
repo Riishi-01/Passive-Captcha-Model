@@ -14,11 +14,10 @@ name = "passive-captcha-backend"
 [services.source]
 repo = "Riishi-01/Passive-Captcha-Model"
 branch = "main"
-directory = "backend"
 
 [services.build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile.production"
+dockerfilePath = "backend/Dockerfile.production"
 buildCommand = "pip install -r requirements.txt"
 
 [services.deploy]
