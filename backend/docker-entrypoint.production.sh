@@ -3,9 +3,9 @@ set -e
 
 echo "🚀 Starting Passive CAPTCHA Production Server..."
 
-# Wait for database
-echo "⏳ Waiting for database connection..."
-until python -c "
+# Check database connection
+echo "⏳ Checking database connection..."
+python -c "
 import sys
 import os
 sys.path.insert(0, '/app')
@@ -16,16 +16,13 @@ try:
     session.close()
     print('✅ Database connected successfully')
 except Exception as e:
-    print(f'❌ Database connection failed: {e}')
-    sys.exit(1)
-"; do
-    echo "⏳ Database not ready, waiting 5 seconds..."
-    sleep 5
-done
+    print(f'⚠️  Database connection issue: {e}')
+    print('📝 Application will initialize database or use SQLite fallback')
+"
 
-# Wait for Redis
-echo "⏳ Waiting for Redis connection..."
-until python -c "
+# Check Redis connection (optional)
+echo "⏳ Checking Redis connection..."
+python -c "
 import redis
 import os
 redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
@@ -34,12 +31,9 @@ try:
     client.ping()
     print('✅ Redis connected successfully')
 except Exception as e:
-    print(f'❌ Redis connection failed: {e}')
-    sys.exit(1)
-"; do
-    echo "⏳ Redis not ready, waiting 5 seconds..."
-    sleep 5
-done
+    print(f'⚠️  Redis connection failed: {e}')
+    print('📝 Application will continue without Redis (using in-memory fallback)')
+"
 
 # Initialize database tables
 echo "🔧 Initializing database..."
@@ -72,7 +66,13 @@ mkdir -p /app/logs
 chmod 755 /app/logs
 
 echo "✅ Production server initialization complete"
-echo "🌟 Starting application with: $@"
 
-# Execute the main command
-exec "$@"
+# Default command if none provided
+if [ $# -eq 0 ]; then
+    echo "🌟 Starting with default command: python main.py"
+    PORT=${PORT:-5000}
+    exec python main.py --host 0.0.0.0 --port $PORT --gunicorn
+else
+    echo "🌟 Starting application with: $@"
+    exec "$@"
+fi

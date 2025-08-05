@@ -1,6 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "backend/Dockerfile.production"
+dockerfilePath = "Dockerfile.production"
 
 [deploy]
 healthcheckPath = "/health"
@@ -14,14 +14,15 @@ name = "passive-captcha-backend"
 [services.source]
 repo = "Riishi-01/Passive-Captcha-Model"
 branch = "main"
+directory = "backend"
 
 [services.build]
 builder = "DOCKERFILE"
-dockerfilePath = "backend/Dockerfile.production"
-buildCommand = "cd backend && pip install -r requirements.txt"
+dockerfilePath = "Dockerfile.production"
+buildCommand = "pip install -r requirements.txt"
 
 [services.deploy]
-startCommand = "cd backend && python main.py --host 0.0.0.0 --port $PORT --gunicorn"
+startCommand = "python main.py --host 0.0.0.0 --port $PORT --gunicorn"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
