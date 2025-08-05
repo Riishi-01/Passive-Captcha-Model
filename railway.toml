@@ -7,7 +7,8 @@ branch = "main"
 
 [services.build]
 builder = "DOCKERFILE"
-dockerfilePath = "backend/Dockerfile.production"
+dockerfilePath = "Dockerfile"
+buildContext = "."
 
 [services.deploy]
 startCommand = "python main.py --host 0.0.0.0 --port $PORT --gunicorn"
