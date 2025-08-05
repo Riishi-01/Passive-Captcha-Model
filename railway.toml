@@ -17,8 +17,6 @@ branch = "main"
 
 [services.build]
 builder = "DOCKERFILE"
-dockerfilePath = "backend/Dockerfile.production"
-buildCommand = "pip install -r requirements.txt"
 
 [services.deploy]
 startCommand = "python main.py --host 0.0.0.0 --port $PORT --gunicorn"
