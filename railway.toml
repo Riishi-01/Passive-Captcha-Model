@@ -7,6 +7,7 @@ branch = "main"
 
 [services.build]
 builder = "DOCKERFILE"
+dockerfilePath = "backend/Dockerfile.production"
 
 [services.deploy]
 startCommand = "python main.py --host 0.0.0.0 --port $PORT --gunicorn"
@@ -20,8 +21,8 @@ restartPolicyMaxRetries = 3
 ENV = "production"
 FLASK_ENV = "production"
 PYTHONPATH = "/app/backend"
-API_BASE_URL = "${{RAILWAY_PUBLIC_DOMAIN}}"
-ALLOWED_ORIGINS = "${{RAILWAY_PUBLIC_DOMAIN}},https://*.railway.app"
+API_BASE_URL = "https://${{RAILWAY_PUBLIC_DOMAIN}}"
+ALLOWED_ORIGINS = "https://${{RAILWAY_PUBLIC_DOMAIN}},https://*.railway.app,https://passive-captcha-model-production.up.railway.app"
 
 # Database
 DATABASE_URL = "${{DATABASE_URL}}"
@@ -49,25 +50,5 @@ RATE_LIMIT_PER_MINUTE = "60"
 SCRIPT_VERSION_DEFAULT = "v2_enhanced"
 SCRIPT_CACHE_TTL = "3600"
 
-[[services]]
-name = "passive-captcha-frontend"
-
-[services.source]
-repo = "Riishi-01/Passive-Captcha-Model" 
-branch = "main"
-
-[services.build]
-builder = "DOCKERFILE"
-dockerfilePath = "frontend/Dockerfile.production"
-buildCommand = "cd frontend && npm ci && npm run build"
-
-[services.deploy]
-startCommand = "nginx -g 'daemon off;'"
-healthcheckPath = "/"
-healthcheckTimeout = 60
-
-# Frontend Environment Variables
-[services.variables]
-NODE_ENV = "production"
-VITE_API_URL = "https://${{RAILWAY_PUBLIC_DOMAIN}}"
-VITE_WS_URL = "wss://${{RAILWAY_PUBLIC_DOMAIN}}"
+# Frontend is served by the backend Flask application
+# No separate frontend service needed
