@@ -274,9 +274,12 @@ def create_app(config_name='production'):
         try:
             from app.services.robust_auth_service import init_robust_auth_service, get_robust_auth_service
             # Initialize the robust auth service first
-            auth_service = init_robust_auth_service(redis_client)
-            if auth_service and hasattr(auth_service, 'admin_secret'):
+            robust_auth_service = init_robust_auth_service(redis_client)
+            if robust_auth_service and hasattr(robust_auth_service, 'admin_secret'):
                 app.logger.info(f"Using robust auth service initialized successfully")
+                # Also initialize the regular auth service for analytics endpoints
+                auth_service = init_auth_service(redis_client)
+                app.logger.info(f"Regular auth service also initialized: {auth_service is not None}")
             else:
                 # Fallback to old auth service
                 auth_service = init_auth_service(redis_client)
@@ -311,15 +314,7 @@ def create_app(config_name='production'):
     except Exception as e:
         app.logger.error(f"Failed to register core API: {e}")
 
-    # Register consolidated admin blueprint
-    try:
-        from app.api.admin_endpoints import admin_bp
-        app.register_blueprint(admin_bp, url_prefix='/admin')
-        app.logger.info("Admin API endpoints registered")
-    except Exception as e:
-        app.logger.error(f"Failed to register admin API: {e}")
-
-    # Register analytics and monitoring endpoints (non-conflicting)
+    # Register analytics and monitoring endpoints FIRST (to take precedence)
     try:
         from app.admin.analytics_endpoints import analytics_bp
         from app.admin.alerts_endpoints import alerts_bp
@@ -333,10 +328,17 @@ def create_app(config_name='production'):
         app.register_blueprint(ml_metrics_bp)
         app.register_blueprint(script_mgmt_bp)
 
-        # Additional authentication endpoints handled by existing services
         app.logger.info("Analytics, monitoring, and script management endpoints registered")
     except Exception as e:
         app.logger.warning(f"Failed to register analytics endpoints: {e}")
+
+    # Register consolidated admin blueprint (after analytics to avoid conflicts)
+    try:
+        from app.api.admin_endpoints import admin_bp
+        app.register_blueprint(admin_bp, url_prefix='/admin')
+        app.logger.info("Admin API endpoints registered")
+    except Exception as e:
+        app.logger.error(f"Failed to register admin API: {e}")
 
     # Test fresh auth service creation
     @app.route('/debug/fresh-auth', methods=['POST'])
@@ -494,7 +496,8 @@ def create_app(config_name='production'):
     # Store references for external access
     app.redis_client = redis_client
     app.socketio = socketio
-    app.auth_service = auth_service
+    app.auth_service = auth_service if 'auth_service' in locals() else None
+    app.robust_auth_service = robust_auth_service if 'robust_auth_service' in locals() else None
     app.website_service = website_service
     app.limiter = limiter if 'limiter' in locals() else None
     app.start_time = int(__import__('time').time())

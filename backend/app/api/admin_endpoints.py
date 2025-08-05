@@ -800,7 +800,30 @@ def revoke_script_token(website_id):
 
 # Health and Statistics Endpoints
 
-# REMOVED: Duplicate health endpoint - consolidated to main app level at /health
+@admin_bp.route('/health', methods=['GET'])
+def admin_health_check():
+    """Admin-specific health check endpoint"""
+    try:
+        # Basic health checks for admin functionality
+        health_status = {
+            'status': 'healthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'admin_services': {
+                'auth_service': get_auth_service() is not None,
+                'website_service': get_website_service() is not None,
+                'script_token_manager': get_script_token_manager() is not None
+            }
+        }
+        
+        return jsonify(health_status)
+        
+    except Exception as e:
+        current_app.logger.error(f"Admin health check error: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Admin health check failed',
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
 
 
 @admin_bp.route('/statistics', methods=['GET'])

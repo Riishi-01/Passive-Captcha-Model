@@ -106,44 +106,9 @@ def require_admin_auth(f):
 # Use app/api/admin_endpoints.py for all admin authentication
 
 
-@admin_bp.route('/analytics', methods=['GET'])
-@require_admin_auth
-def get_analytics():
-    """
-    Get analytics data for the admin dashboard
-    """
-    try:
-        hours = int(request.args.get('hours', 24))
-
-        # Validate hours parameter
-        if hours < 1 or hours > 168:  # Max 1 week
-            return jsonify({
-                'error': {
-                    'code': 'INVALID_PARAMETER',
-                    'message': 'Hours must be between 1 and 168'
-                }
-            }), 400
-
-        analytics_data = get_analytics_data(hours)
-
-        return jsonify(analytics_data), 200
-
-    except ValueError:
-        return jsonify({
-            'error': {
-                'code': 'INVALID_PARAMETER',
-                'message': 'Hours parameter must be a valid integer'
-            }
-        }), 400
-
-    except Exception as e:
-        print(f"Error in get_analytics: {e}")
-        return jsonify({
-            'error': {
-                'code': 'INTERNAL_ERROR',
-                'message': 'Error retrieving analytics data'
-            }
-        }), 500
+# REMOVED: Conflicting /analytics route - use dedicated analytics_endpoints.py instead
+# @admin_bp.route('/analytics', methods=['GET'])
+# Route conflicts with app.admin.analytics_endpoints blueprint routes
 
 
 @admin_bp.route('/logs', methods=['GET'])
