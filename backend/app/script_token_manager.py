@@ -129,6 +129,52 @@ class ScriptTokenManager:
         self.token_prefix = "script_token:"
         self.website_tokens_prefix = "website_tokens:"
         self.active_tokens_prefix = "active_tokens:"
+        
+        # In-memory fallback when Redis is not available
+        self._memory_store = {}
+
+    def _redis_get(self, key: str) -> Optional[str]:
+        """Get value from Redis with fallback to memory store"""
+        if self.redis:
+            try:
+                return self.redis.get(key)
+            except Exception:
+                pass
+        return self._memory_store.get(key)
+
+    def _redis_set(self, key: str, value: str, ex: int = None) -> bool:
+        """Set value in Redis with fallback to memory store"""
+        if self.redis:
+            try:
+                self.redis.set(key, value, ex=ex)
+                return True
+            except Exception:
+                pass
+        self._memory_store[key] = value
+        return True
+
+    def _redis_delete(self, key: str) -> bool:
+        """Delete key from Redis with fallback to memory store"""
+        if self.redis:
+            try:
+                self.redis.delete(key)
+                return True
+            except Exception:
+                pass
+        if key in self._memory_store:
+            del self._memory_store[key]
+        return True
+
+    def _redis_scan_iter(self, match: str):
+        """Scan Redis keys with fallback to memory store"""
+        if self.redis:
+            try:
+                return self.redis.scan_iter(match=match)
+            except Exception:
+                pass
+        # Fallback to memory store pattern matching
+        import fnmatch
+        return [key for key in self._memory_store.keys() if fnmatch.fnmatch(key, match)]
 
     def generate_script_token(self, website_id: str, script_version: ScriptVersion = ScriptVersion.V2_ENHANCED,
                              environment: str = 'production', custom_config: Dict[str, Any] = None,
@@ -150,7 +196,7 @@ class ScriptTokenManager:
                         'website_url': f'https://example-{website_id}.com'
                     })()
             except Exception as db_error:
-                logger.warning(f"Database not available, using mock website: {db_error}")
+                current_app.logger.warning(f"Database not available, using mock website: {db_error}")
                 # Create a mock website for testing/offline use
                 website = type('MockWebsite', (), {
                     'website_id': website_id,
@@ -224,15 +270,15 @@ class ScriptTokenManager:
                     website.status = 'pending_integration'
                     session.commit()
                 except Exception as commit_error:
-                    logger.warning(f"Could not update website status: {commit_error}")
+                    current_app.logger.warning(f"Could not update website status: {commit_error}")
                     if session:
                         session.rollback()
 
-            logger.info(f"Generated script token for website {website.website_name}")
+            current_app.logger.info(f"Generated script token for website {website.website_name}")
             return script_token_obj
 
         except Exception as e:
-            logger.error(f"Error generating script token: {e}")
+            current_app.logger.error(f"Error generating script token: {e}")
             raise
         finally:
             if session:
@@ -441,7 +487,7 @@ class ScriptTokenManager:
         Get script token for a specific website
         """
         key = f"{self.website_tokens_prefix}{website_id}"
-        token_data = self.redis.get(key)
+        token_data = self._redis_get(key)
         if token_data:
             return ScriptToken.from_dict(json.loads(token_data))
         return None
@@ -453,7 +499,7 @@ class ScriptTokenManager:
         # Hash the script token for lookup
         token_hash = hashlib.sha256(script_token.encode()).hexdigest()
         key = f"{self.token_prefix}{token_hash}"
-        token_data = self.redis.get(key)
+        token_data = self._redis_get(key)
         if token_data:
             return ScriptToken.from_dict(json.loads(token_data))
         return None
@@ -464,8 +510,8 @@ class ScriptTokenManager:
         """
         tokens = []
         pattern = f"{self.website_tokens_prefix}*"
-        for key in self.redis.scan_iter(match=pattern):
-            token_data = self.redis.get(key)
+        for key in self._redis_scan_iter(pattern):
+            token_data = self._redis_get(key)
             if token_data:
                 tokens.append(ScriptToken.from_dict(json.loads(token_data)))
         return tokens
@@ -527,19 +573,27 @@ class ScriptTokenManager:
 
         # Store by website ID
         website_key = f"{self.website_tokens_prefix}{token_obj.website_id}"
-        self.redis.set(website_key, token_data)
+        self._redis_set(website_key, token_data)
 
         # Store by script token hash for quick lookup
         token_hash = hashlib.sha256(token_obj.script_token.encode()).hexdigest()
         token_key = f"{self.token_prefix}{token_hash}"
-        self.redis.set(token_key, token_data)
+        self._redis_set(token_key, token_data)
 
-        # Store in active tokens set if active
+        # Store in active tokens set if active (simplified for fallback)
         active_key = f"{self.active_tokens_prefix}set"
         if token_obj.status == TokenStatus.ACTIVE:
-            self.redis.sadd(active_key, token_obj.website_id)
+            if self.redis:
+                try:
+                    self.redis.sadd(active_key, token_obj.website_id)
+                except Exception:
+                    pass
         else:
-            self.redis.srem(active_key, token_obj.website_id)
+            if self.redis:
+                try:
+                    self.redis.srem(active_key, token_obj.website_id)
+                except Exception:
+                    pass
 
     def _verify_website_url(self, registered_url: str, request_url: str) -> bool:
         """

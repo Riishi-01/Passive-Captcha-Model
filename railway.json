@@ -1,0 +1,81 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "backend/Dockerfile.production"
+  },
+  "deploy": {
+    "startCommand": "cd backend && python main.py --host 0.0.0.0 --port $PORT --gunicorn",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  },
+  "environments": {
+    "production": {
+      "variables": {
+        "ENV": "production",
+        "FLASK_ENV": "production",
+        "PYTHONPATH": "/app/backend",
+        "API_BASE_URL": "https://$RAILWAY_PUBLIC_DOMAIN",
+        "ALLOWED_ORIGINS": "https://$RAILWAY_PUBLIC_DOMAIN,https://*.railway.app",
+        "JWT_SECRET": "$JWT_SECRET",
+        "ADMIN_SECRET": "$ADMIN_SECRET",
+        "DATABASE_URL": "$DATABASE_URL",
+        "REDIS_URL": "$REDIS_URL",
+        "MODEL_PATH": "models/passive_captcha_rf.pkl",
+        "SCALER_PATH": "models/passive_captcha_rf_scaler.pkl",
+        "LOG_LEVEL": "INFO",
+        "STRUCTURED_LOGGING": "true",
+        "RATE_LIMIT_ENABLED": "true",
+        "RATE_LIMIT_PER_MINUTE": "60",
+        "SCRIPT_VERSION_DEFAULT": "v2_enhanced",
+        "SCRIPT_CACHE_TTL": "3600"
+      }
+    }
+  },
+  "services": [
+    {
+      "name": "passive-captcha-backend",
+      "source": {
+        "repo": "Riishi-01/Passive-Captcha-Model",
+        "branch": "main",
+        "directory": "backend"
+      },
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "Dockerfile.production"
+      },
+      "deploy": {
+        "startCommand": "python main.py --host 0.0.0.0 --port $PORT --gunicorn",
+        "healthcheckPath": "/health"
+      }
+    },
+    {
+      "name": "passive-captcha-frontend", 
+      "source": {
+        "repo": "Riishi-01/Passive-Captcha-Model",
+        "branch": "main",
+        "directory": "frontend"
+      },
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "Dockerfile.production"
+      },
+      "deploy": {
+        "startCommand": "nginx -g 'daemon off;'",
+        "healthcheckPath": "/"
+      }
+    }
+  ],
+  "plugins": [
+    {
+      "name": "postgresql",
+      "plan": "hobby"
+    },
+    {
+      "name": "redis",
+      "plan": "hobby"
+    }
+  ]
+}

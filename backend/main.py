@@ -290,6 +290,11 @@ def create_app(config_name='production'):
         website_service = init_website_service(redis_client)
         app.logger.info(f"Website service initialized: {website_service is not None}")
 
+        # Initialize Script Token Manager
+        from app.script_token_manager import init_script_token_manager
+        script_token_manager = init_script_token_manager(redis_client)
+        app.logger.info(f"Script token manager initialized: {script_token_manager is not None}")
+
         app.logger.info("Services initialized successfully")
     except ImportError as e:
         app.logger.error(f"Service import failed: {e}")
