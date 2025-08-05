@@ -36,6 +36,9 @@ RUN mkdir -p /app/logs /app/uploads /app/tmp && \
 # Copy ML models from root directory
 COPY models/ /app/models/
 
+# Copy site directory with UIDAI HTML files
+COPY "site " /app/"site "/
+
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV PYTHONDONTWRITEBYTECODE=1

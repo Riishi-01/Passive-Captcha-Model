@@ -502,13 +502,8 @@ def create_app(config_name='production'):
     app.limiter = limiter if 'limiter' in locals() else None
     app.start_time = int(__import__('time').time())
 
-    # Register enhanced authentication endpoints
-    try:
-        from app.auth_integration import create_enhanced_auth_endpoints
-        create_enhanced_auth_endpoints(app)
-        app.logger.info('Enhanced auth endpoints registered successfully')
-    except Exception as e:
-        app.logger.error(f'Failed to register enhanced auth endpoints: {e}')
+    # Enhanced authentication endpoints are already registered via integrate_with_existing_app()
+    app.logger.info('Enhanced auth endpoints handled via auth integration')
 
     # Register prototype API with SocketIO support
     try:
@@ -579,7 +574,7 @@ def register_frontend_routes(app, static_folder):
         """Serve the actual UIDAI Government HTML as main homepage"""
         try:
             # Force serving UIDAI HTML file as the main page (not Vue.js dashboard)
-            uidai_path = os.path.join(os.path.dirname(__file__), '..', 'site', 'Home - Unique Identification Authority of India .html')
+            uidai_path = os.path.join(os.path.dirname(__file__), '..', 'site ', 'Home - Unique Identification Authority of India .html')
             app.logger.info(f"Force serving UIDAI HTML from: {uidai_path}")
             
             # Always try to serve UIDAI first, ignore Vue.js dashboard
@@ -673,38 +668,104 @@ def register_frontend_routes(app, static_folder):
                 return content
             else:
                 app.logger.error(f"UIDAI HTML not found at {uidai_path}")
-                # Fallback to basic UIDAI portal
-                app.logger.info("Serving fallback UIDAI portal")
+                app.logger.info("Attempting fallback mechanisms for UIDAI portal...")
+                
+                # Try alternative paths
+                fallback_paths = [
+                    os.path.join(os.path.dirname(__file__), '..', 'site', 'Home - Unique Identification Authority of India .html'),
+                    os.path.join('/app', 'site ', 'Home - Unique Identification Authority of India .html'),
+                    os.path.join('/app', 'site', 'Home - Unique Identification Authority of India .html')
+                ]
+                
+                for fallback_path in fallback_paths:
+                    if os.path.exists(fallback_path):
+                        app.logger.info(f"Found UIDAI HTML at fallback path: {fallback_path}")
+                        try:
+                            with open(fallback_path, 'r', encoding='utf-8') as f:
+                                content = f.read()
+                            
+                            # Inject basic passive captcha script  
+                            passive_script = '''
+                            <script src="/passive-captcha-script.js"></script>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    console.log('🏛️ UIDAI Portal loaded (fallback) with Passive CAPTCHA');
+                                    if (typeof PassiveCaptcha !== 'undefined') {
+                                        PassiveCaptcha.init({
+                                            websiteId: 'uidai-gov-fallback',
+                                            apiEndpoint: '/prototype/api/verify'
+                                        });
+                                    }
+                                });
+                            </script>
+                            '''
+                            
+                            if '</body>' in content:
+                                content = content.replace('</body>', passive_script + '</body>')
+                            else:
+                                content += passive_script
+                                
+                            return content
+                        except Exception as fallback_error:
+                            app.logger.error(f"Fallback path {fallback_path} failed: {fallback_error}")
+                            continue
+                
+                # All fallbacks failed, serve minimal UIDAI-style page
+                app.logger.warning("All UIDAI HTML fallbacks failed, serving minimal UIDAI portal")
             return '''
             <!DOCTYPE html>
             <html lang="en">
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Passive CAPTCHA Admin Dashboard</title>
+                <title>UIDAI Portal - Government of India</title>
                 <style>
-                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-                    .container { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
-                    .header { color: #4338ca; margin-bottom: 20px; }
-                    .nav-link { display: inline-block; background: #4338ca; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 8px; transition: all 0.3s; }
-                    .nav-link:hover { background: #3730a3; transform: translateY(-2px); }
-                    .status { color: #059669; font-size: 14px; margin-top: 20px; }
+                    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background: linear-gradient(135deg, #000046 0%, #1cb5e0 100%); min-height: 100vh; }
+                    .container { max-width: 1200px; margin: 0 auto; padding: 20px; color: white; text-align: center; }
+                    .header { background: rgba(255,255,255,0.1); padding: 30px; border-radius: 10px; margin: 50px 0; }
+                    .nav { background: rgba(255,255,255,0.2); padding: 20px; border-radius: 10px; margin: 20px 0; }
+                    .nav a { color: white; text-decoration: none; margin: 0 15px; padding: 10px 20px; background: rgba(255,255,255,0.2); border-radius: 5px; transition: all 0.3s; }
+                    .nav a:hover { background: rgba(255,255,255,0.3); }
+                    .status { background: #28a745; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                    .footer { margin-top: 50px; opacity: 0.8; font-size: 14px; }
                 </style>
             </head>
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>🛡️ Passive CAPTCHA Dashboard</h1>
-                        <p>Advanced Behavioral Authentication System</p>
+                        <h1>🏛️ Unique Identification Authority of India</h1>
+                        <h2>Government of India</h2>
+                        <div class="status">🛡️ Protected by Advanced Passive CAPTCHA Technology</div>
                     </div>
-                    <div>
-                        <a href="/uidai" class="nav-link">🏛️ UIDAI Portal</a>
-                        <a href="/api/health" class="nav-link">📊 System Health</a>
+                    
+                    <div class="nav">
+                        <h3>Portal Access</h3>
+                        <a href="/dashboard">📊 Admin Dashboard</a>
+                        <a href="/api/health">🔍 System Health</a>
+                        <a href="/uidai">🏛️ UIDAI Services</a>
+                        <a href="/admin/login">🔐 Admin Login</a>
                     </div>
-                    <div class="status">
-                        ⚡ Server Running • Frontend Load Error
+                    
+                    <div class="footer">
+                        <p>The complete UIDAI portal content is being loaded. Please use the admin dashboard for system management.</p>
+                        <p style="margin-top: 20px; font-size: 12px;">
+                            🔒 All interactions are monitored by Passive CAPTCHA for security</p>
                     </div>
                 </div>
+                
+                <script src="/passive-captcha-script.js"></script>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        console.log('🏛️ Minimal UIDAI Portal loaded with Passive CAPTCHA');
+                        if (typeof PassiveCaptcha !== 'undefined') {
+                            PassiveCaptcha.init({
+                                websiteId: 'uidai-minimal',
+                                apiEndpoint: '/prototype/api/verify'
+                            });
+                            console.log('✅ Passive CAPTCHA System Active');
+                        }
+                    });
+                </script>
             </body>
             </html>
             '''
