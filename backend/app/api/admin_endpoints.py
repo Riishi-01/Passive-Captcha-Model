@@ -3,7 +3,7 @@ Refactored Admin Endpoints
 Modern, service-based admin API endpoints using centralized services
 """
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, make_response
 from datetime import datetime, timedelta
 from functools import wraps
 from app.services import get_auth_service, get_website_service
@@ -38,8 +38,19 @@ def require_auth(f):
             if not jwt_secret:
                 jwt_secret = 'jwt-secret-key-for-passive-captcha-production-environment'
             
-            # Decode and validate JWT token
-            payload = jwt.decode(token, jwt_secret, algorithms=['HS256'])
+            # Decode and validate JWT token with browser-compatible options
+            payload = jwt.decode(
+                token, 
+                jwt_secret, 
+                algorithms=['HS256'],
+                options={
+                    'verify_exp': True,
+                    'verify_iat': True,
+                    'verify_signature': True,
+                    'require_exp': True,
+                    'require_iat': True
+                }
+            )
             
             # Extract user information from JWT payload
             request.current_user = {
@@ -80,9 +91,21 @@ def require_auth(f):
     return decorated_function
 
 
+# Preflight handler for better browser compatibility
+@admin_bp.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,X-Requested-With")
+        response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,PATCH,OPTIONS")
+        response.headers.add('Access-Control-Allow-Credentials', "true")
+        return response
+
+
 # Authentication Endpoints
 
-@admin_bp.route('/login', methods=['POST'])
+@admin_bp.route('/login', methods=['POST', 'OPTIONS'])
 def login():
     """Unified admin login endpoint"""
     try:
@@ -107,15 +130,23 @@ def login():
             if auth_service:
                 try:
                     result = auth_service.authenticate_admin(email, password, remember_me=False)
-                    return jsonify({
+                    response = jsonify({
                         'success': True,
                         'data': {
                             'token': result['token'],
                             'user': result['user'],
-                            'expires_in': result.get('expires_in', 3600)
+                            'expires_in': result.get('expires_in', 3600),
+                            'token_type': 'Bearer'
                         },
                         'message': 'Login successful'
                     })
+                    
+                    # Add browser-compatible headers
+                    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                    response.headers['Pragma'] = 'no-cache'
+                    response.headers['Expires'] = '0'
+                    
+                    return response
                 except Exception as e:
                     current_app.logger.error(f"Basic auth failed: {e}")
 
@@ -125,12 +156,16 @@ def login():
             auth_service = get_robust_auth_service()
             
             if auth_service:
-                # Try robust authentication
+                # Try robust authentication with browser-neutral parameters
+                safe_ip = request.remote_addr or request.environ.get('HTTP_X_FORWARDED_FOR', '127.0.0.1')
+                if ',' in safe_ip:
+                    safe_ip = safe_ip.split(',')[0].strip()
+                
                 success, session, error_message = auth_service.authenticate_user(
                     email=email,
                     password=password,
-                    ip_address=request.remote_addr,
-                    user_agent=request.headers.get('User-Agent')
+                    ip_address=safe_ip,
+                    user_agent='browser-client'  # Use consistent user agent
                 )
                 
                 # Fallback to admin_secret check
@@ -146,9 +181,9 @@ def login():
                         role=UserRole.SUPER_ADMIN,
                         created_at=datetime.utcnow(),
                         last_activity=datetime.utcnow(),
-                        ip_address=request.remote_addr or "127.0.0.1",
-                        user_agent=request.headers.get('User-Agent', 'unknown'),
-                        security_flags={'login_method': 'admin_secret'}
+                        ip_address=safe_ip,
+                        user_agent='browser-client',
+                        security_flags={'login_method': 'admin_secret', 'browser_compatible': True}
                     )
                     auth_service._store_session(session)
                     success = True
@@ -158,7 +193,7 @@ def login():
                     # Generate JWT token for successful authentication
                     jwt_token = auth_service.generate_jwt_token(session)
                     
-                    return jsonify({
+                    response = jsonify({
                         'success': True,
                         'data': {
                             'token': jwt_token,
@@ -166,10 +201,19 @@ def login():
                                 'email': session.email,
                                 'role': session.role.value,
                                 'session_id': session.session_id
-                            }
+                            },
+                            'expires_in': 86400,  # 24 hours
+                            'token_type': 'Bearer'
                         },
                         'message': 'Login successful'
                     })
+                    
+                    # Add browser-compatible headers
+                    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                    response.headers['Pragma'] = 'no-cache'
+                    response.headers['Expires'] = '0'
+                    
+                    return response
         except Exception as e:
             current_app.logger.warning(f"Robust auth not available: {e}")
         
@@ -219,7 +263,7 @@ def logout():
         }), 500
 
 
-@admin_bp.route('/verify-token', methods=['GET'])
+@admin_bp.route('/verify-token', methods=['GET', 'OPTIONS'])
 @require_auth
 def verify_token():
     """Verify token validity"""
@@ -246,7 +290,7 @@ def verify_token():
 
 # Website Management Endpoints
 
-@admin_bp.route('/websites', methods=['GET'])
+@admin_bp.route('/websites', methods=['GET', 'OPTIONS'])
 @require_auth
 def get_websites():
     """Get all websites with analytics and integration status"""

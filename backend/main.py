@@ -162,18 +162,21 @@ def create_app(config_name='production'):
         r"/api/*": {
             "origins": cors_origins,
             "methods": ["POST", "GET", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization", "X-API-Key", "X-Website-Token"],
-            "supports_credentials": True
+            "allow_headers": ["Content-Type", "Authorization", "X-API-Key", "X-Website-Token", "X-Requested-With", "Cache-Control"],
+            "supports_credentials": True,
+            "expose_headers": ["Content-Type", "Authorization"]
         },
         r"/admin/*": {
             "origins": cors_origins,
-            "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"],
-            "allow_headers": ["Content-Type", "Authorization"],
-            "supports_credentials": True
+            "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Cache-Control", "Accept", "Origin"],
+            "supports_credentials": True,
+            "expose_headers": ["Content-Type", "Authorization"],
+            "max_age": 86400  # 24 hours preflight cache
         },
         r"/health": {
             "origins": cors_origins,
-            "methods": ["GET"],
+            "methods": ["GET", "OPTIONS"],
             "allow_headers": ["Content-Type"]
         }
     })
