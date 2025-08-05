@@ -115,12 +115,27 @@ class VerificationLog(Base):
         }
 
 
-def init_db():
+def init_db(database_url=None):
     """
     Initialize database connection and create tables
+    Can be called with or without Flask application context
     """
+    import os
+    
     try:
-        database_url = current_app.config.get('DATABASE_URL', 'sqlite:///passive_captcha.db')
+        # Get database URL from parameter, environment, or default
+        if database_url is None:
+            # Try to get from Flask app context first
+            try:
+                from flask import current_app
+                database_url = current_app.config.get('DATABASE_URL')
+            except RuntimeError:
+                # No Flask context, get from environment
+                pass
+            
+            # Fallback to environment variable or default
+            if database_url is None:
+                database_url = os.getenv('DATABASE_URL', 'sqlite:///passive_captcha_production.db')
 
         # Handle Railway PostgreSQL URL format
         if database_url.startswith('postgres://'):
@@ -157,11 +172,23 @@ def init_db():
         global SessionLocal
         SessionLocal = sessionmaker(bind=engine)
 
-        current_app.logger.info(f"Database initialized successfully with URL: {database_url}")
+        # Log success (with or without Flask context)
+        try:
+            from flask import current_app
+            current_app.logger.info(f"Database initialized successfully with URL: {database_url}")
+        except RuntimeError:
+            print(f"✅ Database initialized successfully with URL: {database_url}")
+        
         return True
 
     except Exception as e:
-        current_app.logger.error(f"Database initialization failed: {str(e)}")
+        # Log error (with or without Flask context)
+        try:
+            from flask import current_app
+            current_app.logger.error(f"Database initialization failed: {str(e)}")
+        except RuntimeError:
+            print(f"❌ Database initialization failed: {str(e)}")
+        
         return False
 
 

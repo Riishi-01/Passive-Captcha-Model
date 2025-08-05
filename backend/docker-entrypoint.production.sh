@@ -10,10 +10,17 @@ import sys
 import os
 sys.path.insert(0, '/app')
 try:
-    from app.database import get_db_session
-    session = get_db_session()
-    session.execute('SELECT 1')
-    session.close()
+    # Try to connect to database directly without Flask context
+    from sqlalchemy import create_engine, text
+    database_url = os.getenv('DATABASE_URL', 'sqlite:///passive_captcha_production.db')
+    
+    # Handle Railway PostgreSQL URL format
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    
+    engine = create_engine(database_url)
+    with engine.connect() as connection:
+        connection.execute(text('SELECT 1'))
     print('✅ Database connected successfully')
 except Exception as e:
     print(f'⚠️  Database connection issue: {e}')
@@ -39,24 +46,42 @@ except Exception as e:
 echo "🔧 Initializing database..."
 python -c "
 import sys
+import os
 sys.path.insert(0, '/app')
-from app.database import init_db
-init_db()
-print('✅ Database initialized')
+try:
+    from app.database import init_db
+    database_url = os.getenv('DATABASE_URL', 'sqlite:///passive_captcha_production.db')
+    success = init_db(database_url)
+    if success:
+        print('✅ Database initialized successfully')
+    else:
+        print('⚠️ Database initialization had issues but continuing...')
+except Exception as e:
+    print(f'⚠️ Database initialization failed: {e}')
+    print('📝 Application will attempt to initialize on startup')
 "
 
 # Load ML model
 echo "🤖 Loading ML model..."
 python -c "
 import sys
+import os
 sys.path.insert(0, '/app')
 try:
-    from app.ml import load_model
-    load_model()
-    print('✅ ML model loaded successfully')
+    # Check if model files exist
+    model_path = '/app/models/passive_captcha_rf.pkl'
+    scaler_path = '/app/models/passive_captcha_rf_scaler.pkl'
+    
+    if os.path.exists(model_path) and os.path.exists(scaler_path):
+        print('✅ ML model files found')
+        print(f'   Model: {model_path}')
+        print(f'   Scaler: {scaler_path}')
+    else:
+        print('⚠️  ML model files not found')
+        print('📝 Application will load models on first request')
 except Exception as e:
-    print(f'⚠️  ML model loading failed: {e}')
-    print('📝 Application will continue without ML model')
+    print(f'⚠️  ML model check failed: {e}')
+    print('📝 Application will attempt to load models on startup')
 "
 
 # Create log directory if it doesn't exist
