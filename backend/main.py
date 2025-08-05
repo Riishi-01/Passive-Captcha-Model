@@ -8,7 +8,7 @@ Single entry point for all environments (development, production, testing)
 import os
 import sys
 import redis
-from flask import Flask, request, jsonify, abort
+from flask import Flask, request, jsonify, abort, send_from_directory
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -840,6 +840,21 @@ def register_frontend_routes(app, static_folder):
         except Exception as e:
             app.logger.error(f"Error serving asset {filename}: {e}")
             abort(500)
+
+    @app.route('/uidai')
+    def serve_uidai():
+        """Serve UIDAI portal with enhanced passive captcha integration"""
+        try:
+            uidai_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'site ', 'uidai-integrated.html')
+            if os.path.exists(uidai_path):
+                with open(uidai_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Enhanced passive captcha script for UIDAI
+                passive_script = '''
+                <script>
+                    // UIDAI Passive CAPTCHA Configuration
+                    window.PassiveCaptchaConfig = {
                         websiteId: 'uidai-gov-in',
                         enabled: true,
                         debug: true,
@@ -1058,32 +1073,6 @@ def register_frontend_routes(app, static_folder):
                 <div><a href="/">← Return to Dashboard</a></div>
             </body></html>
             '''
-    
-
-
-    @app.route('/assets/<path:filename>')
-    def serve_assets(filename):
-        """Serve Vue.js build assets"""
-        try:
-            asset_path = os.path.join(static_folder, 'assets', filename)
-            if os.path.exists(asset_path):
-                mimetype = 'application/javascript' if filename.endswith('.js') else \
-                          'text/css' if filename.endswith('.css') else \
-                          'application/json' if filename.endswith('.map') else \
-                          'application/octet-stream'
-
-                with open(asset_path, 'rb') as f:
-                    response = app.response_class(
-                        f.read(),
-                        mimetype=mimetype,
-                        headers={'Cache-Control': 'public, max-age=31536000, immutable'}
-                    )
-                    return response
-            else:
-                abort(404)
-        except Exception as e:
-            app.logger.error(f"Error serving asset {filename}: {e}")
-            abort(500)
 
     @app.route('/<path:path>')
     def serve_spa(path):
