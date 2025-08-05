@@ -32,6 +32,16 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value && !!user.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
 
+  // Browser detection for compatibility
+  function detectBrowser(): string {
+    const userAgent = navigator.userAgent
+    if (userAgent.includes('Firefox')) return 'firefox'
+    if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) return 'safari'
+    if (userAgent.includes('Edge')) return 'edge'
+    if (userAgent.includes('Chrome')) return 'chrome'
+    return 'unknown'
+  }
+
   // Actions
   async function login(password: string) {
     try {
@@ -43,9 +53,30 @@ export const useAuthStore = defineStore('auth', () => {
           : `${window.location.protocol}//${window.location.host}`
       )
       
+      // Browser-specific request configuration
+      const browser = detectBrowser()
+      const requestConfig = {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': `PassiveCaptcha-Admin/${browser}`,
+          // Firefox-specific headers
+          ...(browser === 'firefox' && {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }),
+          // Safari-specific headers
+          ...(browser === 'safari' && {
+            'X-Requested-With': 'XMLHttpRequest'
+          })
+        },
+        withCredentials: true,
+        timeout: 30000 // 30 second timeout for all browsers
+      }
+      
       const response = await axios.post(`${API_BASE}/admin/login`, {
         password
-      })
+      }, requestConfig)
 
       const authToken = response.data.token || response.data.data?.token
       
@@ -58,9 +89,22 @@ export const useAuthStore = defineStore('auth', () => {
       return { success: false, error: 'Invalid credentials' }
     } catch (error: any) {
       console.error('Login error:', error)
+      
+      // Browser-specific error handling
+      let errorMessage = 'Login failed'
+      if (error.code === 'NETWORK_ERROR') {
+        errorMessage = 'Network error - please check your connection'
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Invalid password'
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Access denied'
+      } else if (error.response?.data?.error?.message) {
+        errorMessage = error.response.data.error.message
+      }
+      
       return { 
         success: false, 
-        error: error.response?.data?.error?.message || 'Login failed' 
+        error: errorMessage 
       }
     } finally {
       isLoading.value = false
@@ -85,19 +129,48 @@ export const useAuthStore = defineStore('auth', () => {
 
   function setToken(authToken: string) {
     token.value = authToken
-    localStorage.setItem('admin_token', authToken)
     
-    // Set default authorization header
+    // Cross-browser localStorage with fallback
+    try {
+      localStorage.setItem('admin_token', authToken)
+    } catch (error) {
+      console.warn('localStorage not available, using sessionStorage:', error)
+      try {
+        sessionStorage.setItem('admin_token', authToken)
+      } catch (sessionError) {
+        console.warn('sessionStorage not available, token will not persist:', sessionError)
+      }
+    }
+    
+    // Set default authorization header with browser-compatible format
     axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`
+    
+    // Additional headers for cross-browser compatibility
+    axios.defaults.headers.common['Accept'] = 'application/json'
+    axios.defaults.headers.common['Content-Type'] = 'application/json'
   }
 
   function clearAuth() {
     token.value = null
     user.value = null
-    localStorage.removeItem('admin_token')
     
-    // Remove authorization header
+    // Cross-browser token cleanup
+    try {
+      localStorage.removeItem('admin_token')
+    } catch (error) {
+      console.warn('localStorage cleanup failed:', error)
+    }
+    
+    try {
+      sessionStorage.removeItem('admin_token')
+    } catch (error) {
+      console.warn('sessionStorage cleanup failed:', error)
+    }
+    
+    // Remove authorization headers
     delete axios.defaults.headers.common['Authorization']
+    delete axios.defaults.headers.common['Accept']
+    delete axios.defaults.headers.common['Content-Type']
   }
 
   async function fetchUser() {
@@ -139,11 +212,37 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function restoreSession() {
-    const savedToken = localStorage.getItem('admin_token')
+    // Cross-browser token restoration with fallback
+    let savedToken: string | null = null
+    
+    try {
+      savedToken = localStorage.getItem('admin_token')
+    } catch (error) {
+      console.warn('localStorage not available, trying sessionStorage:', error)
+      try {
+        savedToken = sessionStorage.getItem('admin_token')
+      } catch (sessionError) {
+        console.warn('sessionStorage not available:', sessionError)
+      }
+    }
     
     if (savedToken) {
-      setToken(savedToken)
-      await fetchUser()
+      // Validate token format before setting
+      try {
+        const decoded = jwtDecode<JWTPayload>(savedToken)
+        
+        // Check if token is not expired
+        if (decoded.exp * 1000 > Date.now()) {
+          setToken(savedToken)
+          await fetchUser()
+        } else {
+          console.info('Stored token expired, clearing auth')
+          clearAuth()
+        }
+      } catch (decodeError) {
+        console.warn('Invalid stored token, clearing auth:', decodeError)
+        clearAuth()
+      }
     }
     
     initialized.value = true

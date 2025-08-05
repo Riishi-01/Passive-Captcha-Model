@@ -94,12 +94,28 @@ def require_auth(f):
 # Preflight handler for better browser compatibility
 @admin_bp.before_request
 def handle_preflight():
+    """Enhanced CORS preflight handler for cross-browser compatibility"""
     if request.method == "OPTIONS":
         response = make_response()
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization,X-Requested-With")
-        response.headers.add('Access-Control-Allow-Methods', "GET,PUT,POST,DELETE,PATCH,OPTIONS")
-        response.headers.add('Access-Control-Allow-Credentials', "true")
+        
+        # Get origin from request or use wildcard for development
+        origin = request.headers.get('Origin', '*')
+        
+        # Comprehensive CORS headers for all browsers
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Headers', 
+                           'Content-Type,Authorization,X-Requested-With,X-CSRF-Token,Accept,Origin,User-Agent,DNT,Cache-Control,X-Mx-ReqToken')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS,HEAD')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        response.headers.add('Access-Control-Max-Age', '86400')  # 24 hours
+        
+        # Browser-specific headers
+        response.headers.add('Vary', 'Origin,Access-Control-Request-Method,Access-Control-Request-Headers')
+        
+        # Additional headers for IE/Edge compatibility
+        response.headers.add('X-Content-Type-Options', 'nosniff')
+        response.headers.add('X-Frame-Options', 'SAMEORIGIN')
+        
         return response
 
 
@@ -141,10 +157,23 @@ def login():
                         'message': 'Login successful'
                     })
                     
-                    # Add browser-compatible headers
-                    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                    # Add comprehensive browser-compatible headers
+                    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, no-transform'
                     response.headers['Pragma'] = 'no-cache'
                     response.headers['Expires'] = '0'
+                    
+                    # Cross-browser security headers
+                    response.headers['X-Content-Type-Options'] = 'nosniff'
+                    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+                    response.headers['X-XSS-Protection'] = '1; mode=block'
+                    
+                    # CORS headers for successful login
+                    origin = request.headers.get('Origin', '*')
+                    response.headers['Access-Control-Allow-Origin'] = origin
+                    response.headers['Access-Control-Allow-Credentials'] = 'true'
+                    
+                    # Browser-specific JSON content type
+                    response.headers['Content-Type'] = 'application/json; charset=utf-8'
                     
                     return response
                 except Exception as e:
@@ -208,10 +237,23 @@ def login():
                         'message': 'Login successful'
                     })
                     
-                    # Add browser-compatible headers
-                    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                    # Add comprehensive browser-compatible headers
+                    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, no-transform'
                     response.headers['Pragma'] = 'no-cache'
                     response.headers['Expires'] = '0'
+                    
+                    # Cross-browser security headers
+                    response.headers['X-Content-Type-Options'] = 'nosniff'
+                    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+                    response.headers['X-XSS-Protection'] = '1; mode=block'
+                    
+                    # CORS headers for successful login
+                    origin = request.headers.get('Origin', '*')
+                    response.headers['Access-Control-Allow-Origin'] = origin
+                    response.headers['Access-Control-Allow-Credentials'] = 'true'
+                    
+                    # Browser-specific JSON content type
+                    response.headers['Content-Type'] = 'application/json; charset=utf-8'
                     
                     return response
         except Exception as e:
