@@ -239,17 +239,7 @@ def create_app(config_name='production'):
         app.logger.error(f"Database initialization failed: {e}")
         # Don't raise - let app start without database for debugging
     
-    # Initialize robust authentication system
-    try:
-        from app.auth_integration import integrate_with_existing_app
-        with app.app_context():
-            auth_success = integrate_with_existing_app(app)
-            if auth_success:
-                app.logger.info("✅ Robust authentication system integrated")
-            else:
-                app.logger.warning("⚠️  Failed to integrate robust authentication, using fallback")
-    except Exception as e:
-        app.logger.warning(f"⚠️  Authentication integration error: {e}, using fallback")
+    # Authentication system is now integrated directly in unified services section
 
     # Initialize ML model (optional)
     try:
@@ -487,29 +477,7 @@ def create_app(config_name='production'):
     app.limiter = limiter if 'limiter' in locals() else None
     app.start_time = int(__import__('time').time())
 
-    # Register enhanced authentication endpoints
-    try:
-        from app.auth_integration import create_enhanced_auth_endpoints
-        create_enhanced_auth_endpoints(app)
-        app.logger.info('Enhanced auth endpoints registered successfully')
-    except Exception as e:
-        app.logger.error(f'Failed to register enhanced auth endpoints: {e}')
-
-    # Register prototype API with SocketIO support
-    try:
-        from app.prototype_api import register_prototype
-        register_prototype(app, socketio)
-        app.logger.info('Prototype API registered successfully')
-    except Exception as e:
-        app.logger.error(f'Failed to register prototype API: {e}')
-    
-    # Register site routes for frontend deployment
-    try:
-        from app.site_routes import site_bp
-        app.register_blueprint(site_bp)
-        app.logger.info('Site routes registered successfully')
-    except Exception as e:
-        app.logger.error(f'Failed to register site routes: {e}')
+    # Legacy imports removed - using unified architecture with register_frontend_routes
     
     # Register script serving routes BEFORE other routes to avoid conflicts
     @app.route('/app/static/passive-captcha-script.js')
