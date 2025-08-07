@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Enhanced Authentication Service with Robust Security
-Addresses login failures and implements comprehensive auth system
+Unified Authentication Service
+Consolidates all authentication functionality into a single, working service
 """
 
 import os
@@ -9,14 +9,18 @@ import jwt
 import hashlib
 import secrets
 import time
+import bcrypt
+import redis
+import json
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Any, List
 from dataclasses import dataclass
 from enum import Enum
 from flask import current_app, has_app_context, request
-import redis
-import json
-import bcrypt
+import logging
+
+# Setup logging
+logger = logging.getLogger(__name__)
 
 
 class UserRole(Enum):
@@ -38,7 +42,7 @@ class RateLimitError(Exception):
 
 @dataclass
 class AuthenticatedUser:
-    """Enhanced authenticated user data structure"""
+    """Authenticated user data structure"""
     id: str
     email: str
     name: str
@@ -60,8 +64,8 @@ class AuthenticatedUser:
         }
 
 
-class RobustAuthService:
-    """Enhanced authentication service with comprehensive security"""
+class AuthService:
+    """Unified authentication service with comprehensive security"""
     
     def __init__(self, redis_client: Optional[redis.Redis] = None):
         self.redis = redis_client
@@ -77,14 +81,18 @@ class RobustAuthService:
         self.rate_limit_requests = 10  # requests per minute
         self.rate_limit_window = 60  # seconds
         
-        # Get JWT secret from environment
-        self.jwt_secret = os.getenv('JWT_SECRET', self._generate_jwt_secret())
+        # JWT configuration
+        self.jwt_secret = os.getenv('JWT_SECRET_KEY', 
+                                   os.getenv('JWT_SECRET', 
+                                            self._generate_jwt_secret()))
         self.jwt_algorithm = 'HS256'
         
-        # Admin credentials from environment and app config
+        # Admin credentials - CRITICAL: This fixes the missing admin_secret issue
+        self.admin_secret = os.getenv('ADMIN_SECRET', 'Admin123')
         self.admin_email = os.getenv('ADMIN_EMAIL', 'admin@passive-captcha.com')
-        self.admin_secret = os.getenv('ADMIN_SECRET', 'Admin123')  # Plain text secret for compatibility
-        self.admin_password_hash = os.getenv('ADMIN_PASSWORD_HASH', self._generate_default_admin_hash())
+        self.admin_password_hash = self._generate_default_admin_hash()
+        
+        logger.info(f"AuthService initialized with admin_secret: {self.admin_secret}")
         
     def _generate_jwt_secret(self) -> str:
         """Generate a secure JWT secret"""
@@ -92,24 +100,29 @@ class RobustAuthService:
     
     def _generate_default_admin_hash(self) -> str:
         """Generate default admin password hash"""
-        # Default password: 'PassiveCAPTCHA2024!'
-        default_password = 'PassiveCAPTCHA2024!'
-        return bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        try:
+            # Use admin_secret as the password for consistency
+            password = self.admin_secret
+            return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        except Exception as e:
+            logger.error(f"Failed to generate admin hash: {e}")
+            return ""
     
     def _get_client_ip(self) -> str:
         """Get client IP address with proxy support"""
-        if request:
-            # Check for forwarded IP (for proxies/load balancers)
-            forwarded_for = request.headers.get('X-Forwarded-For')
-            if forwarded_for:
-                return forwarded_for.split(',')[0].strip()
+        if not request:
+            return 'unknown'
             
-            real_ip = request.headers.get('X-Real-IP')
-            if real_ip:
-                return real_ip
-            
-            return request.remote_addr or 'unknown'
-        return 'unknown'
+        # Check for forwarded IP (for proxies/load balancers)
+        forwarded_for = request.headers.get('X-Forwarded-For')
+        if forwarded_for:
+            return forwarded_for.split(',')[0].strip()
+        
+        real_ip = request.headers.get('X-Real-IP')
+        if real_ip:
+            return real_ip
+        
+        return request.remote_addr or 'unknown'
     
     def _check_rate_limit(self, identifier: str) -> bool:
         """Check if identifier is rate limited"""
@@ -191,24 +204,29 @@ class RobustAuthService:
     
     def _validate_admin_credentials(self, email: str, password: str) -> bool:
         """Validate admin credentials with secure password checking"""
-        if email != self.admin_email:
+        # Check email first
+        if email and email != self.admin_email:
             return False
         
-        # Check against plain text admin_secret first (for backward compatibility)
+        # Check against plain text admin_secret (primary method)
         if password == self.admin_secret:
             return True
         
         # Also check against hashed password if available
         try:
-            return bcrypt.checkpw(password.encode('utf-8'), self.admin_password_hash.encode('utf-8'))
+            if self.admin_password_hash:
+                return bcrypt.checkpw(password.encode('utf-8'), 
+                                    self.admin_password_hash.encode('utf-8'))
         except Exception as e:
             if has_app_context():
                 current_app.logger.error(f"Password validation error: {e}")
-            return False
+        
+        return False
     
-    def authenticate_admin(self, email: str, password: str, remember_me: bool = False) -> Dict[str, Any]:
+    def authenticate_admin(self, password: str, email: str = None) -> Optional[Dict[str, Any]]:
         """
-        Enhanced admin authentication with comprehensive security
+        Unified admin authentication method
+        Supports both old (password only) and new (email+password) signatures
         """
         ip_address = self._get_client_ip()
         
@@ -221,18 +239,27 @@ class RobustAuthService:
             raise RateLimitError("Too many requests. Please try again later")
         
         # Validate credentials
-        if not email or not password:
+        if not password:
             self._record_failed_attempt(ip_address)
-            raise AuthenticationError("Email and password are required")
+            raise AuthenticationError("Password is required")
         
-        if not self._validate_admin_credentials(email, password):
-            self._record_failed_attempt(ip_address)
-            raise AuthenticationError("Invalid email or password")
+        # If email is provided, validate both, otherwise just password
+        if email:
+            if not self._validate_admin_credentials(email, password):
+                self._record_failed_attempt(ip_address)
+                raise AuthenticationError("Invalid email or password")
+            user_email = email
+        else:
+            # Backward compatibility: just password
+            if password != self.admin_secret:
+                self._record_failed_attempt(ip_address)
+                raise AuthenticationError("Invalid password")
+            user_email = self.admin_email
         
         # Create authenticated user
         user = AuthenticatedUser(
             id="admin",
-            email=email,
+            email=user_email,
             name="Administrator",
             role=UserRole.ADMIN,
             last_login=datetime.utcnow(),
@@ -240,7 +267,7 @@ class RobustAuthService:
         )
         
         # Create session
-        return self._create_secure_session(user, remember_me, ip_address)
+        return self._create_secure_session(user, False, ip_address)
     
     def _create_secure_session(self, user: AuthenticatedUser, remember_me: bool, ip_address: str) -> Dict[str, Any]:
         """Create secure session with JWT token"""
@@ -426,18 +453,22 @@ class RobustAuthService:
             return None
 
 
+# Alias for backward compatibility
+RobustAuthService = AuthService
+
 # Global auth service instance
 auth_service = None
 
 
-def init_auth_service(redis_client: Optional[redis.Redis] = None) -> RobustAuthService:
+def init_auth_service(redis_client: Optional[redis.Redis] = None) -> AuthService:
     """Initialize the authentication service"""
     global auth_service
-    auth_service = RobustAuthService(redis_client)
+    auth_service = AuthService(redis_client)
+    logger.info(f"AuthService initialized with admin_secret: {auth_service.admin_secret}")
     return auth_service
 
 
-def get_auth_service() -> Optional[RobustAuthService]:
+def get_auth_service() -> Optional[AuthService]:
     """Get the current authentication service instance"""
     return auth_service
 

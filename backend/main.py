@@ -260,33 +260,21 @@ def create_app(config_name='production'):
     except Exception as e:
         app.logger.warning(f"ML model loading failed: {e}")
 
-    # Initialize services
+    # Initialize services with unified authentication
     auth_service = None
     website_service = None
     try:
-        from app.services import init_auth_service, init_website_service
-        app.logger.info("Importing services modules...")
-
-        app.logger.info(f"Initializing auth service with Redis: {redis_client is not None}")
+        app.logger.info("Initializing unified services...")
+        app.logger.info(f"Redis available: {redis_client is not None}")
         app.logger.info(f"ADMIN_SECRET in app.config: {app.config.get('ADMIN_SECRET')}")
         
-        # Initialize auth service - try robust service first, fallback to basic
-        try:
-            from app.services.robust_auth_service import init_robust_auth_service, get_robust_auth_service
-            # Initialize the robust auth service first
-            auth_service = init_robust_auth_service(redis_client)
-            if auth_service and hasattr(auth_service, 'admin_secret'):
-                app.logger.info(f"Using robust auth service initialized successfully")
-            else:
-                # Fallback to old auth service
-                auth_service = init_auth_service(redis_client)
-                app.logger.info(f"Using fallback auth service initialized: {auth_service is not None}")
-        except Exception as auth_error:
-            app.logger.warning(f"Robust auth service initialization failed, using fallback: {auth_error}")
-            auth_service = init_auth_service(redis_client)
-            app.logger.info(f"Fallback auth service initialized: {auth_service is not None}")
+        # Initialize unified auth service
+        from app.services.auth_service import init_auth_service
+        auth_service = init_auth_service(redis_client)
+        app.logger.info(f"✅ Unified auth service initialized with admin_secret: {auth_service.admin_secret}")
 
-        # Always initialize website service (with or without Redis)
+        # Initialize website service
+        from app.services import init_website_service
         website_service = init_website_service(redis_client)
         app.logger.info(f"Website service initialized: {website_service is not None}")
 
@@ -295,7 +283,7 @@ def create_app(config_name='production'):
         script_token_manager = init_script_token_manager(redis_client)
         app.logger.info(f"Script token manager initialized: {script_token_manager is not None}")
 
-        app.logger.info("Services initialized successfully")
+        app.logger.info("✅ All services initialized successfully")
     except ImportError as e:
         app.logger.error(f"Service import failed: {e}")
     except Exception as e:
@@ -840,245 +828,109 @@ def register_frontend_routes(app, static_folder):
         except Exception as e:
             app.logger.error(f"Error serving asset {filename}: {e}")
             abort(500)
-                        websiteId: 'uidai-gov-in',
-                        enabled: true,
-                        debug: true,
-                        collectAll: true,
-                        realTimeAnalytics: true
-                    };
-                </script>
-                <script src="/passive-captcha-script.js"></script>
-                <script>
-                    // Enhanced UIDAI analytics and tracking
-                    document.addEventListener('DOMContentLoaded', function() {
-                        console.log('🏛️ UIDAI Portal loaded with Advanced Passive CAPTCHA Protection');
-                        
-                        // Initialize passive captcha with enhanced configuration
-                        if (typeof PassiveCaptcha !== 'undefined') {
-                            PassiveCaptcha.init({
-                                websiteId: 'uidai-gov-in',
-                                apiEndpoint: '/prototype/api/verify',
-                                enableRealTimeMonitoring: true,
-                                collectTouchPatterns: true,
-                                monitorFocusEvents: true,
-                                trackFormInteractions: true,
-                                analyticsEndpoint: '/prototype/api/analytics'
-                            });
-                            console.log('✅ Passive CAPTCHA System Active');
-                        }
-                        
-                        // Track comprehensive page analytics
-                        var sessionData = {
-                            sessionId: 'uidai_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                            startTime: Date.now(),
-                            pageUrl: window.location.href,
-                            referrer: document.referrer || 'direct',
-                            userAgent: navigator.userAgent,
-                            screen: screen.width + 'x' + screen.height,
-                            viewport: window.innerWidth + 'x' + window.innerHeight,
-                            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                            language: navigator.language,
-                            platform: navigator.platform
-                        };
-                        
-                        // Send initial page view analytics
-                        function sendAnalytics(eventData) {
-                            if (window.fetch) {
-                                fetch('/prototype/api/analytics', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'X-Website-URL': window.location.href,
-                                        'X-Passive-Captcha-Token': 'uidai-portal-' + Date.now()
-                                    },
-                                    body: JSON.stringify(eventData)
-                                }).then(function(response) {
-                                    if (response.ok) {
-                                        console.log('📊 Analytics sent successfully');
-                                    }
-                                }).catch(function(err) {
-                                    console.log('⚠️ Analytics error:', err);
-                                });
-                            }
-                        }
-                        
-                        // Initial page view
-                        sendAnalytics({
-                            event: 'uidai_page_view',
-                            timestamp: Date.now(),
-                            session: sessionData,
-                            page: 'uidai_homepage'
-                        });
-                        
-                        // Track user interactions
-                        var interactionCount = 0;
-                        function trackInteraction(type, details) {
-                            interactionCount++;
-                            if (interactionCount % 3 === 0) {
-                                sendAnalytics({
-                                    event: 'uidai_interaction',
-                                    type: type,
-                                    details: details,
-                                    count: interactionCount,
-                                    timestamp: Date.now(),
-                                    sessionId: sessionData.sessionId
-                                });
-                            }
-                        }
-                        
-                        // Attach interaction listeners
-                        document.addEventListener('click', function(e) {
-                            trackInteraction('click', {
-                                target: e.target.tagName,
-                                x: e.clientX,
-                                y: e.clientY
-                            });
-                        });
-                        
-                        document.addEventListener('scroll', function() {
-                            trackInteraction('scroll', {
-                                scrollTop: window.pageYOffset,
-                                scrollLeft: window.pageXOffset
-                            });
-                        });
-                        
-                        document.addEventListener('keydown', function(e) {
-                            trackInteraction('keydown', {
-                                key: e.key,
-                                code: e.code
-                            });
-                        });
-                        
-                        // Track page unload
-                        window.addEventListener('beforeunload', function() {
-                            var timeOnPage = Date.now() - sessionData.startTime;
-                            if (navigator.sendBeacon) {
-                                navigator.sendBeacon('/prototype/api/analytics', JSON.stringify({
-                                    event: 'uidai_page_unload',
-                                    sessionId: sessionData.sessionId,
-                                    timeOnPage: timeOnPage,
-                                    interactions: interactionCount,
-                                    timestamp: Date.now()
-                                }));
-                            }
-                        });
-                        
-                        console.log('🔐 Real-time monitoring active for UIDAI portal');
-                    });
-                </script>
-                
-                <!-- Enhanced Admin Access Panel -->
-                <div id="uidai-admin-panel" style="position: fixed; top: 15px; right: 15px; background: linear-gradient(135deg, #000046 0%, #1cb5e0 100%); color: white; padding: 16px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 99999; font-family: 'Segoe UI', sans-serif; text-align: center; cursor: pointer; transition: all 0.3s ease; min-width: 200px;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    <div style="font-size: 11px; margin-bottom: 8px; opacity: 0.9; font-weight: 600;">🛡️ UIDAI ADMIN SYSTEM</div>
-                    <a href="/" style="display: block; background: rgba(255,255,255,0.2); color: white; padding: 10px 14px; text-decoration: none; border-radius: 6px; margin: 4px 0; font-size: 13px; font-weight: 500; border: 1px solid rgba(255,255,255,0.3); transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">📊 Analytics Dashboard</a>
-                    <a href="/api/health" style="display: block; background: rgba(255,255,255,0.2); color: white; padding: 10px 14px; text-decoration: none; border-radius: 6px; margin: 4px 0; font-size: 13px; font-weight: 500; border: 1px solid rgba(255,255,255,0.3); transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">🔍 System Health</a>
-                    <div style="font-size: 10px; margin-top: 8px; opacity: 0.7;">🟢 Active Monitoring</div>
-                </div>
-                
-                <!-- UIDAI Portal Enhancement Styles -->
-                <style>
-                    /* Enhanced styling for government portal */
-                    body { 
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-                    }
-                    
-                    /* Responsive admin panel */
-                    @media (max-width: 768px) {
-                        #uidai-admin-panel {
-                            top: 10px !important;
-                            right: 10px !important;
-                            left: 10px !important;
-                            min-width: auto !important;
-                            padding: 12px !important;
-                        }
-                        #uidai-admin-panel a {
-                            font-size: 12px !important;
-                            padding: 8px 12px !important;
-                        }
-                    }
-                </style>
-                '''
-                
-                # Inject before closing body tag
-                if '</body>' in content:
-                    content = content.replace('</body>', passive_script + '\n</body>')
-                else:
-                    content += passive_script
-                
-                return content
-            else:
-                app.logger.warning(f"UIDAI site not found at {uidai_path}, serving fallback")
-                return '''
-                <!DOCTYPE html>
-                <html><head><title>UIDAI - Government of India</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 40px; background: #f5f7fa; }
-                    .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-                    .header { text-align: center; color: #000046; margin-bottom: 30px; }
-                    .admin-link { display: inline-block; background: linear-gradient(135deg, #000046 0%, #1cb5e0 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px; transition: transform 0.2s; }
-                    .admin-link:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-                    .back-link { text-align: center; margin-top: 30px; }
-                    .back-link a { color: #1cb5e0; text-decoration: none; }
-                </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="header">
-                            <h1>🏛️ Unique Identification Authority of India</h1>
-                            <p>Government of India - Digital Identity Platform</p>
-                        </div>
-                        <div style="text-align: center;">
-                            <a href="/" class="admin-link">📊 Admin Dashboard</a>
-                            <a href="/api/health" class="admin-link">🔍 System Health</a>
-                        </div>
-                        <div class="back-link">
-                            <a href="/">← Return to Admin Dashboard</a>
-                        </div>
-                    </div>
-                    <script src="/passive-captcha-script.js"></script>
-                    <script>
-                        if (typeof PassiveCaptcha !== 'undefined') {
-                            PassiveCaptcha.init({
-                                websiteId: 'uidai-gov-in-fallback',
-                                apiEndpoint: '/prototype/api/verify',
-                                enableRealTimeMonitoring: true
-                            });
-                        }
-                    </script>
-                </body></html>
-                '''
-        except Exception as e:
-            app.logger.error(f"Failed to serve UIDAI portal: {e}")
-            return '''
-            <!DOCTYPE html>
-            <html><head><title>UIDAI Portal - Error</title></head>
-            <body>
-                <h1>🏛️ UIDAI Government Portal</h1>
-                <p>Temporary service unavailable</p>
-                <div><a href="/">← Return to Dashboard</a></div>
-            </body></html>
-            '''
+
+
+def setup_logging(app):
+    """Setup logging for the application"""
+    if app.config.get('DEBUG'):
+        return  # Use default logging in debug mode
+
+    # Create logs directory
+    log_dir = os.path.dirname(app.config['LOG_FILE'])
+    if log_dir and not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
+    # Set log level
+    log_level = getattr(logging, app.config['LOG_LEVEL'].upper(), logging.INFO)
+    app.logger.setLevel(log_level)
+
+    # File handler with rotation
+    try:
+        file_handler = RotatingFileHandler(
+            app.config['LOG_FILE'],
+            maxBytes=app.config['LOG_MAX_SIZE'],
+            backupCount=app.config['LOG_BACKUP_COUNT']
+        )
+
+        file_handler.setLevel(log_level)
+        formatter = logging.Formatter(
+            '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+        )
+        file_handler.setFormatter(formatter)
+        app.logger.addHandler(file_handler)
+
+        app.logger.info(f"File logging setup complete: {app.config['LOG_FILE']}")
+
+    except Exception as e:
+        print(f"Warning: Could not setup file logging: {e}")
+
+
+def get_wsgi_app():
+    """Get WSGI application for production servers like gunicorn"""
+    try:
+        app, socketio = create_app('production')
+        
+        print(f"[WSGI] Flask app type: {type(app)}")
+        print(f"[WSGI] Flask app callable: {callable(app)}")
+        print(f"[WSGI] SocketIO type: {type(socketio) if socketio else 'None'}")
+        print(f"[WSGI] SocketIO callable: {callable(socketio) if socketio else 'None'}")
+        
+        # For Gunicorn with eventlet workers, return the Flask app
+        # SocketIO functionality will still work through the app.socketio instance
+        print(f"[WSGI] Returning Flask app for Gunicorn compatibility")
+        return app
+            
+    except Exception as e:
+        print(f"[ERROR] Failed to create WSGI app: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # Emergency fallback - create minimal Flask app
+        from flask import Flask
+        emergency_app = Flask(__name__)
+        
+        @emergency_app.route('/health')
+        def health():
+            return {'status': 'error', 'message': 'Application failed to initialize properly'}
+            
+        return emergency_app
     
 
+
+def register_frontend_routes(app, static_folder):
+    """Register frontend routes for serving Vue.js application"""
+    
+    @app.route('/')
+    def serve_index():
+        """Serve main index page"""
+        try:
+            index_path = os.path.join(static_folder, 'index.html')
+            if os.path.exists(index_path):
+                from flask import send_from_directory
+                return send_from_directory(static_folder, 'index.html')
+            else:
+                return '''
+                <!DOCTYPE html>
+                <html>
+                <head><title>Passive CAPTCHA Dashboard</title></head>
+                <body>
+                    <h1>🛡️ Passive CAPTCHA Dashboard</h1>
+                    <p>System is running with fixed authentication</p>
+                    <a href="/health">System Health</a>
+                </body>
+                </html>
+                '''
+        except Exception as e:
+            return f'Error: {e}', 500
 
     @app.route('/assets/<path:filename>')
     def serve_assets(filename):
         """Serve Vue.js build assets"""
         try:
+            from flask import send_from_directory
             asset_path = os.path.join(static_folder, 'assets', filename)
             if os.path.exists(asset_path):
-                mimetype = 'application/javascript' if filename.endswith('.js') else \
-                          'text/css' if filename.endswith('.css') else \
-                          'application/json' if filename.endswith('.map') else \
-                          'application/octet-stream'
-
-                with open(asset_path, 'rb') as f:
-                    response = app.response_class(
-                        f.read(),
-                        mimetype=mimetype,
-                        headers={'Cache-Control': 'public, max-age=31536000, immutable'}
-                    )
-                    return response
+                return send_from_directory(os.path.join(static_folder, 'assets'), filename)
             else:
                 abort(404)
         except Exception as e:
@@ -1087,71 +939,21 @@ def register_frontend_routes(app, static_folder):
 
     @app.route('/<path:path>')
     def serve_spa(path):
-        """Enhanced SPA route handler for Vue.js application"""
-
-        # Define API and backend routes that should NOT serve the SPA
-        api_prefixes = ('api/', 'admin/', 'assets/', 'static/', 'socket.io/')
-
-        # Define specific backend endpoints that should not serve SPA
-        backend_endpoints = ('health',)
-
-        # Define file extensions that should be served directly or return 404
-        file_extensions = ('.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.map', '.txt', '.xml', '.json')
-
-        # Log the request for debugging
-        app.logger.info(f"SPA route handler: /{path}")
-
-        # 1. Skip API routes - these should be handled by their respective blueprints
-        if path.startswith(api_prefixes) or path in backend_endpoints:
-            app.logger.info(f"Skipping API/backend route: /{path}")
+        """Serve SPA routes"""
+        # Skip API routes
+        if path.startswith(('api/', 'admin/', 'assets/', 'health')):
             abort(404)
-
-        # 2. Handle direct file requests
-        if path.endswith(file_extensions):
-            file_path = os.path.join(static_folder, path)
-            if os.path.exists(file_path) and os.path.isfile(file_path):
-                app.logger.debug(f"Serving static file: {path}")
-                return app.send_static_file(path)
-            else:
-                app.logger.debug(f"Static file not found: {path}")
+        
+        # Handle file extensions
+        if path.endswith(('.js', '.css', '.png', '.jpg', '.ico', '.map')):
+            try:
+                from flask import send_from_directory
+                return send_from_directory(static_folder, path)
+            except Exception:
                 abort(404)
-
-        # 3. Serve Vue.js SPA for all other routes (dashboard, login, websites, etc.)
-        # This includes routes like: dashboard, login, websites, analytics, settings, etc.
-        try:
-            app.logger.debug(f"Serving SPA for route: /{path}")
-            index_path = os.path.join(static_folder, 'index.html')
-            if os.path.exists(index_path):
-                with open(index_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    response = app.response_class(
-                        content,
-                        mimetype='text/html',
-                        headers={
-                            'Cache-Control': 'no-cache, no-store, must-revalidate',
-                            'Pragma': 'no-cache',
-                            'Expires': '0'
-                        }
-                    )
-                    return response
-            else:
-                app.logger.error(f"index.html not found at {index_path}")
-                abort(404)
-        except Exception as e:
-            app.logger.error(f"Error serving SPA for route /{path}: {e}")
-            # Fallback to basic error page
-            return f'''
-            <!DOCTYPE html>
-            <html>
-            <head><title>Passive CAPTCHA</title></head>
-            <body>
-                <h1>🔐 Passive CAPTCHA</h1>
-                <p>[WARNING] Frontend temporarily unavailable</p>
-                <p><a href="/admin/login">Admin API Login</a></p>
-                <p><a href="/health">System Health</a></p>
-            </body>
-            </html>
-            ''', 503
+        
+        # Serve index.html for SPA routes
+        return serve_index()
 
 
 def setup_logging(app):
