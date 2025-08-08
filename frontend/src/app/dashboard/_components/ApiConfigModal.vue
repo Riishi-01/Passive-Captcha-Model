@@ -168,7 +168,7 @@ const testing = ref(false)
 const testResult = ref<{ success: boolean; message: string } | null>(null)
 
 const config = ref({
-  apiEndpoint: 'http://localhost:5003',
+  apiEndpoint: 'http://localhost:5002',
   apiKey: 'admin-secret-key',
   rateLimit: 100,
   timeout: 30,

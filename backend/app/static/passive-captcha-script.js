@@ -115,9 +115,9 @@
         collectDeviceInfo: true,
         monitorFocusEvents: true,
         trackFormInteractions: true,
-        samplingRate: 0.15, // 15% of interactions for better accuracy
-        batchSize: 75,
-        sendInterval: 25000, // 25 seconds
+        samplingRate: 0.25, // 25% of interactions for better accuracy
+        batchSize: 50,
+        sendInterval: 8000, // 8 seconds for faster response
         maxRetries: 3,
         debugMode: false
     };
@@ -160,7 +160,9 @@
         focusData: {
             focusEvents: [],
             blurEvents: [],
-            visibilityChanges: []
+            visibilityChanges: [],
+            tabSwitches: [],
+            windowFocusPattern: []
         },
         formData: {
             formInteractions: [],
@@ -187,7 +189,9 @@
             lastResult: null,
             isBot: false,
             confidence: 0,
-            timestamp: null
+            timestamp: null,
+            progressiveScore: 0,
+            verificationHistory: []
         }
     };
     
@@ -250,6 +254,16 @@
         // Page lifecycle events
         document.addEventListener('visibilitychange', handleVisibilityChange);
         window.addEventListener('beforeunload', handleBeforeUnload);
+        
+        // Enhanced focus tracking
+        if (CONFIG.monitorFocusEvents) {
+            setupFocusTracking();
+        }
+        
+        // Form interaction tracking
+        if (CONFIG.trackFormInteractions) {
+            setupFormTracking();
+        }
     }
     
     // Mouse tracking setup
@@ -507,6 +521,105 @@
         });
     }
     
+    // Enhanced focus tracking setup
+    function setupFocusTracking() {
+        let lastFocusTime = Date.now();
+        let tabSwitchCount = 0;
+        
+        window.addEventListener('focus', function() {
+            const now = Date.now();
+            const awayTime = now - lastFocusTime;
+            
+            state.focusData.focusEvents.push({
+                timestamp: now,
+                awayTime: awayTime,
+                type: 'focus'
+            });
+            
+            if (awayTime > 1000) { // Away for more than 1 second
+                tabSwitchCount++;
+                state.focusData.tabSwitches.push({
+                    timestamp: now,
+                    awayDuration: awayTime
+                });
+            }
+            
+            lastFocusTime = now;
+        });
+        
+        window.addEventListener('blur', function() {
+            const now = Date.now();
+            state.focusData.blurEvents.push({
+                timestamp: now,
+                type: 'blur'
+            });
+            lastFocusTime = now;
+        });
+        
+        // Track window focus patterns
+        setInterval(function() {
+            state.focusData.windowFocusPattern.push({
+                timestamp: Date.now(),
+                hasFocus: document.hasFocus(),
+                tabSwitchCount: tabSwitchCount
+            });
+            
+            // Limit data size
+            if (state.focusData.windowFocusPattern.length > 50) {
+                state.focusData.windowFocusPattern = state.focusData.windowFocusPattern.slice(-25);
+            }
+        }, 2000);
+    }
+    
+    // Form interaction tracking setup
+    function setupFormTracking() {
+        const forms = document.getElementsByTagName('form');
+        
+        for (let i = 0; i < forms.length; i++) {
+            const form = forms[i];
+            
+            // Track form focus events
+            utils.addEventListener(form, 'focusin', function(event) {
+                const target = event.target || event.srcElement;
+                if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+                    state.formData.fieldFocus.push({
+                        timestamp: Date.now(),
+                        fieldType: target.type || target.tagName.toLowerCase(),
+                        fieldName: target.name || target.id || 'unknown',
+                        action: 'focus'
+                    });
+                }
+            });
+            
+            // Track input patterns
+            utils.addEventListener(form, 'input', function(event) {
+                const target = event.target || event.srcElement;
+                if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+                    state.formData.inputPatterns.push({
+                        timestamp: Date.now(),
+                        fieldType: target.type || 'text',
+                        inputLength: target.value.length,
+                        action: 'input'
+                    });
+                    
+                    // Limit data size
+                    if (state.formData.inputPatterns.length > 100) {
+                        state.formData.inputPatterns = state.formData.inputPatterns.slice(-50);
+                    }
+                }
+            });
+            
+            // Track form submissions
+            utils.addEventListener(form, 'submit', function() {
+                state.formData.formInteractions.push({
+                    timestamp: Date.now(),
+                    action: 'submit',
+                    formId: form.id || 'unknown'
+                });
+            });
+        }
+    }
+
     // Setup timing data collection
     function setupTimingCollection() {
         // Page load timing
@@ -591,8 +704,98 @@
         return Math.random() < CONFIG.samplingRate;
     }
     
-    // Setup periodic data sending
+    // Progressive verification scoring
+    function updateProgressiveScore() {
+        calculateBehaviorMetrics();
+        
+        const mouseScore = Math.min(state.behaviorMetrics.mouseEntropy / 10, 1);
+        const keyboardScore = Math.min(state.behaviorMetrics.keyboardRhythm, 1);
+        const scrollScore = state.behaviorMetrics.scrollConsistency;
+        const focusScore = calculateFocusScore();
+        const formScore = calculateFormScore();
+        
+        // Weighted average of all scores
+        const newScore = (mouseScore * 0.3 + keyboardScore * 0.25 + scrollScore * 0.2 + 
+                         focusScore * 0.15 + formScore * 0.1);
+        
+        // Progressive averaging with history
+        if (state.verification.progressiveScore === 0) {
+            state.verification.progressiveScore = newScore;
+        } else {
+            state.verification.progressiveScore = (state.verification.progressiveScore * 0.7) + (newScore * 0.3);
+        }
+        
+        // Store verification history
+        state.verification.verificationHistory.push({
+            timestamp: Date.now(),
+            score: newScore,
+            progressive: state.verification.progressiveScore
+        });
+        
+        // Limit history size
+        if (state.verification.verificationHistory.length > 20) {
+            state.verification.verificationHistory = state.verification.verificationHistory.slice(-10);
+        }
+    }
+    
+    // Calculate focus behavior score
+    function calculateFocusScore() {
+        if (state.focusData.tabSwitches.length === 0) return 0.8; // Default human-like
+        
+        const avgAwayTime = state.focusData.tabSwitches.reduce((sum, tab) => sum + tab.awayDuration, 0) / state.focusData.tabSwitches.length;
+        const switchFreq = state.focusData.tabSwitches.length / (Date.now() - performance.timing.navigationStart) * 60000; // switches per minute
+        
+        // Human-like: moderate away times, low switch frequency
+        if (avgAwayTime > 2000 && avgAwayTime < 30000 && switchFreq < 5) {
+            return 0.9;
+        } else if (switchFreq > 20 || avgAwayTime < 500) {
+            return 0.2; // Bot-like rapid switching
+        }
+        return 0.6;
+    }
+    
+    // Calculate form interaction score
+    function calculateFormScore() {
+        if (state.formData.inputPatterns.length === 0) return 0.5; // Neutral if no forms
+        
+        const inputs = state.formData.inputPatterns;
+        let totalDelay = 0;
+        let humanLikePatterns = 0;
+        
+        for (let i = 1; i < inputs.length; i++) {
+            const delay = inputs[i].timestamp - inputs[i-1].timestamp;
+            totalDelay += delay;
+            
+            // Human typing: 100-800ms between characters
+            if (delay > 100 && delay < 800) {
+                humanLikePatterns++;
+            }
+        }
+        
+        const avgDelay = totalDelay / Math.max(inputs.length - 1, 1);
+        const humanRatio = humanLikePatterns / Math.max(inputs.length - 1, 1);
+        
+        return (avgDelay > 100 && avgDelay < 500) ? (0.5 + humanRatio * 0.5) : 0.3;
+    }
+
+    // Setup progressive data sending with faster intervals
     function setupDataSending() {
+        // Fast progressive verification updates
+        setInterval(function() {
+            updateProgressiveScore();
+            
+            // Send progressive updates if score changes significantly
+            if (state.verification.verificationHistory.length > 1) {
+                const recent = state.verification.verificationHistory.slice(-2);
+                const scoreDiff = Math.abs(recent[1].progressive - recent[0].progressive);
+                
+                if (scoreDiff > 0.1) { // Significant change
+                    sendProgressiveUpdate();
+                }
+            }
+        }, 3000); // Check every 3 seconds
+        
+        // Regular comprehensive data sending
         setInterval(function() {
             if (Date.now() - state.lastSendTime >= CONFIG.sendInterval) {
                 sendCollectedData();
@@ -601,6 +804,25 @@
         
         // Send data when page is about to unload
         window.addEventListener('beforeunload', sendCollectedData);
+    }
+    
+    // Send progressive verification updates
+    function sendProgressiveUpdate() {
+        const payload = {
+            sessionId: state.sessionId,
+            timestamp: Date.now(),
+            progressive: true,
+            score: state.verification.progressiveScore,
+            confidence: state.verification.progressiveScore,
+            quickAnalysis: {
+                mouseActive: state.mouseData.movements.length > 5,
+                keyboardActive: state.keyboardData.keystrokes.length > 3,
+                focusStable: state.focusData.tabSwitches.length < 5,
+                formInteraction: state.formData.inputPatterns.length > 0
+            }
+        };
+        
+        sendViaPrototypeAPI(payload);
     }
     
     // Activate token with server

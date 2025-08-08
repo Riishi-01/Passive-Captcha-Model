@@ -19,13 +19,18 @@ export const useAppStore = defineStore('app', () => {
   const isProcessing = computed(() => loadingCount.value > 0)
 
   // Actions
-  function setLoading(loading: boolean) {
+  function setLoading(loading: boolean, source?: string) {
     if (loading) {
       loadingCount.value++
     } else {
       loadingCount.value = Math.max(0, loadingCount.value - 1)
     }
     isLoading.value = loadingCount.value > 0
+    
+    // Debug logging in development
+    if (import.meta.env.DEV && source) {
+      console.debug(`Loading ${loading ? 'started' : 'ended'} from ${source}. Active: ${loadingCount.value}`)
+    }
   }
 
   function toggleDarkMode() {

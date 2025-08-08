@@ -12,6 +12,9 @@ from flask_limiter.util import get_remote_address
 from app.ml import predict_human_probability, extract_features, is_model_loaded, get_model_info
 from app.database import log_verification, get_db_session
 
+# Import services for website management
+from app.services import get_website_service
+
 # Create API blueprint
 api_bp = Blueprint('api', __name__)
 
@@ -239,6 +242,86 @@ def api_status():
             'model_info': '/api/ml/info'
         }
     }), 200
+
+
+@api_bp.route('/generate-script', methods=['GET', 'POST'])
+def generate_script():
+    """
+    Generate passive CAPTCHA script endpoint
+    """
+    try:
+        if request.method == 'GET':
+            # Return script generation information
+            return jsonify({
+                'endpoint': '/api/generate-script',
+                'method': 'POST',
+                'description': 'Generate passive CAPTCHA script',
+                'required_params': ['website_url', 'api_key']
+            }), 200
+        
+        # POST method - generate script
+        data = request.get_json() or {}
+        website_url = data.get('website_url', request.args.get('website_url'))
+        api_key = data.get('api_key', request.args.get('api_key'))
+        
+        if not website_url or not api_key:
+            return jsonify({
+                'error': {
+                    'code': 'MISSING_PARAMETERS',
+                    'message': 'website_url and api_key are required'
+                }
+            }), 400
+        
+        # Basic script generation response
+        script_url = f"{request.host_url}passive-captcha-script.js"
+        
+        return jsonify({
+            'script_url': script_url,
+            'integration_code': f'<script src="{script_url}" data-api-key="{api_key}"></script>',
+            'website_url': website_url,
+            'generated_at': datetime.utcnow().isoformat() + 'Z'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'error': {
+                'code': 'SCRIPT_GENERATION_ERROR',
+                'message': f'Failed to generate script: {str(e)}'
+            }
+        }), 500
+
+
+@api_bp.route('/websites', methods=['GET', 'POST'])
+def websites():
+    """
+    Websites management endpoint
+    """
+    try:
+        if request.method == 'GET':
+            # List websites (simplified)
+            return jsonify({
+                'websites': [],
+                'total': 0,
+                'message': 'Website management endpoint'
+            }), 200
+        
+        elif request.method == 'POST':
+            # Register new website (simplified)
+            data = request.get_json() or {}
+            
+            return jsonify({
+                'success': True,
+                'message': 'Website registration endpoint',
+                'submitted_data': data
+            }), 201
+            
+    except Exception as e:
+        return jsonify({
+            'error': {
+                'code': 'WEBSITES_ERROR',
+                'message': f'Websites endpoint error: {str(e)}'
+            }
+        }), 500
 
 
 # Error handlers

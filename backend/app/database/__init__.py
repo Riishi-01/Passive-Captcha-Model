@@ -6,7 +6,7 @@ Handles verification logs, analytics, and data persistence
 import os
 import sqlite3
 from datetime import datetime, timedelta
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, func
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, func, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 from flask import current_app
@@ -37,6 +37,15 @@ class Website(Base):
     permissions = Column(Text, nullable=True)  # JSON string
     rate_limits = Column(Text, nullable=True)  # JSON string
 
+    # Website management indexes
+    __table_args__ = (
+        # Website listing and management
+        Index('idx_websites_status_created_at', 'status', 'created_at'),
+        
+        # API key lookup (critical for verification requests)  
+        Index('idx_websites_api_key', 'api_key'),
+    )
+
     def to_dict(self):
         """Convert to dictionary for JSON serialization"""
         return {
@@ -50,6 +59,33 @@ class Website(Base):
             'status': self.status,
             'permissions': json.loads(self.permissions) if self.permissions else [],
             'rate_limits': json.loads(self.rate_limits) if self.rate_limits else {}
+        }
+
+
+# Legacy table name alias for backward compatibility
+class Verification(Base):
+    """
+    Legacy verification table - alias for VerificationLog
+    """
+    __tablename__ = 'verification'
+
+    id = Column(Integer, primary_key=True)
+    session_id = Column(String(255), nullable=False)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(Text, nullable=True)
+    is_human = Column(Boolean, nullable=False)
+    confidence = Column(Float, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'session_id': self.session_id,
+            'ip_address': self.ip_address,
+            'user_agent': self.user_agent,
+            'is_human': self.is_human,
+            'confidence': self.confidence,
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None
         }
 
 
@@ -86,6 +122,25 @@ class VerificationLog(Base):
     # Metadata
     response_time = Column(Float, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+    # Composite indexes for optimal query performance
+    __table_args__ = (
+        # Time-series analytics index (most critical)
+        Index('idx_verification_logs_timestamp_website_id', 
+              'timestamp', 'website_id'),
+        
+        # Multi-tenant isolation index  
+        Index('idx_verification_logs_website_id_timestamp', 
+              'website_id', 'timestamp'),
+        
+        # Search and filtering index
+        Index('idx_verification_logs_timestamp_is_human', 
+              'timestamp', 'is_human'),
+        
+        # Session tracking index
+        Index('idx_verification_logs_session_timestamp', 
+              'session_id', 'timestamp'),
+    )
 
     def to_dict(self):
         """Convert to dictionary for JSON serialization"""
@@ -176,8 +231,10 @@ def init_db(database_url=None):
         try:
             from flask import current_app
             current_app.logger.info(f"Database initialized successfully with URL: {database_url}")
+            current_app.logger.info("Composite indexes created for optimal query performance")
         except RuntimeError:
             print(f"✅ Database initialized successfully with URL: {database_url}")
+            print("✅ Composite indexes created for optimal query performance")
         
         return True
 

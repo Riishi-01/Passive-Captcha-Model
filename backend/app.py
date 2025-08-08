@@ -134,9 +134,6 @@ def add_script_routes(app: Flask) -> None:
     """Add passive CAPTCHA script serving routes"""
     
     @app.route('/passive-captcha-script.js')
-    @app.route('/app/static/passive-captcha-script.js')
-    @app.route('/backend/app/static/passive-captcha-script.js')
-    @app.route('/static/passive-captcha-script.js')
     def serve_passive_captcha_script():
         """Serve the passive captcha script"""
         try:

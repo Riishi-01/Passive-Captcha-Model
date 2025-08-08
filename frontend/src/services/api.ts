@@ -124,15 +124,18 @@ class ApiService {
     // Auto-detect API URL based on environment
     const isProduction = import.meta.env.PROD
     
-    // In production, use relative URLs (same origin) to avoid CORS issues
+    // For Railway deployment - detect production environment
+    const isRailway = window.location.hostname.includes('railway.app')
+    
+    // In production (Railway), use same origin to avoid CORS issues
     // In development, use localhost backend
     let defaultUrl: string
-    if (isProduction) {
-      // For production deployments, use relative URLs to avoid CORS issues
+    if (isProduction || isRailway) {
+      // For production deployments, use same origin
       defaultUrl = window.location.origin
     } else {
-      // For development, proxy through Vite dev server
-      defaultUrl = 'http://localhost:5003'
+      // For development, use localhost backend
+      defaultUrl = 'http://localhost:5002'
     }
     
     this.baseURL = import.meta.env.VITE_API_URL || defaultUrl
@@ -168,10 +171,24 @@ class ApiService {
     )
   }
 
-  private async handleRequest<T>(request: Promise<AxiosResponse<any>>): Promise<ApiResponse<T>> {
+  private async handleRequest<T>(request: Promise<AxiosResponse<any>>, source?: string): Promise<ApiResponse<T>> {
     try {
-      const response = await request
-      return response.data
+      // Start loading indicator
+      if (typeof window !== 'undefined') {
+        const { useAppStore } = await import('@/stores/app')
+        const appStore = useAppStore()
+        appStore.setLoading(true, source)
+        
+        try {
+          const response = await request
+          return response.data
+        } finally {
+          appStore.setLoading(false, source)
+        }
+      } else {
+        const response = await request
+        return response.data
+      }
     } catch (error: any) {
       console.error('API Error:', error)
       
@@ -194,38 +211,44 @@ class ApiService {
   // Authentication APIs
   async login(password: string, email: string = 'admin@passivecaptcha.com'): Promise<ApiResponse<{ token: string; user: any }>> {
     return this.handleRequest(
-      this.axiosInstance.post('/admin/login', { email, password })
+      this.axiosInstance.post('/admin/login', { email, password }),
+      'login'
     )
   }
 
   async verifyToken(): Promise<ApiResponse<{ user: any }>> {
     return this.handleRequest(
-      this.axiosInstance.get('/admin/verify-token')
+      this.axiosInstance.get('/admin/verify-token'),
+      'verifyToken'
     )
   }
 
   // Dashboard Analytics APIs
   async getDashboardStats(timeRange: string = '24h'): Promise<ApiResponse<DashboardStats>> {
     return this.handleRequest(
-      this.axiosInstance.get(`/admin/analytics/stats?timeRange=${timeRange}`)
+      this.axiosInstance.get(`/admin/analytics/stats?timeRange=${timeRange}`),
+      'getDashboardStats'
     )
   }
 
   async getChartData(timeRange: string = '24h'): Promise<ApiResponse<ChartDataPoint[]>> {
     return this.handleRequest(
-      this.axiosInstance.get(`/admin/analytics/charts?timeRange=${timeRange}`)
+      this.axiosInstance.get(`/admin/analytics/charts?timeRange=${timeRange}`),
+      'getChartData'
     )
   }
 
   async getDetectionData(timeRange: string = '24h'): Promise<ApiResponse<{ human: number; bot: number; humanPercentage: number; botPercentage: number }>> {
     return this.handleRequest(
-      this.axiosInstance.get(`/admin/analytics/detection?timeRange=${timeRange}`)
+      this.axiosInstance.get(`/admin/analytics/detection?timeRange=${timeRange}`),
+      'getDetectionData'
     )
   }
 
   async getSystemHealth(): Promise<ApiResponse<SystemHealth>> {
     return this.handleRequest(
-      this.axiosInstance.get('/admin/health')
+      this.axiosInstance.get('/admin/health'),
+      'getSystemHealth'
     )
   }
 

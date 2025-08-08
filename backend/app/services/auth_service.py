@@ -92,7 +92,7 @@ class AuthService:
         self.admin_email = os.getenv('ADMIN_EMAIL', 'admin@passive-captcha.com')
         self.admin_password_hash = self._generate_default_admin_hash()
         
-        logger.info(f"AuthService initialized with admin_secret: {self.admin_secret}")
+        logger.info("AuthService initialized successfully")
         
     def _generate_jwt_secret(self) -> str:
         """Generate a secure JWT secret"""
@@ -464,7 +464,7 @@ def init_auth_service(redis_client: Optional[redis.Redis] = None) -> AuthService
     """Initialize the authentication service"""
     global auth_service
     auth_service = AuthService(redis_client)
-    logger.info(f"AuthService initialized with admin_secret: {auth_service.admin_secret}")
+    logger.info("AuthService initialized and ready")
     return auth_service
 
 

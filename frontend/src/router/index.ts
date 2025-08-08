@@ -14,7 +14,6 @@ const DashboardPage = () => import('@/app/dashboard/page.vue')
 const WebsitesPage = () => import('@/app/dashboard/websites/page.vue')
 const WebsiteDetailPage = () => import('@/app/dashboard/websites/[id]/page.vue')
 const AnalyticsPage = () => import('@/app/dashboard/analytics/page.vue')
-// const LogsPage = () => import('@/app/dashboard/logs/page.vue') // Commented out - file missing
 const SettingsPage = () => import('@/app/dashboard/settings/page.vue')
 const ProfilePage = () => import('@/app/dashboard/profile/page.vue')
 
@@ -87,15 +86,6 @@ const routes: RouteRecordRaw[] = [
               title: 'Analytics - Passive CAPTCHA Admin'
             }
           },
-          // Logs route temporarily disabled - missing component
-          // {
-          //   path: 'logs',
-          //   name: 'Logs', 
-          //   component: LogsPage,
-          //   meta: {
-          //     title: 'Logs - Passive CAPTCHA Admin'
-          //   }
-          // },
           {
             path: 'settings',
             name: 'Settings',
@@ -151,27 +141,70 @@ router.beforeEach(async (to, from, next) => {
   // Check authentication
   const authStore = useAuthStore()
   
-  // Initialize auth store if not done yet
+  if (import.meta.env.DEV) {
+    console.log('[ROUTER DEBUG] Navigation to:', to.path, 'from:', from.path)
+    console.log('[ROUTER DEBUG] Auth store initialized:', authStore.initialized)
+  }
+  
+  // Only restore session if not already initialized
   if (!authStore.initialized) {
+    if (import.meta.env.DEV) {
+      console.log('[ROUTER DEBUG] Restoring session (first time)...')
+    }
     await authStore.restoreSession()
+    if (import.meta.env.DEV) {
+      console.log('[ROUTER DEBUG] Session restored, authenticated:', authStore.isAuthenticated)
+    }
+  } else {
+    if (import.meta.env.DEV) {
+      console.log('[ROUTER DEBUG] Session already initialized, skipping restoration')
+    }
   }
   
   const requiresAuth = to.meta?.requiresAuth
   const isAuthenticated = authStore.isAuthenticated
   
+  if (import.meta.env.DEV) {
+    console.log('[ROUTER DEBUG] Route requires auth:', requiresAuth)
+    console.log('[ROUTER DEBUG] User authenticated:', isAuthenticated)
+    console.log('[ROUTER DEBUG] Token exists:', !!authStore.token)
+    console.log('[ROUTER DEBUG] User exists:', !!authStore.user)
+    
+    console.log('[ROUTER DEBUG] Navigation check:', { 
+      to: to.path, 
+      requiresAuth, 
+      isAuthenticated,
+      token: !!authStore.token,
+      user: !!authStore.user,
+      initialized: authStore.initialized
+    })
+  }
+  
+  // Proper router guard with fixed logic
   if (requiresAuth && !isAuthenticated) {
-    // Redirect to login if authentication is required but user is not authenticated
+    if (import.meta.env.DEV) {
+      console.log('[ROUTER DEBUG] Auth required but user not authenticated, redirecting to login')
+    }
     next('/login')
   } else if (to.path === '/login' && isAuthenticated) {
-    // Redirect to dashboard if user is already authenticated and tries to access login
+    if (import.meta.env.DEV) {
+      console.log('[ROUTER DEBUG] User authenticated but trying to access login, redirecting to dashboard')
+    }
     next('/dashboard')
   } else {
+    if (import.meta.env.DEV) {
+      console.log('[ROUTER DEBUG] Allowing navigation')
+    }
     next()
   }
 })
 
 // Global after navigation hook
 router.afterEach((to, from) => {
+  if (import.meta.env.DEV) {
+    console.log('[ROUTER DEBUG] Navigation completed:', { from: from.path, to: to.path })
+  }
+  
   // You can add analytics tracking here
   if (typeof gtag !== 'undefined') {
     gtag('config', 'GA_MEASUREMENT_ID', {

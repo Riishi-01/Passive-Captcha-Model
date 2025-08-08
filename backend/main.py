@@ -6,6 +6,13 @@ Single entry point for all environments (development, production, testing)
 """
 
 import os
+
+# Validate critical environment variables
+required_vars = ['ADMIN_SECRET', 'JWT_SECRET_KEY']
+missing_vars = [var for var in required_vars if not os.getenv(var)]
+if missing_vars:
+    raise ValueError(f"Missing required environment variables: {missing_vars}")
+    
 import sys
 import redis
 from flask import Flask, request, jsonify, abort
@@ -120,10 +127,10 @@ def create_app(config_name='production'):
         'DATABASE_URL': os.getenv('DATABASE_URL', 'sqlite:///passive_captcha_production.db'),
         'REDIS_URL': os.getenv('REDIS_URL', 'redis://localhost:6379/0'),
         'CONFIDENCE_THRESHOLD': float(os.getenv('CONFIDENCE_THRESHOLD', '0.6')),
-        'ADMIN_SECRET': os.getenv('ADMIN_SECRET', 'Admin123'),
+        'ADMIN_SECRET': os.getenv('ADMIN_SECRET', None),
         'RATE_LIMIT_REQUESTS': int(os.getenv('RATE_LIMIT_REQUESTS', '1000')),
-        'API_BASE_URL': os.getenv('API_BASE_URL', os.getenv('RENDER_EXTERNAL_URL', 'http://localhost:5003')),
-        'WEBSOCKET_URL': os.getenv('WEBSOCKET_URL', os.getenv('RENDER_EXTERNAL_URL', 'ws://localhost:5003').replace('https://', 'wss://').replace('http://', 'ws://')),
+        'API_BASE_URL': os.getenv('API_BASE_URL', os.getenv('RENDER_EXTERNAL_URL', 'http://localhost:5002')),
+        'WEBSOCKET_URL': os.getenv('WEBSOCKET_URL', os.getenv('RENDER_EXTERNAL_URL', 'ws://localhost:5002').replace('https://', 'wss://').replace('http://', 'ws://')),
         'DEBUG': config_name == 'development',
         'TESTING': config_name == 'testing',
         'JSON_SORT_KEYS': False,
@@ -147,7 +154,7 @@ def create_app(config_name='production'):
     render_url = os.getenv('RENDER_EXTERNAL_URL', '')
     default_origins = [
         'http://localhost:3000',
-        'http://localhost:5003',
+        'http://localhost:5002',
         'http://frontend:80',
         'https://passive-captcha.onrender.com'
     ]
@@ -261,7 +268,7 @@ def create_app(config_name='production'):
         # Initialize unified auth service
         from app.services.auth_service import init_auth_service
         auth_service = init_auth_service(redis_client)
-        app.logger.info(f"✅ Unified auth service initialized with admin_secret: {auth_service.admin_secret}")
+        app.logger.info("✅ Unified auth service initialized successfully")
 
         # Initialize website service
         from app.services import init_website_service
@@ -477,15 +484,26 @@ def create_app(config_name='production'):
     app.limiter = limiter if 'limiter' in locals() else None
     app.start_time = int(__import__('time').time())
 
+    # Debug route for auth testing
+    @app.route('/debug')
+    def serve_auth_debug():
+        """Serve auth debug page"""
+        try:
+            debug_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'debug_auth.html')
+            if os.path.exists(debug_path):
+                with open(debug_path, 'r', encoding='utf-8') as f:
+                    return f.read()
+            else:
+                return 'Debug file not found', 404
+        except Exception as e:
+            return f'Error: {e}', 500
+    
     # Legacy imports removed - using unified architecture with register_frontend_routes
     
     # Register script serving routes BEFORE other routes to avoid conflicts
-    @app.route('/app/static/passive-captcha-script.js')
-    @app.route('/backend/app/static/passive-captcha-script.js')
-    @app.route('/static/passive-captcha-script.js')
     @app.route('/passive-captcha-script.js')
     def serve_passive_captcha_script():
-        """Serve the passive captcha script via multiple routes"""
+        """Serve the passive captcha script"""
         try:
             static_dir = os.path.join(os.path.dirname(__file__), 'app', 'static')
             script_path = os.path.join(static_dir, 'passive-captcha-script.js')
@@ -991,7 +1009,7 @@ def get_wsgi_app():
 def run_app(host='0.0.0.0', port=None, debug=False):
     """Run the application"""
     if port is None:
-        port = int(os.getenv('PORT', 5003))
+        port = int(os.getenv('PORT', 5002))
 
     app, socketio = create_app('development' if debug else 'production')
 
@@ -1021,7 +1039,7 @@ if __name__ == '__main__':
         # Use gunicorn for production
         import subprocess
         import sys
-        port = args.port or int(os.getenv('PORT', 5003))
+        port = args.port or int(os.getenv('PORT', 5002))
         cmd = [
             'gunicorn',
             '--worker-class', 'eventlet',

@@ -48,8 +48,8 @@ def require_admin_auth(f):
 
         # Use robust authentication service instead of old verify_admin_token
         try:
-            from app.services.robust_auth_service import get_robust_auth_service
-            auth_service = get_robust_auth_service()
+            from app.services.auth_service import get_auth_service
+            auth_service = get_auth_service()
             
             if not auth_service:
                 return jsonify({

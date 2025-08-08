@@ -6,93 +6,155 @@ Handles Random Forest model training, feature engineering, and inference
 import os
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, VotingClassifier
+from sklearn.preprocessing import StandardScaler, RobustScaler
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.metrics import classification_report, confusion_matrix
 import joblib
 import json
 import time
 from datetime import datetime
 from flask import current_app
 
-# Global variables for model and scaler
-model = None
+# Global variables for ensemble model and scaler
+ensemble_model = None
 scaler = None
 model_loaded = False
+model_performance = {
+    'accuracy': 0.0,
+    'precision': 0.0,
+    'recall': 0.0,
+    'f1_score': 0.0,
+    'last_trained': None
+}
 
 
 def load_model():
     """
-    Load trained Random Forest model and scaler
+    Load trained ensemble model and scaler
     """
-    global model, scaler, model_loaded
+    global ensemble_model, scaler, model_loaded, model_performance
 
     try:
-        model_path = current_app.config.get('MODEL_PATH', 'models/passive_captcha_rf.pkl')
+        model_path = current_app.config.get('MODEL_PATH', 'models/passive_captcha_ensemble.pkl')
         scaler_path = model_path.replace('.pkl', '_scaler.pkl')
+        performance_path = model_path.replace('.pkl', '_performance.json')
 
         if os.path.exists(model_path):
-            model = joblib.load(model_path)
-            print(f"Model loaded from: {model_path}")
+            ensemble_model = joblib.load(model_path)
+            print(f"Ensemble model loaded from: {model_path}")
 
             if os.path.exists(scaler_path):
                 scaler = joblib.load(scaler_path)
                 print(f"Scaler loaded from: {scaler_path}")
             else:
-                print("Warning: No scaler found, creating default scaler")
-                scaler = StandardScaler()
+                print("Warning: No scaler found, creating robust scaler")
+                scaler = RobustScaler()
+
+            # Load performance metrics
+            if os.path.exists(performance_path):
+                with open(performance_path, 'r') as f:
+                    model_performance = json.load(f)
+                print(f"Model performance: {model_performance}")
 
             model_loaded = True
             return True
         else:
-            print(f"Model file not found: {model_path}")
-            print("Creating and training new model...")
-            return create_default_model()
+            print(f"Ensemble model file not found: {model_path}")
+            print("Creating and training new ensemble model...")
+            return create_default_ensemble_model()
 
     except Exception as e:
-        print(f"Error loading model: {e}")
-        return create_default_model()
+        print(f"Error loading ensemble model: {e}")
+        return create_default_ensemble_model()
 
 
-def create_default_model():
+def create_default_ensemble_model():
     """
-    Create and train a default Random Forest model with synthetic data
+    Create and train an ensemble model with synthetic data
     """
-    global model, scaler, model_loaded
+    global ensemble_model, scaler, model_loaded, model_performance
 
     try:
-        print("Generating synthetic training data...")
-        X_train, y_train = generate_synthetic_training_data()
+        print("Generating enhanced synthetic training data...")
+        X_train, X_test, y_train, y_test = generate_enhanced_training_data()
 
-        # Initialize scaler
-        scaler = StandardScaler()
+        # Initialize robust scaler (better for outliers)
+        scaler = RobustScaler()
         X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
 
-        # Train Random Forest model
-        model = RandomForestClassifier(
-            n_estimators=100,
-            max_depth=15,
+        # Create ensemble model with different algorithms
+        rf_model = RandomForestClassifier(
+            n_estimators=150,
+            max_depth=12,
             min_samples_split=5,
+            min_samples_leaf=2,
             class_weight='balanced',
+            random_state=42,
+            bootstrap=True,
+            oob_score=True
+        )
+
+        gb_model = GradientBoostingClassifier(
+            n_estimators=100,
+            learning_rate=0.1,
+            max_depth=8,
+            min_samples_split=5,
+            min_samples_leaf=2,
             random_state=42
         )
 
-        model.fit(X_train_scaled, y_train)
+        # Create voting ensemble
+        ensemble_model = VotingClassifier(
+            estimators=[
+                ('rf', rf_model),
+                ('gb', gb_model)
+            ],
+            voting='soft'  # Use predicted probabilities
+        )
 
-        # Save model and scaler
+        print("Training ensemble model...")
+        ensemble_model.fit(X_train_scaled, y_train)
+
+        # Evaluate model performance
+        y_pred = ensemble_model.predict(X_test_scaled)
+        y_pred_proba = ensemble_model.predict_proba(X_test_scaled)
+        
+        from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+        
+        model_performance = {
+            'accuracy': float(accuracy_score(y_test, y_pred)),
+            'precision': float(precision_score(y_test, y_pred)),
+            'recall': float(recall_score(y_test, y_pred)),
+            'f1_score': float(f1_score(y_test, y_pred)),
+            'last_trained': datetime.now().isoformat()
+        }
+
+        print(f"Model Performance:")
+        print(f"  Accuracy: {model_performance['accuracy']:.3f}")
+        print(f"  Precision: {model_performance['precision']:.3f}")
+        print(f"  Recall: {model_performance['recall']:.3f}")
+        print(f"  F1 Score: {model_performance['f1_score']:.3f}")
+
+        # Save ensemble model, scaler, and performance
         os.makedirs('models', exist_ok=True)
-        model_path = 'models/passive_captcha_rf.pkl'
-        scaler_path = 'models/passive_captcha_rf_scaler.pkl'
+        model_path = 'models/passive_captcha_ensemble.pkl'
+        scaler_path = 'models/passive_captcha_ensemble_scaler.pkl'
+        performance_path = 'models/passive_captcha_ensemble_performance.json'
 
-        joblib.dump(model, model_path)
+        joblib.dump(ensemble_model, model_path)
         joblib.dump(scaler, scaler_path)
+        
+        with open(performance_path, 'w') as f:
+            json.dump(model_performance, f, indent=2)
 
         model_loaded = True
-        print("Default model trained and saved successfully")
+        print("Enhanced ensemble model trained and saved successfully")
         return True
 
     except Exception as e:
-        print(f"Error creating default model: {e}")
+        print(f"Error creating ensemble model: {e}")
         return False
 
 
@@ -340,14 +402,114 @@ def get_default_features():
     }
 
 
+def generate_enhanced_training_data():
+    """
+    Generate enhanced synthetic training data with more realistic patterns
+    """
+    np.random.seed(42)
+    
+    # Enhanced human-like samples (1500 samples for better diversity)
+    human_samples = []
+    for _ in range(1500):
+        # Generate realistic human behavioral patterns
+        base_mouse_count = np.random.randint(30, 250)
+        base_velocity = np.random.uniform(0.4, 2.0)
+        base_keystrokes = np.random.randint(15, 120)
+        base_session = np.random.uniform(20, 180)
+        
+        # Add natural variation patterns
+        velocity_variation = np.random.uniform(0.85, 1.15)
+        interaction_multiplier = np.random.uniform(0.9, 1.1)
+        
+        sample = [
+            int(base_mouse_count * interaction_multiplier),  # mouse_movement_count
+            base_velocity * velocity_variation,              # avg_mouse_velocity
+            np.random.randint(8, 80) * interaction_multiplier,  # keystroke_count
+            np.random.uniform(0.15, 0.85),                  # typing_rhythm_variance
+            min(base_session / 300, 1.0),                   # session_duration (normalized)
+            np.random.uniform(0.5, 0.95),                   # scroll_pattern_score
+            np.random.uniform(0.75, 1.0),                   # webgl_support_score
+            np.random.uniform(0.65, 1.0),                   # canvas_fingerprint_score
+            np.random.uniform(0.6, 1.0),                    # hardware_legitimacy
+            np.random.uniform(0.65, 1.0),                   # browser_consistency
+            np.random.uniform(0.4, 0.9)                     # plugin_availability
+        ]
+        human_samples.append(sample)
+    
+    # Enhanced bot-like samples (1500 samples with more sophisticated patterns)
+    bot_samples = []
+    for _ in range(1500):
+        # Different bot categories
+        bot_type = np.random.choice(['simple', 'advanced', 'headless'])
+        
+        if bot_type == 'simple':
+            # Basic automation bots
+            sample = [
+                np.random.randint(0, 15),                   # very few mouse movements
+                np.random.uniform(0.05, 0.25),             # mechanical velocity
+                np.random.randint(0, 10),                  # minimal keystrokes
+                np.random.uniform(0.9, 1.0),               # too consistent typing
+                np.random.uniform(1, 20) / 300,            # short sessions
+                np.random.uniform(0.0, 0.3),               # poor scroll patterns
+                np.random.uniform(0.0, 0.4),               # limited webgl
+                np.random.uniform(0.0, 0.3),               # basic canvas
+                np.random.uniform(0.0, 0.3),               # suspicious hardware
+                np.random.uniform(0.0, 0.4),               # inconsistent browser
+                np.random.uniform(0.0, 0.2)                # limited plugins
+            ]
+        elif bot_type == 'advanced':
+            # More sophisticated bots trying to mimic humans
+            sample = [
+                np.random.randint(10, 60),                 # some mouse movements
+                np.random.uniform(0.2, 0.6),              # moderate velocity
+                np.random.randint(5, 40),                  # some keystrokes
+                np.random.uniform(0.7, 0.95),             # still too consistent
+                np.random.uniform(15, 60) / 300,          # medium sessions
+                np.random.uniform(0.2, 0.6),              # better scroll patterns
+                np.random.uniform(0.4, 0.8),              # decent webgl
+                np.random.uniform(0.3, 0.7),              # better canvas
+                np.random.uniform(0.2, 0.6),              # moderate hardware
+                np.random.uniform(0.3, 0.7),              # better browser consistency
+                np.random.uniform(0.1, 0.5)               # limited plugins
+            ]
+        else:  # headless
+            # Headless browsers
+            sample = [
+                np.random.randint(0, 30),                  # limited movements
+                np.random.uniform(0.1, 0.4),              # mechanical patterns
+                np.random.randint(0, 25),                 # few keystrokes
+                np.random.uniform(0.8, 1.0),              # very consistent
+                np.random.uniform(5, 45) / 300,           # controlled sessions
+                np.random.uniform(0.1, 0.4),              # unnatural scrolling
+                np.random.uniform(0.0, 0.5),              # limited/missing webgl
+                np.random.uniform(0.0, 0.4),              # basic canvas
+                np.random.uniform(0.1, 0.4),              # suspicious specs
+                np.random.uniform(0.2, 0.6),              # browser inconsistencies
+                np.random.uniform(0.0, 0.3)               # minimal plugins
+            ]
+        
+        bot_samples.append(sample)
+    
+    # Combine and create labels
+    X = np.array(human_samples + bot_samples)
+    y = np.array([1] * 1500 + [0] * 1500)  # 1 for human, 0 for bot
+    
+    # Split data
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+    
+    return X_train, X_test, y_train, y_test
+
+
 def predict_human_probability(features):
     """
-    Predict if the user is human based on extracted features
+    Predict if the user is human based on extracted features using ensemble model
     """
-    global model, scaler, model_loaded
+    global ensemble_model, scaler, model_loaded
 
-    if not model_loaded or model is None:
-        print("Model not loaded, returning default prediction")
+    if not model_loaded or ensemble_model is None:
+        print("Ensemble model not loaded, returning default prediction")
         return {'isHuman': True, 'confidence': 0.5}
 
     try:

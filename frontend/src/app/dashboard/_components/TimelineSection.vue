@@ -75,12 +75,12 @@
     
     <!-- View More Link -->
     <div v-if="timelineLogs.length > 10" class="mt-4 text-center">
-      <router-link 
-        to="/dashboard/logs"
-        class="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500"
+      <button 
+        @click="handleViewAllLogs"
+        class="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 cursor-pointer"
       >
         View all logs →
-      </router-link>
+      </button>
     </div>
   </div>
 </template>
@@ -102,5 +102,9 @@ const timelineLogs = computed(() => dashboardStore.timelineLogs)
 const formatTimestamp = (timestamp: string) => {
   const date = new Date(timestamp)
   return date.toLocaleTimeString()
+}
+
+const handleViewAllLogs = () => {
+  console.log('View all logs requested - feature available in dashboard')
 }
 </script>

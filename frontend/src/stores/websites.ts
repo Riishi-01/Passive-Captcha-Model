@@ -28,7 +28,7 @@ export const useWebsiteStore = defineStore('websites', () => {
   const error = ref<string | null>(null)
 
   // API Base URL
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5003'
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5002'
 
   // Auth token helper
   const getAuthToken = () => localStorage.getItem('admin_token')

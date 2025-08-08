@@ -55,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
@@ -82,6 +82,25 @@ const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
 }
 
+// Watch for authentication state changes and redirect
+watch(() => authStore.isAuthenticated, (newValue, oldValue) => {
+  if (import.meta.env.DEV) {
+    console.log('[LOGIN DEBUG] Auth state watcher triggered - old:', oldValue, 'new:', newValue)
+  }
+  if (newValue) {
+    if (import.meta.env.DEV) {
+      console.log('[LOGIN DEBUG] Authentication state changed to true, redirecting to dashboard')
+    }
+    router.push('/dashboard').then(() => {
+      if (import.meta.env.DEV) {
+        console.log('[LOGIN DEBUG] Router.push completed')
+      }
+    }).catch((error) => {
+      console.error('[LOGIN DEBUG] Router.push failed:', error)
+    })
+  }
+}, { immediate: false })
+
 const handleLogin = async () => {
   if (!password.value.trim()) return
 
@@ -92,6 +111,14 @@ const handleLogin = async () => {
     const result = await authStore.login(password.value)
     
     if (result.success) {
+      if (import.meta.env.DEV) {
+        console.log('[LOGIN DEBUG] Login successful, auth state:', {
+          token: !!authStore.token,
+          user: !!authStore.user,
+          isAuthenticated: authStore.isAuthenticated
+        })
+      }
+
       // Success notification
       appStore.addNotification({
         type: 'success',
@@ -99,11 +126,10 @@ const handleLogin = async () => {
         message: 'Successfully signed in to your dashboard'
       })
 
-      // Ensure auth state is properly updated in the next tick
-      await nextTick()
-      
-      // Redirect to dashboard
-      await router.push('/dashboard')
+      // Navigation is handled by the watcher below
+      if (import.meta.env.DEV) {
+        console.log('[LOGIN DEBUG] Login successful, navigation will be handled by auth watcher')
+      }
     } else {
       error.value = result.error || 'Login failed. Please check your password.'
       // Clear password on error

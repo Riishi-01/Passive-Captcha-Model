@@ -65,7 +65,7 @@ class WebSocketService {
 
   constructor(config?: Partial<WebSocketConfig>) {
     this.config = {
-      url: import.meta.env.VITE_WS_URL || 'ws://localhost:5003',
+      url: import.meta.env.VITE_WS_URL || 'ws://localhost:5002',
       autoConnect: false,
       reconnection: true,
       reconnectionAttempts: 5,

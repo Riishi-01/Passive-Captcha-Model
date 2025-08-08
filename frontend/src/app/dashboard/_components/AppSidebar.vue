@@ -39,7 +39,6 @@ import {
   HomeIcon,
   GlobeAltIcon,
   ChartBarIcon,
-  DocumentTextIcon,
   CogIcon,
   UserIcon
 } from '@heroicons/vue/24/outline'
@@ -52,7 +51,6 @@ const navigationItems = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Websites', href: '/dashboard/websites', icon: GlobeAltIcon },
   { name: 'Analytics', href: '/dashboard/analytics', icon: ChartBarIcon },
-  { name: 'Logs', href: '/dashboard/logs', icon: DocumentTextIcon },
   { name: 'Settings', href: '/dashboard/settings', icon: CogIcon },
   { name: 'Profile', href: '/dashboard/profile', icon: UserIcon }
 ]

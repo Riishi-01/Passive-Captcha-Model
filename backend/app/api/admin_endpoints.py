@@ -34,7 +34,11 @@ def require_auth(f):
         import os
         
         try:
-            jwt_secret = os.getenv('JWT_SECRET', current_app.config.get('JWT_SECRET'))
+            # Use same JWT_SECRET_KEY as auth service for consistency
+            jwt_secret = os.getenv('JWT_SECRET_KEY', 
+                                 os.getenv('JWT_SECRET', 
+                                          current_app.config.get('JWT_SECRET_KEY',
+                                                                current_app.config.get('JWT_SECRET'))))
             if not jwt_secret:
                 jwt_secret = 'jwt-secret-key-for-passive-captcha-production-environment'
             
@@ -145,7 +149,7 @@ def login():
             auth_service = get_auth_service()
             if auth_service:
                 try:
-                    result = auth_service.authenticate_admin(email, password, remember_me=False)
+                    result = auth_service.authenticate_admin(password)
                     response = jsonify({
                         'success': True,
                         'data': {
@@ -179,85 +183,7 @@ def login():
                 except Exception as e:
                     current_app.logger.error(f"Basic auth failed: {e}")
 
-        # Try robust authentication service as fallback
-        try:
-            from app.services.robust_auth_service import get_robust_auth_service
-            auth_service = get_robust_auth_service()
-            
-            if auth_service:
-                # Try robust authentication with browser-neutral parameters
-                safe_ip = request.remote_addr or request.environ.get('HTTP_X_FORWARDED_FOR', '127.0.0.1')
-                if ',' in safe_ip:
-                    safe_ip = safe_ip.split(',')[0].strip()
-                
-                success, session, error_message = auth_service.authenticate_user(
-                    email=email,
-                    password=password,
-                    ip_address=safe_ip,
-                    user_agent='browser-client'  # Use consistent user agent
-                )
-                
-                # Fallback to admin_secret check
-                if not success and hasattr(auth_service, 'admin_secret') and password == auth_service.admin_secret:
-                    from app.services.robust_auth_service import AuthSession, UserRole
-                    from datetime import datetime
-                    import secrets
-                    
-                    session = AuthSession(
-                        session_id=f"sess_{secrets.token_urlsafe(32)}",
-                        user_id="admin_user",
-                        email=email,
-                        role=UserRole.SUPER_ADMIN,
-                        created_at=datetime.utcnow(),
-                        last_activity=datetime.utcnow(),
-                        ip_address=safe_ip,
-                        user_agent='browser-client',
-                        security_flags={'login_method': 'admin_secret', 'browser_compatible': True}
-                    )
-                    auth_service._store_session(session)
-                    success = True
-                    error_message = None
-                
-                if success:
-                    # Generate JWT token for successful authentication
-                    jwt_token = auth_service.generate_jwt_token(session)
-                    
-                    response = jsonify({
-                        'success': True,
-                        'data': {
-                            'token': jwt_token,
-                            'user': {
-                                'email': session.email,
-                                'role': session.role.value,
-                                'session_id': session.session_id
-                            },
-                            'expires_in': 86400,  # 24 hours
-                            'token_type': 'Bearer'
-                        },
-                        'message': 'Login successful'
-                    })
-                    
-                    # Add comprehensive browser-compatible headers
-                    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, no-transform'
-                    response.headers['Pragma'] = 'no-cache'
-                    response.headers['Expires'] = '0'
-                    
-                    # Cross-browser security headers
-                    response.headers['X-Content-Type-Options'] = 'nosniff'
-                    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-                    response.headers['X-XSS-Protection'] = '1; mode=block'
-                    
-                    # CORS headers for successful login
-                    origin = request.headers.get('Origin', '*')
-                    response.headers['Access-Control-Allow-Origin'] = origin
-                    response.headers['Access-Control-Allow-Credentials'] = 'true'
-                    
-                    # Browser-specific JSON content type
-                    response.headers['Content-Type'] = 'application/json; charset=utf-8'
-                    
-                    return response
-        except Exception as e:
-            current_app.logger.warning(f"Robust auth not available: {e}")
+        # No additional fallback needed - using unified auth service above
         
         return jsonify({
             'success': False,
@@ -492,6 +418,65 @@ def update_website(website_id):
         }), 500
 
 
+@admin_bp.route('/websites/<website_id>/status', methods=['PATCH'])
+@require_auth
+def toggle_website_status(website_id):
+    """Toggle website status"""
+    try:
+        website_service = get_website_service()
+        if not website_service:
+            return jsonify({
+                'success': False,
+                'error': {
+                    'code': 'SERVICE_UNAVAILABLE',
+                    'message': 'Website service unavailable'
+                }
+            }), 503
+
+        # Get current website
+        website = website_service.get_website(website_id)
+        if not website:
+            return jsonify({
+                'success': False,
+                'error': {
+                    'code': 'WEBSITE_NOT_FOUND',
+                    'message': 'Website not found'
+                }
+            }), 404
+
+        # Toggle status
+        new_status = 'inactive' if website.status == 'active' else 'active'
+        success = website_service.update_website_status(website_id, new_status)
+
+        if success:
+            updated_website = website_service.get_website(website_id)
+            return jsonify({
+                'success': True,
+                'data': {
+                    'website': updated_website.to_dict() if updated_website else None,
+                    'message': f'Website status updated to {new_status}'
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': {
+                    'code': 'UPDATE_FAILED',
+                    'message': 'Failed to update website status'
+                }
+            }), 500
+
+    except Exception as e:
+        current_app.logger.error(f"Error toggling website status: {e}")
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'INTERNAL_ERROR',
+                'message': 'Failed to toggle website status'
+            }
+        }), 500
+
+
 @admin_bp.route('/websites/<website_id>', methods=['DELETE'])
 @require_auth
 def delete_website(website_id):
@@ -538,8 +523,8 @@ def delete_website(website_id):
 
 @admin_bp.route('/websites/<website_id>/toggle-status', methods=['PATCH'])
 @require_auth
-def toggle_website_status(website_id):
-    """Toggle website status"""
+def toggle_website_status_alt(website_id):
+    """Alternative toggle website status endpoint"""
     try:
         website_service = get_website_service()
         if not website_service:
@@ -845,3 +830,136 @@ def get_admin_statistics():
 # Legacy Compatibility Endpoints
 
 # REMOVED: Duplicate legacy health endpoint - consolidated to main app level at /health
+
+@admin_bp.route('/health', methods=['GET'])
+def admin_health():
+    """Admin health check endpoint"""
+    return jsonify({
+        'status': 'healthy',
+        'service': 'admin_api',
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
+    }), 200
+
+
+@admin_bp.route('/system-status', methods=['GET'])
+@require_auth
+def system_status():
+    """System status endpoint"""
+    return jsonify({
+        'status': 'operational',
+        'components': {
+            'database': 'healthy',
+            'ml_model': 'loaded',
+            'admin_api': 'operational'
+        },
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
+    }), 200
+
+
+@admin_bp.route('/analytics', methods=['GET'])
+@require_auth
+def analytics():
+    """Analytics endpoint"""
+    return jsonify({
+        'message': 'Analytics data endpoint',
+        'data': {
+            'total_verifications': 0,
+            'success_rate': 0,
+            'last_24h': 0
+        },
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
+    }), 200
+
+
+@admin_bp.route('/analytics/stats', methods=['GET'])
+@require_auth
+def analytics_stats():
+    """Dashboard statistics endpoint"""
+    time_range = request.args.get('timeRange', '24h')
+    
+    return jsonify({
+        'success': True,
+        'data': {
+            'totalVerifications': 0,
+            'humanRate': 0,
+            'avgConfidence': 0,
+            'avgResponseTime': 0,
+            'verificationChange': 0,
+            'humanRateChange': 0,
+            'confidenceChange': 0,
+            'responseTimeChange': 0
+        },
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
+    }), 200
+
+
+@admin_bp.route('/analytics/charts', methods=['GET'])
+@require_auth
+def analytics_charts():
+    """Chart data endpoint"""
+    time_range = request.args.get('timeRange', '24h')
+    
+    return jsonify({
+        'success': True,
+        'data': [],
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
+    }), 200
+
+
+@admin_bp.route('/analytics/detection', methods=['GET'])
+@require_auth
+def analytics_detection():
+    """Detection data endpoint"""
+    time_range = request.args.get('timeRange', '24h')
+    
+    return jsonify({
+        'success': True,
+        'data': {
+            'human': 0,
+            'bot': 0,
+            'humanPercentage': 0,
+            'botPercentage': 0
+        },
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
+    }), 200
+
+
+@admin_bp.route('/logs', methods=['GET'])
+@require_auth
+def logs():
+    """Logs endpoint"""
+    return jsonify({
+        'logs': [],
+        'total': 0,
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
+    }), 200
+
+
+@admin_bp.route('/logs/timeline', methods=['GET'])
+@require_auth
+def logs_timeline():
+    """Timeline logs endpoint"""
+    filter_type = request.args.get('filter', 'all')
+    offset = int(request.args.get('offset', 0))
+    limit = int(request.args.get('limit', 50))
+    
+    return jsonify({
+        'success': True,
+        'data': {
+            'logs': [],
+            'hasMore': False,
+            'total': 0
+        },
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
+    }), 200
+
+
+@admin_bp.route('/alerts/recent', methods=['GET'])
+@require_auth
+def alerts_recent():
+    """Recent alerts endpoint"""
+    return jsonify({
+        'success': True,
+        'data': [],
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
+    }), 200

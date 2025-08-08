@@ -174,7 +174,7 @@ def initialize_services(app: Flask, config: AppConfig, redis_client: Optional[re
         from app.services.auth_service import init_auth_service
         auth_service = init_auth_service(redis_client)
         app.auth_service = auth_service
-        app.logger.info(f"Auth service initialized with admin_secret: {auth_service.admin_secret}")
+        app.logger.info("Auth service initialized successfully")
         
         # Initialize website service
         from app.services import init_website_service

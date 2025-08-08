@@ -1,7 +1,10 @@
 <template>
   <div id="app" class="min-h-screen bg-gray-50 dark:bg-gray-900">
-    <!-- Main Router View -->
-    <RouterView />
+    <!-- Error Boundary Wrapper -->
+    <ErrorBoundary>
+      <!-- Main Router View -->
+      <RouterView />
+    </ErrorBoundary>
     
     <!-- Global Loading Indicator -->
     <LoadingOverlay v-if="isLoading" />
@@ -36,6 +39,7 @@ import { RouterView } from 'vue-router'
 import { computed } from 'vue'
 import { useAppStore } from '@/stores/app'
 import LoadingOverlay from '@/components/ui/LoadingOverlay.vue'
+import ErrorBoundary from '@/components/common/ErrorBoundary.vue'
 import { 
   CheckCircleIcon, 
   ExclamationTriangleIcon, 

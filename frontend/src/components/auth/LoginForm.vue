@@ -128,7 +128,7 @@ const handleSubmit = () => {
 
 const checkSystemStatus = async () => {
   try {
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5003'
+    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5002'
     const response = await fetch(`${API_BASE}/health`)
     systemOnline.value = response.ok
   } catch (error) {

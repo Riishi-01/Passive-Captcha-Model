@@ -31,7 +31,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const currentLogOffset = ref(0)
 
   // API Base URL
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5003'
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5002'
 
   // Auth token from localStorage
   const getAuthToken = () => localStorage.getItem('admin_token')

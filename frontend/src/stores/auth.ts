@@ -14,11 +14,13 @@ interface User {
 interface JWTPayload {
   exp: number
   iat: number
-  admin?: boolean
+  user_id: string
+  email: string
+  role: string
+  session_id: string
+  ip_address: string
   sub?: string
-  email?: string
   name?: string
-  role?: string
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -29,7 +31,10 @@ export const useAuthStore = defineStore('auth', () => {
   const initialized = ref(false)
 
   // Getters
-  const isAuthenticated = computed(() => !!token.value && !!user.value)
+  const isAuthenticated = computed(() => {
+    const result = !!token.value && !!user.value
+    return result
+  })
   const isAdmin = computed(() => user.value?.role === 'admin')
 
   // Browser detection for compatibility
@@ -48,9 +53,9 @@ export const useAuthStore = defineStore('auth', () => {
       isLoading.value = true
       
       const API_BASE = import.meta.env.VITE_API_URL || (
-        window.location.hostname === 'localhost' 
-          ? 'http://localhost:5003'
-          : `${window.location.protocol}//${window.location.host}`
+        window.location.port === '5002' 
+          ? `${window.location.protocol}//${window.location.host}`
+          : 'http://localhost:5002'
       )
       
       // Browser-specific request configuration
@@ -59,7 +64,7 @@ export const useAuthStore = defineStore('auth', () => {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': `PassiveCaptcha-Admin/${browser}`,
+          // Removed User-Agent - browsers don't allow setting this header
           // Firefox-specific headers
           ...(browser === 'firefox' && {
             'Cache-Control': 'no-cache',
@@ -78,12 +83,43 @@ export const useAuthStore = defineStore('auth', () => {
         password
       }, requestConfig)
 
+      if (import.meta.env.DEV) {
+        console.log('[AUTH DEBUG] Full login response:', response.data)
+        console.log('[AUTH DEBUG] Checking token locations:')
+        console.log('[AUTH DEBUG] - response.data.token:', response.data.token ? 'EXISTS' : 'NOT FOUND')
+        console.log('[AUTH DEBUG] - response.data.data?.token:', response.data.data?.token ? 'EXISTS' : 'NOT FOUND')
+      }
+      
       const authToken = response.data.token || response.data.data?.token
+      if (import.meta.env.DEV) {
+        console.log('[AUTH DEBUG] Final extracted token:', authToken ? authToken.substring(0, 20) + '...' : 'NULL/UNDEFINED')
+      }
       
       if (authToken) {
+        if (import.meta.env.DEV) {
+          console.log('[AUTH DEBUG] Setting token...')
+        }
         setToken(authToken)
+        if (import.meta.env.DEV) {
+          console.log('[AUTH DEBUG] Token set, fetching user...')
+        }
         await fetchUser()
-        return { success: true }
+        
+        // Ensure both token and user are set before returning success
+        const isFullyAuthenticated = !!token.value && !!user.value
+        if (import.meta.env.DEV) {
+          console.log('[AUTH DEBUG] User fetched, fully authenticated:', isFullyAuthenticated)
+        }
+        
+        if (isFullyAuthenticated) {
+          return { success: true }
+        } else {
+          if (import.meta.env.DEV) {
+            console.error('[AUTH DEBUG] Authentication incomplete - token or user missing')
+          }
+          clearAuth()
+          return { success: false, error: 'Authentication setup failed' }
+        }
       }
       
       return { success: false, error: 'Invalid credentials' }
@@ -128,15 +164,29 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function setToken(authToken: string) {
+    if (import.meta.env.DEV) {
+      console.log('[AUTH DEBUG] setToken called with:', authToken ? authToken.substring(0, 20) + '...' : 'NULL/UNDEFINED')
+    }
     token.value = authToken
     
     // Cross-browser localStorage with fallback
     try {
       localStorage.setItem('admin_token', authToken)
+      if (import.meta.env.DEV) {
+        console.log('[AUTH DEBUG] Token saved to localStorage successfully')
+        // Verify it was saved
+        const saved = localStorage.getItem('admin_token')
+        console.log('[AUTH DEBUG] Verification - token in localStorage:', saved ? 'EXISTS' : 'NOT FOUND')
+      }
     } catch (error) {
       console.warn('localStorage not available, using sessionStorage:', error)
       try {
         sessionStorage.setItem('admin_token', authToken)
+        if (import.meta.env.DEV) {
+          console.log('[AUTH DEBUG] Token saved to sessionStorage')
+          const saved = sessionStorage.getItem('admin_token')
+          console.log('[AUTH DEBUG] Verification - token in sessionStorage:', saved ? 'EXISTS' : 'NOT FOUND')
+        }
       } catch (sessionError) {
         console.warn('sessionStorage not available, token will not persist:', sessionError)
       }
@@ -148,6 +198,10 @@ export const useAuthStore = defineStore('auth', () => {
     // Additional headers for cross-browser compatibility
     axios.defaults.headers.common['Accept'] = 'application/json'
     axios.defaults.headers.common['Content-Type'] = 'application/json'
+    
+    if (import.meta.env.DEV) {
+      console.log('[AUTH DEBUG] Token setup complete')
+    }
   }
 
   function clearAuth() {
@@ -174,39 +228,45 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function fetchUser() {
-    if (!token.value) return
+    if (!token.value) {
+      if (import.meta.env.DEV) {
+        console.log('[AUTH DEBUG] fetchUser called but no token available')
+      }
+      return
+    }
 
     try {
       const decoded = jwtDecode<JWTPayload>(token.value)
+      if (import.meta.env.DEV) {
+        console.log('[AUTH DEBUG] Decoded JWT in fetchUser:', decoded)
+      }
       
       // Check if token is expired
       if (decoded.exp * 1000 < Date.now()) {
+        if (import.meta.env.DEV) {
+          console.log('[AUTH DEBUG] Token expired in fetchUser, clearing auth')
+        }
         clearAuth()
         return
       }
 
-      // For the simple admin system, create a basic user object
-      // Check if this is an admin token
-      if (decoded.admin) {
-        user.value = {
-          id: 'admin',
-          email: 'admin@passivecaptcha.com',
-          name: 'Administrator',
-          role: 'admin',
-          lastLogin: new Date()
-        }
-      } else {
-        // Fallback for other token formats
-        user.value = {
-          id: decoded.sub || 'user',
-          email: decoded.email || 'user@passivecaptcha.com',
-          name: decoded.name || 'User',
-          role: decoded.role || 'user',
-          lastLogin: new Date()
-        }
+      // For the admin system, create user object from JWT payload
+      // The JWT contains user_id, email, role directly
+      user.value = {
+        id: decoded.user_id || decoded.sub || 'admin',
+        email: decoded.email || 'admin@passivecaptcha.com',
+        name: decoded.name || 'Administrator',
+        role: decoded.role || 'admin',
+        lastLogin: new Date()
+      }
+      if (import.meta.env.DEV) {
+        console.log('[AUTH DEBUG] User set in fetchUser:', user.value)
+        console.log('[AUTH DEBUG] isAuthenticated after fetchUser:', !!token.value && !!user.value)
       }
     } catch (error) {
-      console.error('Failed to decode token:', error)
+      if (import.meta.env.DEV) {
+        console.error('[AUTH DEBUG] Failed to decode token:', error)
+      }
       clearAuth()
     }
   }
@@ -215,12 +275,22 @@ export const useAuthStore = defineStore('auth', () => {
     // Cross-browser token restoration with fallback
     let savedToken: string | null = null
     
+    if (import.meta.env.DEV) {
+      console.log('[AUTH DEBUG] Restoring session...')
+    }
+    
     try {
       savedToken = localStorage.getItem('admin_token')
+      if (import.meta.env.DEV) {
+        console.log('[AUTH DEBUG] Token from localStorage:', savedToken ? 'Found' : 'Not found')
+      }
     } catch (error) {
       console.warn('localStorage not available, trying sessionStorage:', error)
       try {
         savedToken = sessionStorage.getItem('admin_token')
+        if (import.meta.env.DEV) {
+          console.log('[AUTH DEBUG] Token from sessionStorage:', savedToken ? 'Found' : 'Not found')
+        }
       } catch (sessionError) {
         console.warn('sessionStorage not available:', sessionError)
       }
@@ -230,22 +300,54 @@ export const useAuthStore = defineStore('auth', () => {
       // Validate token format before setting
       try {
         const decoded = jwtDecode<JWTPayload>(savedToken)
+        if (import.meta.env.DEV) {
+          console.log('[AUTH DEBUG] Decoded JWT:', decoded)
+        }
+        
+        const now = Date.now()
+        const expTime = decoded.exp * 1000
+        if (import.meta.env.DEV) {
+          console.log('[AUTH DEBUG] Current time:', now, 'Token expires:', expTime, 'Valid:', expTime > now)
+        }
         
         // Check if token is not expired
-        if (decoded.exp * 1000 > Date.now()) {
+        if (expTime > now) {
+          if (import.meta.env.DEV) {
+            console.log('[AUTH DEBUG] Token valid, setting user...')
+          }
           setToken(savedToken)
           await fetchUser()
+          if (import.meta.env.DEV) {
+            console.log('[AUTH DEBUG] User set, authenticated:', !!user.value)
+          }
         } else {
-          console.info('Stored token expired, clearing auth')
+          if (import.meta.env.DEV) {
+            console.info('[AUTH DEBUG] Stored token expired, clearing auth')
+          }
           clearAuth()
         }
       } catch (decodeError) {
-        console.warn('Invalid stored token, clearing auth:', decodeError)
+        if (import.meta.env.DEV) {
+          console.warn('[AUTH DEBUG] Invalid stored token, clearing auth:', decodeError)
+        }
         clearAuth()
+      }
+    } else {
+      if (import.meta.env.DEV) {
+        console.log('[AUTH DEBUG] No saved token found')
       }
     }
     
     initialized.value = true
+    if (import.meta.env.DEV) {
+      console.log('[AUTH DEBUG] Session restore complete:')
+      console.log('[AUTH DEBUG] - Token present:', !!token.value)
+      console.log('[AUTH DEBUG] - User present:', !!user.value) 
+      console.log('[AUTH DEBUG] - isAuthenticated:', !!token.value && !!user.value)
+      if (user.value) {
+        console.log('[AUTH DEBUG] - User details:', user.value)
+      }
+    }
   }
 
   function isTokenExpired(): boolean {
