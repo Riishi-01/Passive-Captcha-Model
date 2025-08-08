@@ -104,22 +104,10 @@ export const useAuthStore = defineStore('auth', () => {
           console.log('[AUTH DEBUG] Token set, fetching user...')
         }
         await fetchUser()
-        
-        // Ensure both token and user are set before returning success
-        const isFullyAuthenticated = !!token.value && !!user.value
         if (import.meta.env.DEV) {
-          console.log('[AUTH DEBUG] User fetched, fully authenticated:', isFullyAuthenticated)
+          console.log('[AUTH DEBUG] User fetched, final auth state - token:', !!token.value, 'user:', !!user.value)
         }
-        
-        if (isFullyAuthenticated) {
-          return { success: true }
-        } else {
-          if (import.meta.env.DEV) {
-            console.error('[AUTH DEBUG] Authentication incomplete - token or user missing')
-          }
-          clearAuth()
-          return { success: false, error: 'Authentication setup failed' }
-        }
+        return { success: true }
       }
       
       return { success: false, error: 'Invalid credentials' }
