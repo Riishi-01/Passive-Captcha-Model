@@ -267,6 +267,145 @@ def activate_token():
         }), 500
 
 
+@script_bp.route('/verify', methods=['POST'])
+@limiter.limit("200 per minute")
+def verify_user():
+    """
+    Domain+Token verification endpoint for passive CAPTCHA
+    This endpoint validates users based on behavioral data and device fingerprinting
+    """
+    start_time = datetime.utcnow()
+    
+    try:
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'isHuman': False,
+                'confidence': 0.0,
+                'error': 'No data provided'
+            }), 400
+
+        # Validate required fields
+        domain = data.get('domain')
+        domain_token = request.headers.get('X-Domain-Token')
+        
+        if not domain or not domain_token:
+            return jsonify({
+                'isHuman': False,
+                'confidence': 0.0,
+                'error': 'Domain and token required'
+            }), 400
+
+        # Verify domain and token combination
+        from app.database import get_db_session, Website
+        session = get_db_session()
+        
+        try:
+            website = session.query(Website).filter(
+                Website.domain == domain,
+                Website.token == domain_token,
+                Website.status == 'active'
+            ).first()
+            
+            # Fallback to legacy fields if new schema fields are empty
+            if not website:
+                website = session.query(Website).filter(
+                    Website.website_url == domain,
+                    Website.api_key == domain_token,
+                    Website.status == 'active'
+                ).first()
+            
+            if not website:
+                current_app.logger.warning(f"Invalid domain/token combination: {domain}")
+                return jsonify({
+                    'isHuman': False,
+                    'confidence': 0.0,
+                    'error': 'Invalid domain or token'
+                }), 403
+                
+        finally:
+            session.close()
+
+        # Extract client information
+        client_ip = get_client_ip(request)
+        user_agent = request.headers.get('User-Agent', '')
+        
+        # Get behavioral data
+        behavioral_data = data.get('behavioralData', {})
+        device_fingerprint = data.get('deviceFingerprint', {})
+        
+        # Combine all features for ML model
+        combined_features = {
+            **behavioral_data,
+            **device_fingerprint,
+            'ip_address': client_ip,
+            'user_agent': user_agent,
+            'domain': domain
+        }
+        
+        # Get ML prediction
+        try:
+            from app.ml import extract_features, predict_human_probability
+            features = extract_features(combined_features)
+            prediction = predict_human_probability(features)
+            
+            is_human = prediction.get('isHuman', True)
+            confidence = prediction.get('confidence', 0.5)
+        except Exception as ml_error:
+            current_app.logger.error(f"ML prediction error: {ml_error}")
+            # Fallback to conservative prediction
+            is_human = True
+            confidence = 0.7
+
+        # Log the verification
+        response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        
+        try:
+            from app.database import CaptchaLog
+            session = get_db_session()
+            try:
+                log_entry = CaptchaLog(
+                    website_id=website.id or website.website_id,
+                    ip_address=client_ip,
+                    status='pass' if is_human else 'fail',
+                    user_agent=user_agent,
+                    session_id=data.get('sessionId'),
+                    confidence=confidence,
+                    response_time=response_time
+                )
+                session.add(log_entry)
+                session.commit()
+                
+                # Update website last activity
+                website.last_activity = datetime.utcnow()
+                session.commit()
+                
+            except Exception as db_error:
+                current_app.logger.error(f"Failed to log verification: {db_error}")
+                session.rollback()
+            finally:
+                session.close()
+        except Exception as log_error:
+            current_app.logger.error(f"Logging system error: {log_error}")
+
+        return jsonify({
+            'isHuman': is_human,
+            'confidence': round(confidence, 4),
+            'responseTime': round(response_time, 2),
+            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'domain': domain
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Verification error: {e}")
+        return jsonify({
+            'isHuman': False,
+            'confidence': 0.0,
+            'error': 'Verification failed'
+        }), 500
+
+
 @script_bp.route('/collect', methods=['POST'])
 @limiter.limit("100 per minute")
 def collect_data():

@@ -98,13 +98,13 @@ class WebsiteService:
                 integration_data = self._get_integration_status(website.website_id, token_manager)
 
                 website_data.append(WebsiteData(
-                    id=website.website_id,
-                    name=website.website_name,
-                    url=website.website_url,
+                    id=website.id or website.website_id,  # Use new id or fallback to legacy
+                    name=website.name or website.website_name,
+                    url=website.domain or website.website_url,  # Use new domain or fallback to legacy
                     status=WebsiteStatus(website.status or 'active'),
                     created_at=website.created_at,
                     updated_at=website.created_at,  # Use created_at since updated_at doesn't exist
-                    description=getattr(website, 'description', None),
+                    description=website.description,
 
                     # Analytics
                     total_verifications=analytics.get('total_verifications', 0),
@@ -166,7 +166,7 @@ class WebsiteService:
         finally:
             session.close()
 
-    def create_website(self, name: str, url: str, description: str = None) -> WebsiteData:
+    def create_website(self, name: str, url: str, description: str = None, domain: str = None) -> WebsiteData:
         """
         Create a new website
         """
@@ -174,16 +174,29 @@ class WebsiteService:
         try:
             website_id = str(uuid.uuid4())
             now = datetime.utcnow()
+            
+            # Generate unique token for the domain
+            import secrets
+            import hashlib
+            token_data = f"{domain or url}_{website_id}_{now.isoformat()}"
+            unique_token = hashlib.sha256(token_data.encode()).hexdigest()[:32]
 
             new_website = Website(
-                website_id=website_id,
-                website_name=name,
-                website_url=url,
+                id=website_id,
+                domain=domain or url,  # Use domain if provided, otherwise url
+                token=unique_token,
+                name=name,
+                description=description,
                 status=WebsiteStatus.PENDING_INTEGRATION.value,
                 created_at=now,
-                admin_email='admin@passivecaptcha.com',  # Default admin email
-                api_key=f'api_{website_id[:8]}',  # Simple API key for now
-                secret_key=f'secret_{website_id[:8]}'  # Simple secret key for now
+                
+                # Legacy fields for backward compatibility
+                website_id=website_id,
+                website_name=name,
+                website_url=domain or url,
+                admin_email='admin@passivecaptcha.com',
+                api_key=f'api_{website_id[:8]}',
+                secret_key=f'secret_{website_id[:8]}'
             )
 
             # Add description if provided (assuming the model supports it)

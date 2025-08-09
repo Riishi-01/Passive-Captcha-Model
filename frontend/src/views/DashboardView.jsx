@@ -108,9 +108,7 @@ export default function DashboardView() {
       </div>
 
       {/* Additional Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <RealTimeSystemStatus systemHealth={systemHealth} />
-        
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">        
         <div className="card p-6">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
             Today's Summary

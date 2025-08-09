@@ -21,44 +21,62 @@ SessionLocal = None
 class Website(Base):
     """
     Table for storing registered websites and their tokens
+    Updated schema as per requirements
     """
     __tablename__ = 'websites'
 
-    website_id = Column(String(36), primary_key=True)  # UUID
-    website_name = Column(String(255), nullable=False)
-    website_url = Column(String(500), nullable=False)
-    admin_email = Column(String(255), nullable=False)
-    api_key = Column(String(255), unique=True, nullable=False)
-    secret_key = Column(String(255), nullable=False)
+    id = Column(String(36), primary_key=True)  # UUID primary key (renamed from website_id)
+    domain = Column(String(500), nullable=False, unique=True)  # Domain name (renamed from website_url)
+    token = Column(String(255), unique=True, nullable=False)  # Unique token for the domain
     created_at = Column(DateTime, default=datetime.utcnow)
-    status = Column(String(20), default='active')  # active, suspended, revoked
-
-    # JSON fields for flexible configuration
-    permissions = Column(Text, nullable=True)  # JSON string
-    rate_limits = Column(Text, nullable=True)  # JSON string
+    status = Column(String(20), default='active')  # active/inactive
+    
+    # Additional fields for compatibility
+    name = Column(String(255), nullable=True)  # Optional website name
+    description = Column(String(1000), nullable=True)  # Optional description
+    last_activity = Column(DateTime, nullable=True)  # Track last verification activity
+    
+    # Legacy fields for backward compatibility (deprecated)
+    website_id = Column(String(36), nullable=True)  # Will be same as id
+    website_name = Column(String(255), nullable=True)  # Will be same as name  
+    website_url = Column(String(500), nullable=True)  # Will be same as domain
+    admin_email = Column(String(255), nullable=True, default='admin@passivecaptcha.com')
+    api_key = Column(String(255), nullable=True)  # Legacy field
+    secret_key = Column(String(255), nullable=True)  # Legacy field
 
     # Website management indexes
     __table_args__ = (
-        # Website listing and management
+        # Primary indexes for new schema
+        Index('idx_websites_domain', 'domain'),
+        Index('idx_websites_token', 'token'),
         Index('idx_websites_status_created_at', 'status', 'created_at'),
         
-        # API key lookup (critical for verification requests)  
+        # Legacy indexes
         Index('idx_websites_api_key', 'api_key'),
     )
 
     def to_dict(self):
         """Convert to dictionary for JSON serialization"""
         return {
-            'website_id': self.website_id,
-            'website_name': self.website_name,
-            'website_url': self.website_url,
-            'admin_email': self.admin_email,
-            'api_key': self.api_key,
-            'secret_key': self.secret_key,
+            'id': self.id,
+            'domain': self.domain,
+            'token': self.token,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'status': self.status,
-            'permissions': json.loads(self.permissions) if self.permissions else [],
-            'rate_limits': json.loads(self.rate_limits) if self.rate_limits else {}
+            'name': self.name,
+            'description': self.description,
+            'last_activity': self.last_activity.isoformat() if self.last_activity else None,
+            
+            # Legacy fields for backward compatibility
+            'website_id': self.id,  # Map new id to old website_id
+            'website_name': self.name,
+            'website_url': self.domain,  # Map new domain to old website_url
+            'admin_email': self.admin_email,
+            'api_key': self.api_key or f'api_{self.id[:8]}' if self.id else None,
+            'secret_key': self.secret_key or f'secret_{self.id[:8]}' if self.id else None,
+            
+            # Enhanced fields
+            'url': self.domain,  # For frontend compatibility
         }
 
 
@@ -89,9 +107,49 @@ class Verification(Base):
         }
 
 
+class CaptchaLog(Base):
+    """
+    Table for storing CAPTCHA verification logs as per requirements
+    """
+    __tablename__ = 'captcha_logs'
+
+    id = Column(Integer, primary_key=True)
+    website_id = Column(String(36), nullable=False, index=True)  # Foreign key to websites.id
+    ip_address = Column(String(45), nullable=False)
+    status = Column(String(10), nullable=False)  # 'pass' or 'fail'
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    
+    # Additional fields for enhanced tracking
+    user_agent = Column(Text, nullable=True)
+    session_id = Column(String(255), nullable=True)
+    confidence = Column(Float, nullable=True)  # ML model confidence
+    response_time = Column(Float, nullable=True)  # Response time in ms
+    
+    # Indexes for fast dashboard queries
+    __table_args__ = (
+        Index('idx_captcha_logs_website_timestamp', 'website_id', 'timestamp'),
+        Index('idx_captcha_logs_status_timestamp', 'status', 'timestamp'),
+        Index('idx_captcha_logs_ip_timestamp', 'ip_address', 'timestamp'),
+    )
+
+    def to_dict(self):
+        """Convert to dictionary for JSON serialization"""
+        return {
+            'id': self.id,
+            'website_id': self.website_id,
+            'ip_address': self.ip_address,
+            'status': self.status,
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
+            'user_agent': self.user_agent,
+            'session_id': self.session_id,
+            'confidence': self.confidence,
+            'response_time': self.response_time
+        }
+
+
 class VerificationLog(Base):
     """
-    Table for storing verification attempts and results
+    Table for storing verification attempts and results (Legacy)
     """
     __tablename__ = 'verification_logs'
 

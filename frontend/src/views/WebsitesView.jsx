@@ -11,7 +11,12 @@ import {
   ExternalLink, 
   Shield, 
   ShieldOff,
-  MoreVertical 
+  MoreVertical,
+  Copy,
+  Check,
+  Code,
+  Calendar,
+  Activity
 } from 'lucide-react'
 
 export default function WebsitesView() {
@@ -26,6 +31,7 @@ export default function WebsitesView() {
   } = useWebsitesStore()
   const { addNotification } = useAppStore()
   const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [copiedScript, setCopiedScript] = useState('')
 
   useEffect(() => {
     const loadWebsites = async () => {
@@ -41,6 +47,86 @@ export default function WebsitesView() {
 
     loadWebsites()
   }, [fetchWebsites, addNotification])
+
+  const generateScript = (domain, token) => {
+    return `<!-- Passive CAPTCHA Integration -->
+<script>
+(function() {
+    window.PassiveCaptcha = {
+        domain: '${domain}',
+        token: '${token}',
+        apiUrl: '${window.location.origin}/api',
+        excludePaths: ['/pages/*', '/admin/*', '/api/*'],
+        
+        init: function() {
+            this.collectBehavioralData();
+            this.setupEventListeners();
+        },
+        
+        validateUser: function() {
+            return fetch(\`\${this.apiUrl}/verify\`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Domain-Token': this.token
+                },
+                body: JSON.stringify({
+                    domain: this.domain,
+                    behavioralData: this.getBehavioralData(),
+                    deviceFingerprint: this.getDeviceFingerprint()
+                })
+            }).then(response => response.json())
+              .then(data => data.isHuman);
+        }
+    };
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            window.PassiveCaptcha.init();
+        });
+    } else {
+        window.PassiveCaptcha.init();
+    }
+})();
+</script>
+<!-- End Passive CAPTCHA -->`
+  }
+
+  const copyScript = async (website) => {
+    const domain = website.domain || website.url || website.website_url
+    const token = website.token || website.api_key
+    
+    if (!domain || !token) {
+      addNotification({
+        type: 'error',
+        message: 'Unable to generate script - missing domain or token'
+      })
+      return
+    }
+    
+    const script = generateScript(domain, token)
+    
+    try {
+      await navigator.clipboard.writeText(script)
+      setCopiedScript(website.id)
+      addNotification({
+        type: 'success',
+        message: 'Integration script copied to clipboard!'
+      })
+      setTimeout(() => setCopiedScript(''), 2000)
+    } catch (error) {
+      addNotification({
+        type: 'error',
+        message: 'Failed to copy script to clipboard'
+      })
+    }
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Never'
+    const date = new Date(dateString)
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
 
   const handleDelete = async (id) => {
     try {
@@ -58,13 +144,7 @@ export default function WebsitesView() {
     }
   }
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
+
 
   if (loading && websites.length === 0) {
     return (
@@ -160,25 +240,82 @@ export default function WebsitesView() {
                   </div>
                 </div>
 
+                {/* Token Display */}
+                <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Domain Token</p>
+                      <code className="text-xs font-mono text-gray-900 dark:text-gray-100">
+                        {website.token || website.api_key || 'Not generated'}
+                      </code>
+                    </div>
+                    <button
+                      onClick={() => copyScript(website)}
+                      className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                      title="Copy integration script"
+                    >
+                      {copiedScript === website.id ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Code className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
                 {website.description && (
                   <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
                     {website.description}
                   </p>
                 )}
 
-                <div className="mt-4 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                  <span>
-                    Added {formatDate(website.created_at || new Date())}
-                  </span>
-                  <div className="flex items-center space-x-2">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      website.status === 'active' 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                    }`}>
-                      {website.status === 'active' ? 'Active' : 'Inactive'}
-                    </span>
+                {/* Stats & Status */}
+                <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="flex items-center text-gray-500 dark:text-gray-400">
+                      <Calendar className="h-4 w-4 mr-1" />
+                      <span className="text-xs">Added</span>
+                    </div>
+                    <p className="text-gray-900 dark:text-gray-100 font-medium">
+                      {formatDate(website.created_at)}
+                    </p>
                   </div>
+                  <div>
+                    <div className="flex items-center text-gray-500 dark:text-gray-400">
+                      <Activity className="h-4 w-4 mr-1" />
+                      <span className="text-xs">Last Activity</span>
+                    </div>
+                    <p className="text-gray-900 dark:text-gray-100 font-medium">
+                      {formatDate(website.last_activity)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    website.status === 'active' 
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                  }`}>
+                    {website.status === 'active' ? 'Active' : 'Inactive'}
+                  </span>
+                  
+                  <button
+                    onClick={() => copyScript(website)}
+                    className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    {copiedScript === website.id ? (
+                      <>
+                        <Check className="h-3 w-3 mr-1 text-green-500" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy Script
+                      </>
+                    )}
+                  </button>
                 </div>
 
                 <div className="mt-6 flex items-center justify-between">
