@@ -5,6 +5,7 @@ import KPICard from '../components/KPICard'
 import SystemStatusIndicator from '../components/SystemStatusIndicator'
 import LiveActivityFeed from '../components/LiveActivityFeed'
 import ModelAccuracyChart from '../components/ModelAccuracyChart'
+import RealTimeSystemStatus from '../components/RealTimeSystemStatus'
 import { Shield, Eye, Brain, Globe, AlertTriangle, Clock } from 'lucide-react'
 
 export default function DashboardView() {
@@ -108,6 +109,8 @@ export default function DashboardView() {
 
       {/* Additional Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <RealTimeSystemStatus systemHealth={systemHealth} />
+        
         <div className="card p-6">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
             Today's Summary

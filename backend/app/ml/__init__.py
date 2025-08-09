@@ -535,7 +535,7 @@ def predict_human_probability(features):
 
         # Make prediction
         start_time = time.time()
-        probabilities = model.predict_proba(feature_array)[0]
+        probabilities = ensemble_model.predict_proba(feature_array)[0]
         inference_time = (time.time() - start_time) * 1000  # Convert to ms
 
         human_probability = probabilities[1]  # Class 1 is human
@@ -556,18 +556,19 @@ def predict_human_probability(features):
 
 def is_model_loaded():
     """Check if ML model is loaded and ready"""
-    return model_loaded and model is not None
+    return model_loaded and ensemble_model is not None
 
 
 def get_model_info():
     """Get information about the loaded model"""
-    if not model_loaded or model is None:
+    if not model_loaded or ensemble_model is None:
         return {'status': 'not_loaded'}
 
     return {
         'status': 'loaded',
-        'algorithm': 'Random Forest',
-        'n_estimators': getattr(model, 'n_estimators', 'unknown'),
+        'algorithm': 'Voting Ensemble (RF + GB)',
+        'estimators': len(ensemble_model.estimators_) if hasattr(ensemble_model, 'estimators_') else 2,
         'features': 11,
-        'classes': ['bot', 'human']
+        'classes': ['bot', 'human'],
+        'performance': model_performance
     }

@@ -4,7 +4,10 @@ import apiService from '../services/api'
 export const useDashboardStore = create((set, get) => ({
   stats: null,
   chartData: {},
-  systemHealth: null,
+  systemHealth: {
+    status: 'unknown',
+    components: {}
+  },
   loading: false,
   error: null,
   lastUpdated: null,
@@ -49,10 +52,21 @@ export const useDashboardStore = create((set, get) => ({
   fetchSystemHealth: async () => {
     try {
       const health = await apiService.getSystemHealth()
-      set({ systemHealth: health })
+      set({ systemHealth: health || { status: 'unknown', components: {} } })
       return health
     } catch (error) {
       console.error('Failed to fetch system health:', error)
+      // Set default system health on error
+      set({ 
+        systemHealth: { 
+          status: 'unhealthy', 
+          components: { 
+            api: 'error',
+            database: 'unknown',
+            ml_model: 'unknown'
+          } 
+        } 
+      })
       throw error
     }
   },

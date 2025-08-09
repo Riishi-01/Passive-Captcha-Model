@@ -196,7 +196,11 @@ class WebsiteService:
             # Clear cache
             self._clear_website_cache()
 
-            current_app.logger.info(f"Created new website: {name} ({url})")
+            # Safe logging - handle case where we're outside Flask context
+            try:
+                current_app.logger.info(f"Created new website: {name} ({url})")
+            except RuntimeError:
+                print(f"✅ Created new website: {name} ({url})")
 
             return WebsiteData(
                 id=website_id,
@@ -247,7 +251,11 @@ class WebsiteService:
             # Clear cache
             self._clear_website_cache()
 
-            current_app.logger.info(f"Updated website {website_id}: {name or website.website_name}")
+            # Safe logging - handle case where we're outside Flask context
+            try:
+                current_app.logger.info(f"Updated website {website_id}: {name or website.website_name}")
+            except RuntimeError:
+                print(f"✅ Updated website {website_id}: {name or website.website_name}")
             return True
 
         finally:
@@ -277,7 +285,11 @@ class WebsiteService:
             # Clear cache
             self._clear_website_cache()
 
-            current_app.logger.info(f"Deleted website {website_id}: {website_name}")
+            # Safe logging - handle case where we're outside Flask context
+            try:
+                current_app.logger.info(f"Deleted website {website_id}: {website_name}")
+            except RuntimeError:
+                print(f"✅ Deleted website {website_id}: {website_name}")
             return True
 
         finally:
@@ -303,7 +315,11 @@ class WebsiteService:
             # Clear cache
             self._clear_website_cache()
 
-            current_app.logger.info(f"Toggled website {website_id} status: {current_status.value} → {new_status.value}")
+            # Safe logging - handle case where we're outside Flask context
+            try:
+                current_app.logger.info(f"Toggled website {website_id} status: {current_status.value} → {new_status.value}")
+            except RuntimeError:
+                print(f"✅ Toggled website {website_id} status: {current_status.value} → {new_status.value}")
             return new_status
 
         finally:
@@ -386,7 +402,10 @@ class WebsiteService:
                     except json.JSONDecodeError:
                         pass
             except Exception as e:
-                current_app.logger.warning(f"Redis cache read failed: {e}")
+                try:
+                    current_app.logger.warning(f"Redis cache read failed: {e}")
+                except RuntimeError:
+                    print(f"⚠️ Redis cache read failed: {e}")
 
         # Calculate analytics from verification logs
         thirty_days_ago = datetime.utcnow() - timedelta(days=30)
@@ -425,7 +444,10 @@ class WebsiteService:
                 cache_key = f"{self.cache_prefix}analytics:{website_id}"
                 self.redis.setex(cache_key, self.cache_ttl, json.dumps(analytics, default=str))
             except Exception as e:
-                current_app.logger.warning(f"Redis cache write failed: {e}")
+                try:
+                    current_app.logger.warning(f"Redis cache write failed: {e}")
+                except RuntimeError:
+                    print(f"⚠️ Redis cache write failed: {e}")
 
         return analytics
 
@@ -479,7 +501,10 @@ class WebsiteService:
             for key in self.redis.scan_iter(match=pattern):
                 self.redis.delete(key)
         except Exception as e:
-            current_app.logger.warning(f"Failed to clear website cache: {e}")
+            try:
+                current_app.logger.warning(f"Failed to clear website cache: {e}")
+            except RuntimeError:
+                print(f"⚠️ Failed to clear website cache: {e}")
 
 
 # Global instance
