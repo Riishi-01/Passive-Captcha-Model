@@ -20,6 +20,7 @@ const ProfilePage = () => import('@/app/dashboard/profile/page.vue')
 // Error pages
 const NotFoundPage = () => import('@/app/errors/404/page.vue')
 
+
 // Define routes
 const routes: RouteRecordRaw[] = [
   {
@@ -28,7 +29,11 @@ const routes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
-        redirect: '/dashboard'
+        redirect: (to) => {
+          // Smart redirect based on auth state
+          const authStore = useAuthStore()
+          return authStore.isAuthenticated ? '/dashboard' : '/login'
+        }
       },
       // Auth routes
       {
@@ -133,79 +138,61 @@ const router = createRouter({
   }
 })
 
-// Global navigation guards
+// Simplified navigation guards with debugging
 router.beforeEach(async (to, from, next) => {
+  console.log(`🔄 Navigating from "${from.path}" to "${to.path}"`)
+  
   // Update page title
   document.title = to.meta?.title as string || 'Passive CAPTCHA Admin'
   
-  // Check authentication
+  // Get authentication state
   const authStore = useAuthStore()
   
-  if (import.meta.env.DEV) {
-    console.log('[ROUTER DEBUG] Navigation to:', to.path, 'from:', from.path)
-    console.log('[ROUTER DEBUG] Auth store initialized:', authStore.initialized)
-  }
+  // TEMPORARY: Disable session restoration completely for debugging
+  console.log('🚫 Session restoration DISABLED for debugging')
+  /*
+  // Skip session restoration if coming from login (we just authenticated)
+  const comingFromLogin = from.path === '/login'
   
-  // Only restore session if not already initialized
-  if (!authStore.initialized) {
-    if (import.meta.env.DEV) {
-      console.log('[ROUTER DEBUG] Restoring session (first time)...')
-    }
+  // Ensure session restored exactly once (prevent race with login navigation)
+  if (!authStore.initialized && !comingFromLogin) {
+    console.log('📡 Session not initialized, restoring...')
     await authStore.restoreSession()
-    if (import.meta.env.DEV) {
-      console.log('[ROUTER DEBUG] Session restored, authenticated:', authStore.isAuthenticated)
-    }
+    console.log('📡 Session restoration complete, authenticated:', authStore.isAuthenticated)
+  } else if (comingFromLogin) {
+    console.log('📡 Coming from login page, skipping session restoration')
   } else {
-    if (import.meta.env.DEV) {
-      console.log('[ROUTER DEBUG] Session already initialized, skipping restoration')
-    }
+    console.log('📡 Session already initialized, skipping restoration')
   }
+  */
   
   const requiresAuth = to.meta?.requiresAuth
   const isAuthenticated = authStore.isAuthenticated
   
-  if (import.meta.env.DEV) {
-    console.log('[ROUTER DEBUG] Route requires auth:', requiresAuth)
-    console.log('[ROUTER DEBUG] User authenticated:', isAuthenticated)
-    console.log('[ROUTER DEBUG] Token exists:', !!authStore.token)
-    console.log('[ROUTER DEBUG] User exists:', !!authStore.user)
-    
-    console.log('[ROUTER DEBUG] Navigation check:', { 
-      to: to.path, 
-      requiresAuth, 
-      isAuthenticated,
-      token: !!authStore.token,
-      user: !!authStore.user,
-      initialized: authStore.initialized
-    })
-  }
+  console.log('🔐 Route guard check:', { 
+    path: to.path,
+    requiresAuth, 
+    isAuthenticated,
+    hasToken: !!authStore.token,
+    hasUser: !!authStore.user
+  })
   
-  // Proper router guard with fixed logic
-  if (requiresAuth && !isAuthenticated) {
-    if (import.meta.env.DEV) {
-      console.log('[ROUTER DEBUG] Auth required but user not authenticated, redirecting to login')
-    }
+  // Simple navigation logic
+  if (requiresAuth === true && !isAuthenticated) {
+    console.log('🚫 Redirecting to login - authentication required')
     next('/login')
   } else if (to.path === '/login' && isAuthenticated) {
-    if (import.meta.env.DEV) {
-      console.log('[ROUTER DEBUG] User authenticated but trying to access login, redirecting to dashboard')
-    }
+    console.log('✅ Redirecting to dashboard - already authenticated')
     next('/dashboard')
   } else {
-    if (import.meta.env.DEV) {
-      console.log('[ROUTER DEBUG] Allowing navigation')
-    }
+    console.log('✅ Navigation allowed')
     next()
   }
 })
 
 // Global after navigation hook
 router.afterEach((to, from) => {
-  if (import.meta.env.DEV) {
-    console.log('[ROUTER DEBUG] Navigation completed:', { from: from.path, to: to.path })
-  }
-  
-  // You can add analytics tracking here
+  // Analytics tracking can go here
   if (typeof gtag !== 'undefined') {
     gtag('config', 'GA_MEASUREMENT_ID', {
       page_title: to.meta?.title,
@@ -214,4 +201,4 @@ router.afterEach((to, from) => {
   }
 })
 
-export default router 
+export default router

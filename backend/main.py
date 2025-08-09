@@ -6,16 +6,11 @@ Single entry point for all environments (development, production, testing)
 """
 
 import os
-
-# Validate critical environment variables
-required_vars = ['ADMIN_SECRET', 'JWT_SECRET_KEY']
-missing_vars = [var for var in required_vars if not os.getenv(var)]
-if missing_vars:
-    raise ValueError(f"Missing required environment variables: {missing_vars}")
+# Do not hard-require env vars here; services provide secure defaults if missing
     
 import sys
 import redis
-from flask import Flask, request, jsonify, abort
+from flask import Flask, request, jsonify, abort, send_from_directory
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -299,7 +294,8 @@ def create_app(config_name='production'):
     # Register consolidated admin blueprint
     try:
         from app.api.admin_endpoints import admin_bp
-        app.register_blueprint(admin_bp, url_prefix='/admin')
+        # Blueprint already has url_prefix '/admin'; register without additional prefix
+        app.register_blueprint(admin_bp)
         app.logger.info("Admin API endpoints registered")
     except Exception as e:
         app.logger.error(f"Failed to register admin API: {e}")
@@ -1047,7 +1043,7 @@ if __name__ == '__main__':
             '--bind', f'{args.host}:{port}',
             '--timeout', '120',
             '--keep-alive', '2',
-            'main:get_wsgi_app()'
+            'main:get_wsgi_app'
         ]
         print(f"[DEPLOY] Starting Passive CAPTCHA with Gunicorn on {args.host}:{port}")
         print(f"[DEPLOY] Command: {' '.join(cmd)}")

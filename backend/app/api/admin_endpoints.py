@@ -14,7 +14,7 @@ admin_bp = Blueprint('admin_api', __name__, url_prefix='/admin')
 
 
 def require_auth(f):
-    """Simplified authentication decorator for admin endpoints"""
+    """Authentication decorator using centralized AuthService for consistency"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         auth_header = request.headers.get('Authorization')
@@ -28,60 +28,38 @@ def require_auth(f):
             }), 401
 
         token = auth_header.split(' ')[1]
-        
-        # Direct JWT validation using the configured secret
-        import jwt
-        import os
-        
+
         try:
-            # Use same JWT_SECRET_KEY as auth service for consistency
-            jwt_secret = os.getenv('JWT_SECRET_KEY', 
-                                 os.getenv('JWT_SECRET', 
-                                          current_app.config.get('JWT_SECRET_KEY',
-                                                                current_app.config.get('JWT_SECRET'))))
-            if not jwt_secret:
-                jwt_secret = 'jwt-secret-key-for-passive-captcha-production-environment'
-            
-            # Decode and validate JWT token with browser-compatible options
-            payload = jwt.decode(
-                token, 
-                jwt_secret, 
-                algorithms=['HS256'],
-                options={
-                    'verify_exp': True,
-                    'verify_iat': True,
-                    'verify_signature': True,
-                    'require_exp': True,
-                    'require_iat': True
-                }
-            )
-            
-            # Extract user information from JWT payload
+            auth_service = get_auth_service()
+            if not auth_service:
+                return jsonify({
+                    'success': False,
+                    'error': {
+                        'code': 'AUTH_SERVICE_UNAVAILABLE',
+                        'message': 'Authentication service not available'
+                    }
+                }), 503
+
+            user = auth_service.validate_token(token)
+            if not user:
+                return jsonify({
+                    'success': False,
+                    'error': {
+                        'code': 'INVALID_TOKEN',
+                        'message': 'Invalid or expired token'
+                    }
+                }), 401
+
+            # Attach user to request context
             request.current_user = {
-                'user_id': payload.get('user_id', 'admin_user'),
-                'email': payload.get('email', 'admin@passivecaptcha.com'),
-                'role': payload.get('role', 'super_admin'),
-                'session_id': payload.get('session_id')
+                'id': user.id,
+                'email': user.email,
+                'role': user.role.value,
+                'last_login': user.last_login.isoformat() if hasattr(user.last_login, 'isoformat') else None
             }
-            
+
             return f(*args, **kwargs)
-            
-        except jwt.ExpiredSignatureError:
-            return jsonify({
-                'success': False,
-                'error': {
-                    'code': 'TOKEN_EXPIRED',
-                    'message': 'Token has expired'
-                }
-            }), 401
-        except jwt.InvalidTokenError:
-            return jsonify({
-                'success': False,
-                'error': {
-                    'code': 'INVALID_TOKEN',
-                    'message': 'Invalid token'
-                }
-            }), 401
+
         except Exception as e:
             current_app.logger.error(f"Authentication error: {e}")
             return jsonify({
@@ -139,59 +117,61 @@ def login():
                 }
             }), 400
 
-        email = data.get('email', 'admin@passivecaptcha.com')
+        email = data.get('email')  # optional
         password = data['password']
-        
-        # Check against ADMIN_SECRET from config first (backward compatibility)
-        admin_secret = current_app.config.get('ADMIN_SECRET', 'Admin123')
-        if password == admin_secret:
-            # Use basic auth service for admin secret authentication
-            auth_service = get_auth_service()
-            if auth_service:
-                try:
-                    result = auth_service.authenticate_admin(password)
-                    response = jsonify({
-                        'success': True,
-                        'data': {
-                            'token': result['token'],
-                            'user': result['user'],
-                            'expires_in': result.get('expires_in', 3600),
-                            'token_type': 'Bearer'
-                        },
-                        'message': 'Login successful'
-                    })
-                    
-                    # Add comprehensive browser-compatible headers
-                    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, no-transform'
-                    response.headers['Pragma'] = 'no-cache'
-                    response.headers['Expires'] = '0'
-                    
-                    # Cross-browser security headers
-                    response.headers['X-Content-Type-Options'] = 'nosniff'
-                    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-                    response.headers['X-XSS-Protection'] = '1; mode=block'
-                    
-                    # CORS headers for successful login
-                    origin = request.headers.get('Origin', '*')
-                    response.headers['Access-Control-Allow-Origin'] = origin
-                    response.headers['Access-Control-Allow-Credentials'] = 'true'
-                    
-                    # Browser-specific JSON content type
-                    response.headers['Content-Type'] = 'application/json; charset=utf-8'
-                    
-                    return response
-                except Exception as e:
-                    current_app.logger.error(f"Basic auth failed: {e}")
 
-        # No additional fallback needed - using unified auth service above
-        
-        return jsonify({
-            'success': False,
-            'error': {
-                'code': 'INVALID_CREDENTIALS',
-                'message': 'Invalid credentials'
-            }
-        }), 401
+        # Use centralized auth service for verification (supports password-only and email+password)
+        auth_service = get_auth_service()
+        if not auth_service:
+            return jsonify({
+                'success': False,
+                'error': {
+                    'code': 'AUTH_SERVICE_UNAVAILABLE',
+                    'message': 'Authentication service not available'
+                }
+            }), 503
+
+        try:
+            result = auth_service.authenticate_admin(password=password, email=email)
+            if not result:
+                return jsonify({
+                    'success': False,
+                    'error': {
+                        'code': 'INVALID_CREDENTIALS',
+                        'message': 'Invalid credentials'
+                    }
+                }), 401
+
+            response = jsonify({
+                'success': True,
+                'data': {
+                    'token': result['token'],
+                    'user': result['user'],
+                    'expires_in': result.get('expires_in', 3600),
+                    'token_type': 'Bearer'
+                },
+                'message': 'Login successful'
+            })
+
+            # Response headers
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, no-transform'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            origin = request.headers.get('Origin', '*')
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+
+            return response
+        except Exception as e:
+            current_app.logger.error(f"Login auth error: {e}")
+            return jsonify({
+                'success': False,
+                'error': {
+                    'code': 'INVALID_CREDENTIALS',
+                    'message': 'Invalid credentials'
+                }
+            }), 401
 
     except Exception as e:
         current_app.logger.error(f"Login error: {e}")
@@ -227,6 +207,44 @@ def logout():
             'error': {
                 'code': 'INTERNAL_ERROR',
                 'message': 'Logout failed'
+            }
+        }), 500
+
+
+@admin_bp.route('/refresh', methods=['POST'])
+@require_auth
+def refresh():
+    """Refresh authentication token"""
+    try:
+        auth_header = request.headers.get('Authorization')
+        token = auth_header.split(' ')[1]
+
+        auth_service = get_auth_service()
+        result = auth_service.refresh_token(token)
+
+        if not result:
+            return jsonify({
+                'success': False,
+                'error': {
+                    'code': 'REFRESH_FAILED',
+                    'message': 'Token refresh failed'
+                }
+            }), 401
+
+        return jsonify({
+            'success': True,
+            'token': result['token'],
+            'user': result['user'],
+            'expires_in': result.get('expires_in', 3600)
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Token refresh error: {e}")
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'INTERNAL_ERROR',
+                'message': 'Token refresh failed'
             }
         }), 500
 

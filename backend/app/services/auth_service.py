@@ -75,7 +75,7 @@ class AuthService:
         self.blocked_ip_prefix = "blocked_ip:"
         
         # Security settings
-        self.session_ttl = 3600  # 1 hour
+        self.session_ttl = 86400  # 24 hours
         self.max_login_attempts = 5
         self.lockout_duration = 900  # 15 minutes
         self.rate_limit_requests = 10  # requests per minute
@@ -279,8 +279,9 @@ class AuthService:
             exp_time = now + timedelta(days=30)
             ttl = 30 * 24 * 3600
         else:
-            exp_time = now + timedelta(seconds=self.session_ttl)
-            ttl = self.session_ttl
+            # Extend default session to reduce near-immediate expiry issues
+            exp_time = now + timedelta(seconds=max(self.session_ttl, 86400))
+            ttl = max(self.session_ttl, 86400)
         
         # Create JWT token
         token_payload = {
@@ -289,8 +290,8 @@ class AuthService:
             'role': user.role.value,
             'session_id': session_id,
             'ip_address': ip_address,
-            'iat': now.timestamp(),
-            'exp': exp_time.timestamp()
+            'iat': int(now.timestamp()),
+            'exp': int(exp_time.timestamp())
         }
         
         try:
@@ -350,13 +351,18 @@ class AuthService:
                     if not session_id:
                         return None
                     
-                    session_key = f"{self.session_prefix}{session_id.decode()}"
+                    # Handle bytes or str from Redis
+                    if isinstance(session_id, (bytes, bytearray)):
+                        session_id = session_id.decode()
+                    session_key = f"{self.session_prefix}{session_id}"
                     session_data = self.redis.get(session_key)
                     
                     if not session_data:
                         return None
                     
-                    session_info = json.loads(session_data.decode())
+                    if isinstance(session_data, (bytes, bytearray)):
+                        session_data = session_data.decode()
+                    session_info = json.loads(session_data)
                     user_data = session_info['user']
                     
                     return AuthenticatedUser(
@@ -406,6 +412,53 @@ class AuthService:
         if not token:
             return False
         
+    def refresh_token(self, token: str) -> Optional[Dict[str, Any]]:
+        """Refresh an existing token by creating a new session for the same user"""
+        try:
+            # Try to get user from existing session via Redis
+            user: Optional[AuthenticatedUser] = None
+            remember_me = False
+            ip_address = self._get_client_ip()
+
+            if self.redis:
+                try:
+                    token_key = f"{self.token_prefix}{token}"
+                    session_id = self.redis.get(token_key)
+                    if session_id:
+                        session_key = f"{self.session_prefix}{session_id}"
+                        session_data_raw = self.redis.get(session_key)
+                        if session_data_raw:
+                            session_info = json.loads(session_data_raw)
+                            user_data = session_info.get('user', {})
+                            remember_me = session_info.get('remember_me', False)
+                            ip_address = session_info.get('ip_address', ip_address)
+                            user = AuthenticatedUser(
+                                id=user_data.get('id', 'admin'),
+                                email=user_data.get('email', ''),
+                                name=user_data.get('name', 'Administrator'),
+                                role=UserRole(user_data.get('role', 'admin')),
+                                last_login=datetime.utcnow(),
+                                login_count=user_data.get('login_count', 0),
+                                failed_attempts=user_data.get('failed_attempts', 0)
+                            )
+                except Exception:
+                    pass
+
+            # Fallback: validate JWT and extract user info
+            if not user:
+                user_obj = self.validate_token(token)
+                if not user_obj:
+                    return None
+                user = user_obj
+
+            # Issue new session and token
+            return self._create_secure_session(user, remember_me, ip_address)
+
+        except Exception as e:
+            if has_app_context():
+                current_app.logger.error(f"Token refresh error: {e}")
+            return None
+
         try:
             if self.redis:
                 # Remove from Redis
@@ -413,7 +466,9 @@ class AuthService:
                 session_id = self.redis.get(token_key)
                 
                 if session_id:
-                    session_key = f"{self.session_prefix}{session_id.decode()}"
+                    if isinstance(session_id, (bytes, bytearray)):
+                        session_id = session_id.decode()
+                    session_key = f"{self.session_prefix}{session_id}"
                     self.redis.delete(session_key)
                     self.redis.delete(token_key)
                     
@@ -439,13 +494,17 @@ class AuthService:
             if not session_id:
                 return None
             
-            session_key = f"{self.session_prefix}{session_id.decode()}"
+            if isinstance(session_id, (bytes, bytearray)):
+                session_id = session_id.decode()
+            session_key = f"{self.session_prefix}{session_id}"
             session_data = self.redis.get(session_key)
             
             if not session_data:
                 return None
             
-            return json.loads(session_data.decode())
+            if isinstance(session_data, (bytes, bytearray)):
+                session_data = session_data.decode()
+            return json.loads(session_data)
             
         except Exception as e:
             if has_app_context():

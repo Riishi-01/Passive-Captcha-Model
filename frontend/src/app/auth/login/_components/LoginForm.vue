@@ -55,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
@@ -82,43 +82,32 @@ const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
 }
 
-// Watch for authentication state changes and redirect
-watch(() => authStore.isAuthenticated, (newValue, oldValue) => {
-  if (import.meta.env.DEV) {
-    console.log('[LOGIN DEBUG] Auth state watcher triggered - old:', oldValue, 'new:', newValue)
-  }
-  if (newValue) {
-    if (import.meta.env.DEV) {
-      console.log('[LOGIN DEBUG] Authentication state changed to true, redirecting to dashboard')
-    }
-    router.push('/dashboard').then(() => {
-      if (import.meta.env.DEV) {
-        console.log('[LOGIN DEBUG] Router.push completed')
-      }
-    }).catch((error) => {
-      console.error('[LOGIN DEBUG] Router.push failed:', error)
-    })
-  }
-}, { immediate: false })
-
 const handleLogin = async () => {
   if (!password.value.trim()) return
 
   isLoading.value = true
   error.value = ''
+  
+  console.log('🔐 Starting login process...')
 
   try {
     const result = await authStore.login(password.value)
     
+    console.log('🔐 Login result:', { success: result.success, error: result.error })
+    
     if (result.success) {
-      if (import.meta.env.DEV) {
-        console.log('[LOGIN DEBUG] Login successful, auth state:', {
-          token: !!authStore.token,
-          user: !!authStore.user,
-          isAuthenticated: authStore.isAuthenticated
-        })
-      }
-
+      console.log('✅ Login successful, checking auth state...')
+      
+      // Wait a moment to ensure auth state is fully set
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      console.log('✅ Auth state after delay:', {
+        isAuthenticated: authStore.isAuthenticated,
+        hasToken: !!authStore.token,
+        hasUser: !!authStore.user,
+        initialized: authStore.initialized
+      })
+      
       // Success notification
       appStore.addNotification({
         type: 'success',
@@ -126,23 +115,27 @@ const handleLogin = async () => {
         message: 'Successfully signed in to your dashboard'
       })
 
-      // Navigation is handled by the watcher below
-      if (import.meta.env.DEV) {
-        console.log('[LOGIN DEBUG] Login successful, navigation will be handled by auth watcher')
-      }
+      // Direct navigation to dashboard using replace to avoid back button issues
+      console.log('🔄 Navigating to dashboard...')
+      await router.replace('/dashboard')
+      console.log('✅ Navigation complete')
     } else {
+      console.error('❌ Login failed:', result.error)
       error.value = result.error || 'Login failed. Please check your password.'
-      // Clear password on error
       password.value = ''
     }
   } catch (err: any) {
-    console.error('Login exception:', err)
+    console.error('💥 Login exception:', err)
+    console.error('Exception details:', {
+      message: err.message,
+      stack: err.stack,
+      response: err.response?.data
+    })
     error.value = err.message || 'Login failed. Please check your password.'
-    
-    // Clear password on error
     password.value = ''
   } finally {
     isLoading.value = false
+    console.log('🔐 Login process complete')
   }
 }
 </script>

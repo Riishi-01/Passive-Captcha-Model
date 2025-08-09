@@ -160,10 +160,24 @@ class ApiService {
     // Response interceptor for error handling
     this.axiosInstance.interceptors.response.use(
       (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          // Token expired or invalid
-          localStorage.removeItem('admin_token')
+      async (error) => {
+        const originalRequest: any = error.config || {}
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true
+          try {
+            const { useAuthStore } = await import('@/stores/auth')
+            const authStore = useAuthStore()
+            const refreshed = await authStore.refreshToken()
+            if (refreshed && authStore.token) {
+              originalRequest.headers = originalRequest.headers || {}
+              originalRequest.headers['Authorization'] = `Bearer ${authStore.token}`
+              return this.axiosInstance(originalRequest)
+            }
+          } catch (e) {
+            // fallthrough to logout below
+          }
+          // Refresh failed: clear and redirect
+          try { localStorage.removeItem('admin_token') } catch {}
           window.location.href = '/login'
         }
         return Promise.reject(error)

@@ -12,15 +12,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 def require_admin_auth(f):
-    """
-    Unified admin authentication decorator
-    Replaces all scattered @require_auth and @require_admin_auth decorators
-    """
+    """Admin authentication decorator using centralized AuthService"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Get authorization header
         auth_header = request.headers.get('Authorization', '')
-        
+
         if not auth_header.startswith('Bearer '):
             return jsonify({
                 'success': False,
@@ -29,8 +25,7 @@ def require_admin_auth(f):
                     'message': 'Authorization header with Bearer token required'
                 }
             }), 401
-        
-        # Extract token
+
         token = auth_header.replace('Bearer ', '', 1).strip()
         if not token:
             return jsonify({
@@ -40,14 +35,22 @@ def require_admin_auth(f):
                     'message': 'Token cannot be empty'
                 }
             }), 401
-        
-        # Validate token using unified auth service
+
         try:
-            from app.services.auth_service import unified_auth_service
-            
-            # Validate JWT token
-            user_data = unified_auth_service.validate_jwt_token(token)
-            if not user_data:
+            from app.services import get_auth_service
+            auth_service = get_auth_service()
+
+            if not auth_service:
+                return jsonify({
+                    'success': False,
+                    'error': {
+                        'code': 'AUTH_SERVICE_UNAVAILABLE',
+                        'message': 'Authentication service not available'
+                    }
+                }), 503
+
+            user = auth_service.validate_token(token)
+            if not user:
                 return jsonify({
                     'success': False,
                     'error': {
@@ -55,9 +58,8 @@ def require_admin_auth(f):
                         'message': 'Token validation failed'
                     }
                 }), 401
-            
-            # Check admin role
-            if user_data.get('role') != 'admin':
+
+            if getattr(user, 'role', None) and getattr(user.role, 'value', None) != 'admin':
                 return jsonify({
                     'success': False,
                     'error': {
@@ -65,10 +67,13 @@ def require_admin_auth(f):
                         'message': 'Admin access required'
                     }
                 }), 403
-            
-            # Add user data to request context
-            request.current_user = user_data
-            
+
+            request.current_user = user.to_dict() if hasattr(user, 'to_dict') else {
+                'id': getattr(user, 'id', 'admin'),
+                'email': getattr(user, 'email', 'admin@passive-captcha.com'),
+                'role': getattr(user.role, 'value', 'admin') if getattr(user, 'role', None) else 'admin'
+            }
+
         except Exception as e:
             logger.error(f"Auth validation error: {str(e)}")
             return jsonify({
@@ -78,10 +83,9 @@ def require_admin_auth(f):
                     'message': 'Authentication failed'
                 }
             }), 401
-        
-        # Proceed with original function
+
         return f(*args, **kwargs)
-    
+
     return decorated_function
 
 # Alias for backward compatibility

@@ -1,7 +1,13 @@
+/**
+ * Simplified Authentication Store - Race Condition Free
+ * Clean, reliable implementation without browser compatibility complexity
+ */
+
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import axios from 'axios'
+import { ref, computed, watch } from 'vue'
+import axios from '@/utils/axios-interceptors'
 import { jwtDecode } from 'jwt-decode'
+import { API_BASE, API_ENDPOINTS, API_CONFIG } from '@/config/api'
 
 interface User {
   id: string
@@ -17,351 +23,317 @@ interface JWTPayload {
   user_id: string
   email: string
   role: string
-  session_id: string
-  ip_address: string
-  sub?: string
   name?: string
 }
 
+interface LoginResult {
+  success: boolean
+  error?: string
+}
+
 export const useAuthStore = defineStore('auth', () => {
-  // State
+  // State - Single source of truth
   const token = ref<string | null>(null)
   const user = ref<User | null>(null)
   const isLoading = ref(false)
   const initialized = ref(false)
 
-  // Getters
+  // Watch for any changes to token/user and log them
+  watch([token, user], ([newToken, newUser], [oldToken, oldUser]) => {
+    console.log('🔍 Auth state changed:', {
+      tokenChanged: newToken !== oldToken,
+      userChanged: newUser !== oldUser,
+      newToken: newToken ? 'EXISTS' : 'NULL',
+      newUser: newUser ? 'EXISTS' : 'NULL',
+      oldToken: oldToken ? 'EXISTS' : 'NULL',
+      oldUser: oldUser ? 'EXISTS' : 'NULL'
+    })
+    if (!newToken && oldToken) {
+      console.error('🚨 TOKEN WAS CLEARED!')
+      console.trace()
+    }
+    if (!newUser && oldUser) {
+      console.error('🚨 USER WAS CLEARED!')
+      console.trace()
+    }
+  }, { immediate: false })
+
+  // Computed - Reactive authentication status
   const isAuthenticated = computed(() => {
-    const result = !!token.value && !!user.value
+    const result = !!(token.value && user.value)
+    console.log('🔐 isAuthenticated computed:', {
+      result,
+      hasToken: !!token.value,
+      hasUser: !!user.value,
+      tokenValue: token.value ? 'EXISTS' : 'NULL',
+      userValue: user.value ? 'EXISTS' : 'NULL'
+    })
     return result
   })
-  const isAdmin = computed(() => user.value?.role === 'admin')
 
-  // Browser detection for compatibility
-  function detectBrowser(): string {
-    const userAgent = navigator.userAgent
-    if (userAgent.includes('Firefox')) return 'firefox'
-    if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) return 'safari'
-    if (userAgent.includes('Edge')) return 'edge'
-    if (userAgent.includes('Chrome')) return 'chrome'
-    return 'unknown'
-  }
+  const isAdmin = computed(() => {
+    return user.value?.role === 'admin'
+  })
 
-  // Actions
-  async function login(password: string) {
+
+  // Authentication Actions
+  async function login(password: string): Promise<LoginResult> {
+    if (isLoading.value) {
+      return { success: false, error: 'Login already in progress' }
+    }
+    
+    // Clear any existing auth state first
+    clearAuth()
+    
     try {
       isLoading.value = true
       
-      const API_BASE = import.meta.env.VITE_API_URL || (
-        window.location.port === '5002' 
-          ? `${window.location.protocol}//${window.location.host}`
-          : 'http://localhost:5002'
-      )
-      
-      // Browser-specific request configuration
-      const browser = detectBrowser()
-      const requestConfig = {
+      const response = await axios.post(`${API_BASE}${API_ENDPOINTS.ADMIN_LOGIN}`, {
+        password
+      }, {
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          // Removed User-Agent - browsers don't allow setting this header
-          // Firefox-specific headers
-          ...(browser === 'firefox' && {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }),
-          // Safari-specific headers
-          ...(browser === 'safari' && {
-            'X-Requested-With': 'XMLHttpRequest'
-          })
+          'Accept': 'application/json'
         },
-        withCredentials: true,
-        timeout: 30000 // 30 second timeout for all browsers
-      }
-      
-      const response = await axios.post(`${API_BASE}/admin/login`, {
-        password
-      }, requestConfig)
+        withCredentials: API_CONFIG.WITH_CREDENTIALS,
+        timeout: API_CONFIG.TIMEOUT
+      })
 
-      if (import.meta.env.DEV) {
-        console.log('[AUTH DEBUG] Full login response:', response.data)
-        console.log('[AUTH DEBUG] Checking token locations:')
-        console.log('[AUTH DEBUG] - response.data.token:', response.data.token ? 'EXISTS' : 'NOT FOUND')
-        console.log('[AUTH DEBUG] - response.data.data?.token:', response.data.data?.token ? 'EXISTS' : 'NOT FOUND')
+      // Extract token from response - backend returns nested structure
+      const authToken = response.data?.data?.token || response.data?.token
+      
+      if (!authToken) {
+        console.error('Token extraction failed. Response data:', response.data)
+        return { success: false, error: 'No token received from server' }
+      }
+
+      // Set authentication state synchronously
+      await setAuthState(authToken)
+      
+      // Double-check auth state is properly set
+      console.log('🔐 Auth state after setAuthState:', {
+        isAuthenticated: isAuthenticated.value,
+        hasToken: !!token.value,
+        hasUser: !!user.value,
+        tokenLength: token.value?.length || 0,
+        userId: user.value?.id || 'none'
+      })
+      
+      // Verify token server-side to ensure session is valid
+      try {
+        await axios.get(`${API_BASE}/admin/verify-token`, {
+          headers: { Authorization: `Bearer ${authToken}` }
+        })
+      } catch (e) {
+        console.warn('Server-side token verification failed immediately after login:', e)
       }
       
-      const authToken = response.data.token || response.data.data?.token
-      if (import.meta.env.DEV) {
-        console.log('[AUTH DEBUG] Final extracted token:', authToken ? authToken.substring(0, 20) + '...' : 'NULL/UNDEFINED')
-      }
+      return { success: true }
       
-      if (authToken) {
-        if (import.meta.env.DEV) {
-          console.log('[AUTH DEBUG] Setting token...')
-        }
-        setToken(authToken)
-        if (import.meta.env.DEV) {
-          console.log('[AUTH DEBUG] Token set, fetching user...')
-        }
-        await fetchUser()
-        if (import.meta.env.DEV) {
-          console.log('[AUTH DEBUG] User fetched, final auth state - token:', !!token.value, 'user:', !!user.value)
-        }
-        return { success: true }
-      }
-      
-      return { success: false, error: 'Invalid credentials' }
     } catch (error: any) {
       console.error('Login error:', error)
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      })
       
-      // Browser-specific error handling
       let errorMessage = 'Login failed'
-      if (error.code === 'NETWORK_ERROR') {
-        errorMessage = 'Network error - please check your connection'
-      } else if (error.response?.status === 401) {
+      if (error.response?.status === 401) {
         errorMessage = 'Invalid password'
       } else if (error.response?.status === 403) {
         errorMessage = 'Access denied'
       } else if (error.response?.data?.error?.message) {
         errorMessage = error.response.data.error.message
+      } else if (error.message) {
+        errorMessage = error.message
       }
       
-      return { 
-        success: false, 
-        error: errorMessage 
-      }
+      return { success: false, error: errorMessage }
+      
     } finally {
       isLoading.value = false
     }
   }
 
-  async function logout() {
+  async function setAuthState(authToken: string): Promise<void> {
     try {
-      // Call logout endpoint if available
+      // Decode token for user info only - let server handle expiry validation
+      const decoded = jwtDecode<JWTPayload>(authToken)
+      
+      console.log('Token validation:', {
+        tokenIssued: new Date(decoded.iat * 1000).toISOString(),
+        tokenExpires: new Date(decoded.exp * 1000).toISOString(),
+        currentTime: new Date().toISOString(),
+        timeUntilExpiry: Math.round((decoded.exp * 1000 - Date.now()) / 1000) + ' seconds'
+      })
+      
+      // Set token first
+      token.value = authToken
+      
+      // Create user object from JWT payload
+      user.value = {
+        id: decoded.user_id || 'admin',
+        email: decoded.email || 'admin@passivecaptcha.com',
+        name: decoded.name || 'Administrator',
+        role: decoded.role || 'admin',
+        lastLogin: new Date()
+      }
+
+      // Persist token
+      try {
+        localStorage.setItem('admin_token', authToken)
+      } catch (error) {
+        console.warn('Could not save token to localStorage:', error)
+      }
+
+      // Set axios default header for future requests
+      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`
+      
+      // Mark store as initialized to avoid restore race during navigation
+      initialized.value = true
+      
+    } catch (error) {
+      console.error('Failed to set auth state:', error)
+      clearAuth()
+      throw error
+    }
+  }
+
+  function clearAuth(): void {
+    console.error('🚨 clearAuth() called! Stack trace:')
+    console.trace()
+    
+    token.value = null
+    user.value = null
+    
+    // Clear stored token
+    try {
+      localStorage.removeItem('admin_token')
+    } catch (error) {
+      console.warn('Could not clear localStorage:', error)
+    }
+    
+    // Remove axios header
+    delete axios.defaults.headers.common['Authorization']
+    initialized.value = false
+  }
+
+  async function logout(reason: string = 'manual'): Promise<void> {
+    console.error(`🚨 logout() called due to: ${reason}! Stack trace:`)
+    console.trace()
+    
+    try {
       if (token.value) {
-        await axios.post('/api/admin/logout', {}, {
+        await axios.post(`${API_BASE}${API_ENDPOINTS.ADMIN_LOGOUT}`, {}, {
           headers: { Authorization: `Bearer ${token.value}` }
         })
       }
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
-      // Clear local state regardless of API call result
       clearAuth()
     }
   }
 
-  function setToken(authToken: string) {
-    if (import.meta.env.DEV) {
-      console.log('[AUTH DEBUG] setToken called with:', authToken ? authToken.substring(0, 20) + '...' : 'NULL/UNDEFINED')
-    }
-    token.value = authToken
-    
-    // Cross-browser localStorage with fallback
-    try {
-      localStorage.setItem('admin_token', authToken)
-      if (import.meta.env.DEV) {
-        console.log('[AUTH DEBUG] Token saved to localStorage successfully')
-        // Verify it was saved
-        const saved = localStorage.getItem('admin_token')
-        console.log('[AUTH DEBUG] Verification - token in localStorage:', saved ? 'EXISTS' : 'NOT FOUND')
-      }
-    } catch (error) {
-      console.warn('localStorage not available, using sessionStorage:', error)
-      try {
-        sessionStorage.setItem('admin_token', authToken)
-        if (import.meta.env.DEV) {
-          console.log('[AUTH DEBUG] Token saved to sessionStorage')
-          const saved = sessionStorage.getItem('admin_token')
-          console.log('[AUTH DEBUG] Verification - token in sessionStorage:', saved ? 'EXISTS' : 'NOT FOUND')
-        }
-      } catch (sessionError) {
-        console.warn('sessionStorage not available, token will not persist:', sessionError)
-      }
+  async function restoreSession(): Promise<void> {
+    if (initialized.value) {
+      console.log('🔄 Session already initialized, skipping restoration')
+      return // Prevent multiple restoration calls
     }
     
-    // Set default authorization header with browser-compatible format
-    axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`
-    
-    // Additional headers for cross-browser compatibility
-    axios.defaults.headers.common['Accept'] = 'application/json'
-    axios.defaults.headers.common['Content-Type'] = 'application/json'
-    
-    if (import.meta.env.DEV) {
-      console.log('[AUTH DEBUG] Token setup complete')
-    }
-  }
-
-  function clearAuth() {
-    token.value = null
-    user.value = null
-    
-    // Cross-browser token cleanup
-    try {
-      localStorage.removeItem('admin_token')
-    } catch (error) {
-      console.warn('localStorage cleanup failed:', error)
-    }
-    
-    try {
-      sessionStorage.removeItem('admin_token')
-    } catch (error) {
-      console.warn('sessionStorage cleanup failed:', error)
-    }
-    
-    // Remove authorization headers
-    delete axios.defaults.headers.common['Authorization']
-    delete axios.defaults.headers.common['Accept']
-    delete axios.defaults.headers.common['Content-Type']
-  }
-
-  async function fetchUser() {
-    if (!token.value) {
-      if (import.meta.env.DEV) {
-        console.log('[AUTH DEBUG] fetchUser called but no token available')
-      }
+    // If we already have a valid auth state, don't restore from storage
+    if (token.value && user.value && !isTokenExpired()) {
+      console.log('🔄 Valid session already exists, marking as initialized')
+      initialized.value = true
       return
     }
-
-    try {
-      const decoded = jwtDecode<JWTPayload>(token.value)
-      if (import.meta.env.DEV) {
-        console.log('[AUTH DEBUG] Decoded JWT in fetchUser:', decoded)
-      }
-      
-      // Check if token is expired
-      if (decoded.exp * 1000 < Date.now()) {
-        if (import.meta.env.DEV) {
-          console.log('[AUTH DEBUG] Token expired in fetchUser, clearing auth')
-        }
-        clearAuth()
-        return
-      }
-
-      // For the admin system, create user object from JWT payload
-      // The JWT contains user_id, email, role directly
-      user.value = {
-        id: decoded.user_id || decoded.sub || 'admin',
-        email: decoded.email || 'admin@passivecaptcha.com',
-        name: decoded.name || 'Administrator',
-        role: decoded.role || 'admin',
-        lastLogin: new Date()
-      }
-      if (import.meta.env.DEV) {
-        console.log('[AUTH DEBUG] User set in fetchUser:', user.value)
-        console.log('[AUTH DEBUG] isAuthenticated after fetchUser:', !!token.value && !!user.value)
-      }
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('[AUTH DEBUG] Failed to decode token:', error)
-      }
-      clearAuth()
-    }
-  }
-
-  async function restoreSession() {
-    // Cross-browser token restoration with fallback
-    let savedToken: string | null = null
     
-    if (import.meta.env.DEV) {
-      console.log('[AUTH DEBUG] Restoring session...')
-    }
+    // Get stored token
+    let savedToken: string | null = null
     
     try {
       savedToken = localStorage.getItem('admin_token')
-      if (import.meta.env.DEV) {
-        console.log('[AUTH DEBUG] Token from localStorage:', savedToken ? 'Found' : 'Not found')
+    } catch (error) {
+      console.warn('Could not access localStorage:', error)
+      initialized.value = true
+      return
+    }
+    
+    if (!savedToken) {
+      initialized.value = true
+      return
+    }
+    
+    // Check token expiry first (client-side optimization)
+    try {
+      const decoded = jwtDecode<JWTPayload>(savedToken)
+      if (Math.floor(Date.now() / 1000) >= decoded.exp) {
+        console.log('Stored token expired, clearing')
+        clearAuth()
+        initialized.value = true
+        return
       }
     } catch (error) {
-      console.warn('localStorage not available, trying sessionStorage:', error)
-      try {
-        savedToken = sessionStorage.getItem('admin_token')
-        if (import.meta.env.DEV) {
-          console.log('[AUTH DEBUG] Token from sessionStorage:', savedToken ? 'Found' : 'Not found')
-        }
-      } catch (sessionError) {
-        console.warn('sessionStorage not available:', sessionError)
-      }
+      console.warn('Invalid stored token format, clearing:', error)
+      clearAuth()
+      initialized.value = true
+      return
     }
     
-    if (savedToken) {
-      // Validate token format before setting
-      try {
-        const decoded = jwtDecode<JWTPayload>(savedToken)
-        if (import.meta.env.DEV) {
-          console.log('[AUTH DEBUG] Decoded JWT:', decoded)
-        }
-        
-        const now = Date.now()
-        const expTime = decoded.exp * 1000
-        if (import.meta.env.DEV) {
-          console.log('[AUTH DEBUG] Current time:', now, 'Token expires:', expTime, 'Valid:', expTime > now)
-        }
-        
-        // Check if token is not expired
-        if (expTime > now) {
-          if (import.meta.env.DEV) {
-            console.log('[AUTH DEBUG] Token valid, setting user...')
-          }
-          setToken(savedToken)
-          await fetchUser()
-          if (import.meta.env.DEV) {
-            console.log('[AUTH DEBUG] User set, authenticated:', !!user.value)
-          }
-        } else {
-          if (import.meta.env.DEV) {
-            console.info('[AUTH DEBUG] Stored token expired, clearing auth')
-          }
-          clearAuth()
-        }
-      } catch (decodeError) {
-        if (import.meta.env.DEV) {
-          console.warn('[AUTH DEBUG] Invalid stored token, clearing auth:', decodeError)
-        }
-        clearAuth()
-      }
-    } else {
-      if (import.meta.env.DEV) {
-        console.log('[AUTH DEBUG] No saved token found')
-      }
-    }
+    // Set axios header immediately to prevent unauthenticated requests
+    axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`
     
-    initialized.value = true
-    if (import.meta.env.DEV) {
-      console.log('[AUTH DEBUG] Session restore complete:')
-      console.log('[AUTH DEBUG] - Token present:', !!token.value)
-      console.log('[AUTH DEBUG] - User present:', !!user.value) 
-      console.log('[AUTH DEBUG] - isAuthenticated:', !!token.value && !!user.value)
-      if (user.value) {
-        console.log('[AUTH DEBUG] - User details:', user.value)
-      }
+    try {
+      // Validate token with server
+      await axios.get(`${API_BASE}/admin/verify-token`, {
+        headers: { Authorization: `Bearer ${savedToken}` }
+      })
+      await setAuthState(savedToken)
+    } catch (error) {
+      console.warn('Server rejected stored token, clearing:', error)
+      clearAuth()
+    } finally {
+      initialized.value = true
     }
   }
 
-  function isTokenExpired(): boolean {
+  function isTokenExpired(bufferSeconds = 300): boolean {
     if (!token.value) return true
     
     try {
       const decoded = jwtDecode<JWTPayload>(token.value)
-      return decoded.exp * 1000 < Date.now()
-    } catch {
+      const currentTime = Math.floor(Date.now() / 1000)
+      const expiryTime = decoded.exp - bufferSeconds
+      
+      const isExpired = currentTime >= expiryTime
+      if (isExpired) {
+        console.log('Token expired:', {
+          currentTime: new Date(currentTime * 1000).toISOString(),
+          expiryTime: new Date(decoded.exp * 1000).toISOString(),
+          bufferSeconds
+        })
+      }
+      
+      return isExpired
+    } catch (error) {
+      console.error('Error checking token expiry:', error)
       return true
     }
   }
 
-  async function refreshToken() {
+  async function refreshToken(): Promise<boolean> {
     if (!token.value) return false
 
     try {
-      const response = await axios.post('/api/admin/refresh', {}, {
+      const response = await axios.post(`${API_BASE}${API_ENDPOINTS.ADMIN_REFRESH}`, {}, {
         headers: { Authorization: `Bearer ${token.value}` }
       })
 
-      const { token: newToken } = response.data
-      
+      const newToken = response.data?.token || response.data?.data?.token
       if (newToken) {
-        setToken(newToken)
-        await fetchUser()
+        await setAuthState(newToken)
         return true
       }
     } catch (error) {
@@ -372,6 +344,19 @@ export const useAuthStore = defineStore('auth', () => {
     return false
   }
 
+  // TEMPORARY: Disable auto session restoration for debugging
+  console.log('🚫 Auto session restoration DISABLED for debugging')
+  /*
+  // Initialize store - restore session on creation (but not if we're on login page)
+  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    restoreSession().catch(error => {
+      console.warn('Session restoration failed:', error)
+    })
+  } else {
+    console.log('⏭️ Skipping auto session restoration on login page')
+  }
+  */
+
   return {
     // State
     token,
@@ -379,18 +364,16 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading,
     initialized,
     
-    // Getters
+    // Computed
     isAuthenticated,
     isAdmin,
     
     // Actions
     login,
     logout,
-    setToken,
     clearAuth,
-    fetchUser,
     restoreSession,
     isTokenExpired,
     refreshToken
   }
-}) 
+})

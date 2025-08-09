@@ -15,14 +15,15 @@ admin_bp = Blueprint('admin', __name__)
 
 
 def verify_admin_token(token):
-    """
-    Verify admin authentication token
-    """
+    """Deprecated: Use AuthService.validate_token instead"""
     try:
-        secret = current_app.config.get('ADMIN_SECRET', 'admin-secret-key')
-        payload = jwt.decode(token, secret, algorithms=['HS256'])
-        return payload.get('admin', False)
-    except:
+        from app.services import get_auth_service
+        auth_service = get_auth_service()
+        if not auth_service:
+            return False
+        user = auth_service.validate_token(token)
+        return bool(user and getattr(user, 'role', None) and user.role.value == 'admin')
+    except Exception:
         return False
 
 
@@ -48,7 +49,7 @@ def require_admin_auth(f):
 
         # Use robust authentication service instead of old verify_admin_token
         try:
-            from app.services.auth_service import get_auth_service
+            from app.services import get_auth_service
             auth_service = get_auth_service()
             
             if not auth_service:
@@ -59,9 +60,9 @@ def require_admin_auth(f):
                     }
                 }), 503
 
-            # Validate JWT token
-            payload = auth_service.validate_jwt_token(token)
-            if not payload:
+            # Validate token
+            user = auth_service.validate_token(token)
+            if not user:
                 return jsonify({
                     'error': {
                         'code': 'INVALID_TOKEN',
@@ -70,8 +71,13 @@ def require_admin_auth(f):
                 }), 401
 
             # Get session
-            session = auth_service.validate_session(payload['session_id'])
-            if not session:
+            session = None
+            try:
+                # optional if using Redis sessions
+                session = auth_service.get_session_info(token)
+            except Exception:
+                session = None
+            if session is None:
                 return jsonify({
                     'error': {
                         'code': 'SESSION_EXPIRED',
@@ -81,9 +87,9 @@ def require_admin_auth(f):
 
             # Add user to request context
             request.current_user = {
-                'user_id': session.user_id,
-                'email': session.email,
-                'role': session.role.value
+                'id': getattr(user, 'id', 'admin'),
+                'email': getattr(user, 'email', 'admin@passive-captcha.com'),
+                'role': getattr(user.role, 'value', 'admin')
             }
             request.current_session = session
             
