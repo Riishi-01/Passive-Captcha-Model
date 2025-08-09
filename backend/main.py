@@ -122,7 +122,7 @@ def create_app(config_name='production'):
         'DATABASE_URL': os.getenv('DATABASE_URL', 'sqlite:///passive_captcha_production.db'),
         'REDIS_URL': os.getenv('REDIS_URL', 'redis://localhost:6379/0'),
         'CONFIDENCE_THRESHOLD': float(os.getenv('CONFIDENCE_THRESHOLD', '0.6')),
-        'ADMIN_SECRET': os.getenv('ADMIN_SECRET', None),
+        'ADMIN_SECRET': os.getenv('ADMIN_SECRET', 'admin123'),
         'RATE_LIMIT_REQUESTS': int(os.getenv('RATE_LIMIT_REQUESTS', '1000')),
         'API_BASE_URL': os.getenv('API_BASE_URL', os.getenv('RENDER_EXTERNAL_URL', 'http://localhost:5002')),
         'WEBSOCKET_URL': os.getenv('WEBSOCKET_URL', os.getenv('RENDER_EXTERNAL_URL', 'ws://localhost:5002').replace('https://', 'wss://').replace('http://', 'ws://')),
@@ -300,24 +300,9 @@ def create_app(config_name='production'):
     except Exception as e:
         app.logger.error(f"Failed to register admin API: {e}")
 
-    # Register analytics and monitoring endpoints (non-conflicting)
-    try:
-        from app.admin.analytics_endpoints import analytics_bp
-        from app.admin.alerts_endpoints import alerts_bp
-        from app.admin.logs_endpoints import logs_bp
-        from app.admin.ml_metrics_endpoints import ml_metrics_bp
-        from app.admin.script_management import script_mgmt_bp
-
-        app.register_blueprint(analytics_bp)
-        app.register_blueprint(alerts_bp)
-        app.register_blueprint(logs_bp)
-        app.register_blueprint(ml_metrics_bp)
-        app.register_blueprint(script_mgmt_bp)
-
-        # Additional authentication endpoints handled by existing services
-        app.logger.info("Analytics, monitoring, and script management endpoints registered")
-    except Exception as e:
-        app.logger.warning(f"Failed to register analytics endpoints: {e}")
+    # Note: Analytics and monitoring endpoints are now consolidated in the unified admin_bp
+    # No need to register separate analytics blueprints to avoid conflicts
+    app.logger.info("Using unified admin endpoints instead of separate analytics blueprints")
 
     # Test fresh auth service creation
     @app.route('/debug/fresh-auth', methods=['POST'])
@@ -368,15 +353,26 @@ def create_app(config_name='production'):
             admin_secret = app.config.get('ADMIN_SECRET')
             password_match = password == admin_secret
 
-            # Try authentication
-            result = auth_service.authenticate_admin(password)
+            # Check auth service password
+            auth_service_password_match = password == auth_service.admin_secret
+
+            try:
+                # Try authentication
+                result = auth_service.authenticate_admin(password)
+                auth_success = result is not None
+            except Exception as auth_error:
+                result = None
+                auth_success = False
+                auth_error_msg = str(auth_error)
 
             return jsonify({
                 'received_password': password,
-                'expected_password': admin_secret,
-                'password_match': password_match,
-                'auth_result': result is not None,
+                'app_config_admin_secret': admin_secret,
                 'auth_service_admin_secret': auth_service.admin_secret,
+                'password_match_with_config': password_match,
+                'password_match_with_auth_service': auth_service_password_match,
+                'auth_result_success': auth_success,
+                'auth_error': auth_error_msg if 'auth_error_msg' in locals() else None,
                 'full_result': result
             })
 

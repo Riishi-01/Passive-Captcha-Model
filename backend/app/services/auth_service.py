@@ -88,7 +88,7 @@ class AuthService:
         self.jwt_algorithm = 'HS256'
         
         # Admin credentials - CRITICAL: This fixes the missing admin_secret issue
-        self.admin_secret = os.getenv('ADMIN_SECRET', 'Admin123')
+        self.admin_secret = os.getenv('ADMIN_SECRET', 'admin123')
         self.admin_email = os.getenv('ADMIN_EMAIL', 'admin@passive-captcha.com')
         self.admin_password_hash = self._generate_default_admin_hash()
         
