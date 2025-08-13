@@ -176,15 +176,26 @@ export default function WebsitesView() {
       {/* Error Message */}
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
-          <div className="flex">
-            <div className="ml-3">
-              <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
-              <button
-                onClick={clearError}
-                className="mt-2 text-sm text-red-600 hover:text-red-500"
-              >
-                Dismiss
-              </button>
+          <div className="flex items-start">
+            <div className="ml-3 flex-1">
+              <p className="text-sm text-red-700 dark:text-red-400 font-medium">{error}</p>
+              <p className="text-xs text-red-600/80 dark:text-red-300/80 mt-1">
+                Tip: Ensure you are logged in (Admin) and the backend is reachable.
+              </p>
+              <div className="mt-2 flex space-x-3">
+                <button
+                  onClick={clearError}
+                  className="text-sm text-red-600 hover:text-red-500"
+                >
+                  Dismiss
+                </button>
+                <button
+                  onClick={() => fetchWebsites()}
+                  className="text-sm text-primary-600 hover:text-primary-500"
+                >
+                  Retry
+                </button>
+              </div>
             </div>
           </div>
         </div>

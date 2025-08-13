@@ -13,8 +13,30 @@ export const useWebsitesStore = create((set, get) => ({
     set({ loading: true, error: null })
     try {
       const response = await apiService.getWebsites()
-      // Handle the unified API response format
-      const websites = response.success ? response.data.websites : response
+      // Normalize various backend shapes to a clean list
+      let rawList = []
+      if (response?.success && response?.data?.websites) {
+        rawList = response.data.websites
+      } else if (Array.isArray(response?.websites)) {
+        rawList = response.websites
+      } else if (Array.isArray(response)) {
+        rawList = response
+      }
+
+      const websites = rawList.map((w) => ({
+        id: w.id || w.website_id,
+        name: w.name || w.website_name || 'Untitled',
+        url: w.url || w.domain || w.website_url || '',
+        status: w.status || 'inactive',
+        token: w.token || (w.script_token_info && w.script_token_info.script_token) || w.api_key || '',
+        description: w.description || '',
+        created_at: w.created_at || null,
+        last_activity: w.last_activity || null,
+      })).sort((a, b) => {
+        const ad = a.created_at ? Date.parse(a.created_at) : 0
+        const bd = b.created_at ? Date.parse(b.created_at) : 0
+        return bd - ad
+      })
       set({ 
         websites, 
         loading: false,
@@ -22,7 +44,7 @@ export const useWebsitesStore = create((set, get) => ({
       })
       return websites
     } catch (error) {
-      let errorMessage = 'Failed to fetch websites'
+      let errorMessage = 'Failed to retrieve websites. Please ensure you are logged in and try again.'
       if (error.response?.data) {
         const errorData = error.response.data
         if (errorData.error?.message) {
