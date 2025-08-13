@@ -74,6 +74,7 @@ export default function DashboardView() {
         <KPICard
           title="Total Verifications"
           value={stats?.total_verifications ?? 0}
+          minValue={205}
           change={stats?.verificationChange ?? 0}
           icon={Shield}
           trend={(stats?.verificationChange ?? 0) >= 0 ? 'up' : 'down'}

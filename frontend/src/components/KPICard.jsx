@@ -1,6 +1,6 @@
 import { TrendingUp, TrendingDown } from 'lucide-react'
 
-export default function KPICard({ title, value, change, icon: Icon, trend }) {
+export default function KPICard({ title, value, change, icon: Icon, trend, minValue }) {
   const isPositive = trend === 'up' || (change && change > 0)
   const isNegative = trend === 'down' || (change && change < 0)
 
@@ -12,7 +12,7 @@ export default function KPICard({ title, value, change, icon: Icon, trend }) {
             {title}
           </p>
           <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-            {value}
+            {Math.max(minValue ?? -Infinity, typeof value === 'number' ? value : Number(value) || 0)}
           </p>
           {change !== undefined && (
             <div className={`flex items-center mt-1 text-sm ${
