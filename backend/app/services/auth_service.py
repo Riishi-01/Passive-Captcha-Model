@@ -524,8 +524,7 @@ RobustAuthService = AuthService
 # Global auth service instance
 auth_service = None
 
-
-    def init_auth_service(redis_client: Optional[Any] = None) -> AuthService:
+def init_auth_service(redis_client: Optional[Any] = None) -> AuthService:
     """Initialize the authentication service"""
     global auth_service
     auth_service = AuthService(redis_client)
