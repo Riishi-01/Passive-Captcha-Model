@@ -542,7 +542,7 @@ def register_frontend_routes(app, static_folder):
         """Serve the actual UIDAI Government HTML as main homepage"""
         try:
             # Force serving UIDAI HTML file as the main page (not Vue.js dashboard)
-            uidai_path = os.path.join(os.path.dirname(__file__), '..', 'site', 'Home - Unique Identification Authority of India .html')
+            uidai_path = os.path.join(os.path.dirname(__file__), '..', '..', 'main_frontent', 'Home - UIDAI.html')
             app.logger.info(f"Force serving UIDAI HTML from: {uidai_path}")
             
             # Always try to serve UIDAI first, ignore Vue.js dashboard

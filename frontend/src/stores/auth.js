@@ -78,14 +78,12 @@ export const useAuthStore = create(
         }
 
         try {
+          // Set token first so API calls work
+          set({ token, isAuthenticated: true, error: null })
           await apiService.verifyToken()
-          set({ 
-            isAuthenticated: true, 
-            token,
-            error: null 
-          })
           return true
         } catch (error) {
+          console.warn('Token verification failed:', error)
           localStorage.removeItem('admin_token')
           set({ 
             isAuthenticated: false, 
@@ -93,6 +91,16 @@ export const useAuthStore = create(
             error: null 
           })
           return false
+        }
+      },
+
+      // Initialize auth state from localStorage on app load
+      initializeAuth: () => {
+        const token = localStorage.getItem('admin_token')
+        if (token) {
+          set({ isAuthenticated: true, token, error: null })
+          // Verify token in background
+          get().verifyToken()
         }
       },
 

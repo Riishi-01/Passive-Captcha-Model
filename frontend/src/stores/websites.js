@@ -56,7 +56,16 @@ export const useWebsitesStore = create((set, get) => ({
     set({ loading: true, error: null })
     try {
       const response = await apiService.createWebsite(data)
-      const website = response.success ? response.data.website : response
+      
+      // Handle different response formats
+      let website
+      if (response.success && response.data) {
+        website = response.data.website || response.data
+      } else if (response.data) {
+        website = response.data
+      } else {
+        website = response
+      }
       set((state) => ({
         websites: [...state.websites, website],
         loading: false,

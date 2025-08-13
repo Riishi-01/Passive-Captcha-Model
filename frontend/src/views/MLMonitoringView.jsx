@@ -1,111 +1,104 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '../stores/app'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
-import { Brain, RefreshCw, Play, AlertTriangle, CheckCircle, Zap } from 'lucide-react'
-
-const mockAccuracyData = [
-  { time: '00:00', accuracy: 94.2, precision: 93.8, recall: 94.6 },
-  { time: '04:00', accuracy: 95.1, precision: 94.7, recall: 95.5 },
-  { time: '08:00', accuracy: 93.8, precision: 93.2, recall: 94.4 },
-  { time: '12:00', accuracy: 96.3, precision: 96.0, recall: 96.6 },
-  { time: '16:00', accuracy: 94.9, precision: 94.5, recall: 95.3 },
-  { time: '20:00', accuracy: 95.7, precision: 95.3, recall: 96.1 },
-  { time: '24:00', accuracy: 95.2, precision: 94.9, recall: 95.5 },
-]
-
-const mockPredictionData = [
-  { category: 'Human', confidence: 96.8 },
-  { category: 'Bot', confidence: 89.2 },
-  { category: 'Suspicious', confidence: 92.5 },
-  { category: 'Automated', confidence: 94.1 },
-]
+import { Brain, RefreshCw, AlertTriangle, CheckCircle, Activity, Database, Cpu, TrendingUp, Users, Shield } from 'lucide-react'
+import apiService from '../services/api'
 
 export default function MLMonitoringView() {
   const [loading, setLoading] = useState(false)
-  const [retraining, setRetraining] = useState(false)
+  const [mlHealth, setMlHealth] = useState(null)
+  const [mlMetrics, setMlMetrics] = useState(null)
+  const [recentActivity, setRecentActivity] = useState([])
+  const [stats, setStats] = useState(null)
   const { addNotification } = useAppStore()
 
-  const [modelStatus] = useState({
-    status: 'healthy',
-    lastTrained: '2024-01-15T10:30:00Z',
-    version: 'v2.3.1',
-    accuracy: 95.2,
-    precision: 94.9,
-    recall: 95.5,
-    f1Score: 95.2
-  })
+  useEffect(() => {
+    loadMLData()
+    // Refresh data every 30 seconds
+    const interval = setInterval(loadMLData, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
-  const refreshMetrics = async () => {
+  const loadMLData = async () => {
     setLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      addNotification({
-        type: 'success',
-        message: 'ML metrics refreshed'
-      })
+      // Load ML health
+      try {
+        const healthResponse = await apiService.getMLHealth()
+        setMlHealth(healthResponse)
+      } catch (error) {
+        console.warn('ML Health endpoint issues:', error)
+        setMlHealth({
+          status: 'degraded',
+          message: 'Health check unavailable',
+          model_loaded: false
+        })
+      }
+
+      // Load analytics stats
+      const statsResponse = await apiService.getStats()
+      setStats(statsResponse)
+
+      // Load recent detection activity
+      const activityResponse = await apiService.getChartData('detection', '24h')
+      if (activityResponse.success && activityResponse.data) {
+        setRecentActivity(activityResponse.data.slice(-20)) // Last 20 activities
+      }
+
     } catch (error) {
+      console.error('Failed to load ML data:', error)
       addNotification({
         type: 'error',
-        message: 'Failed to refresh metrics'
+        message: 'Failed to load ML monitoring data'
       })
     } finally {
       setLoading(false)
     }
   }
 
-  const triggerRetrain = async () => {
-    setRetraining(true)
-    try {
-      await new Promise(resolve => setTimeout(resolve, 3000))
-      addNotification({
-        type: 'success',
-        message: 'Model retraining started successfully'
-      })
-    } catch (error) {
-      addNotification({
-        type: 'error',
-        message: 'Failed to start retraining'
-      })
-    } finally {
-      setRetraining(false)
-    }
+  const refreshMetrics = async () => {
+    await loadMLData()
+    addNotification({
+      type: 'success',
+      message: 'ML metrics refreshed'
+    })
   }
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'healthy':
-        return 'text-green-600'
-      case 'warning':
-        return 'text-yellow-600'
-      case 'error':
-        return 'text-red-600'
-      default:
-        return 'text-gray-600'
+      case 'healthy': return 'text-green-600 dark:text-green-400'
+      case 'degraded': return 'text-yellow-600 dark:text-yellow-400'
+      case 'unhealthy': return 'text-red-600 dark:text-red-400'
+      default: return 'text-gray-600 dark:text-gray-400'
     }
   }
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'healthy':
-        return CheckCircle
-      case 'warning':
-      case 'error':
-        return AlertTriangle
-      default:
-        return CheckCircle
+      case 'healthy': return <CheckCircle className="h-5 w-5 text-green-500" />
+      case 'degraded': return <AlertTriangle className="h-5 w-5 text-yellow-500" />
+      case 'unhealthy': return <AlertTriangle className="h-5 w-5 text-red-500" />
+      default: return <Activity className="h-5 w-5 text-gray-500" />
     }
   }
 
-  const StatusIcon = getStatusIcon(modelStatus.status)
+  const formatPercentage = (value) => {
+    return value ? `${(value * 100).toFixed(1)}%` : 'N/A'
+  }
+
+  const humanRate = stats?.human_rate || 0
+  const botRate = 1 - humanRate
+  const totalVerifications = stats?.total_verifications || 0
+  const avgConfidence = stats?.avg_confidence || 0
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">ML Monitoring</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">ML Model Monitoring</h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Monitor and manage your machine learning model performance
+            Real-time monitoring of your Passive CAPTCHA ML model performance
           </p>
         </div>
         <div className="flex items-center space-x-3">
@@ -117,274 +110,235 @@ export default function MLMonitoringView() {
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
-          <button
-            onClick={triggerRetrain}
-            disabled={retraining}
-            className="btn btn-primary flex items-center"
-          >
-            <Play className="h-4 w-4 mr-2" />
-            {retraining ? 'Retraining...' : 'Retrain Model'}
-          </button>
         </div>
       </div>
 
-      {/* Model Status */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Model Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Model Health */}
         <div className="card p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <StatusIcon className={`w-8 h-8 ${getStatusColor(modelStatus.status)}`} />
-            </div>
-            <div className="ml-4">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Model Status</h3>
-              <p className={`text-lg font-bold ${getStatusColor(modelStatus.status)}`}>
-                {modelStatus.status.charAt(0).toUpperCase() + modelStatus.status.slice(1)}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Version {modelStatus.version}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="card p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                <Brain className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Model Status</p>
+              <div className="flex items-center mt-2">
+                {getStatusIcon(mlHealth?.status)}
+                <span className={`ml-2 text-sm font-medium ${getStatusColor(mlHealth?.status)}`}>
+                  {mlHealth?.status || 'Unknown'}
+                </span>
               </div>
             </div>
-            <div className="ml-4">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Accuracy</h3>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {modelStatus.accuracy}%
+            <Brain className="h-8 w-8 text-blue-500" />
+          </div>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            {mlHealth?.message || 'Model health check'}
+          </p>
+        </div>
+
+        {/* Total Verifications */}
+        <div className="card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Verifications</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                {totalVerifications.toLocaleString()}
               </p>
-              <p className="text-xs text-green-600">Target: {'>'}94%</p>
             </div>
+            <Shield className="h-8 w-8 text-green-500" />
           </div>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            All-time verification requests
+          </p>
         </div>
 
+        {/* Human Detection Rate */}
         <div className="card p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                <Zap className="w-4 h-4 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-            <div className="ml-4">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Precision</h3>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {modelStatus.precision}%
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Human Rate</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                {formatPercentage(humanRate)}
               </p>
-              <p className="text-xs text-green-600">Target: {'>'}93%</p>
             </div>
+            <Users className="h-8 w-8 text-blue-500" />
           </div>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Legitimate human users
+          </p>
         </div>
 
+        {/* Average Confidence */}
         <div className="card p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                <Brain className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-              </div>
-            </div>
-            <div className="ml-4">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Recall</h3>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {modelStatus.recall}%
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg Confidence</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                {formatPercentage(avgConfidence)}
               </p>
-              <p className="text-xs text-green-600">Target: {'>'}94%</p>
             </div>
+            <TrendingUp className="h-8 w-8 text-purple-500" />
           </div>
-        </div>
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Performance Trends */}
-        <div className="card p-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-            Performance Trends (24h)
-          </h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockAccuracyData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  dataKey="time" 
-                  tick={{ fill: 'currentColor', fontSize: 12 }}
-                  className="text-gray-600 dark:text-gray-400"
-                />
-                <YAxis 
-                  domain={[90, 100]}
-                  tick={{ fill: 'currentColor', fontSize: 12 }}
-                  className="text-gray-600 dark:text-gray-400"
-                />
-                <Tooltip 
-                  contentStyle={{
-                    backgroundColor: 'white',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '0.5rem',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                  }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="accuracy" 
-                  stroke="#3b82f6" 
-                  strokeWidth={2}
-                  name="Accuracy"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="precision" 
-                  stroke="#10b981" 
-                  strokeWidth={2}
-                  name="Precision"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="recall" 
-                  stroke="#8b5cf6" 
-                  strokeWidth={2}
-                  name="Recall"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Prediction Confidence */}
-        <div className="card p-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-            Prediction Confidence
-          </h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockPredictionData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  dataKey="category" 
-                  tick={{ fill: 'currentColor', fontSize: 12 }}
-                  className="text-gray-600 dark:text-gray-400"
-                />
-                <YAxis 
-                  domain={[80, 100]}
-                  tick={{ fill: 'currentColor', fontSize: 12 }}
-                  className="text-gray-600 dark:text-gray-400"
-                />
-                <Tooltip 
-                  contentStyle={{
-                    backgroundColor: 'white',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '0.5rem',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                  }}
-                />
-                <Bar 
-                  dataKey="confidence" 
-                  fill="#3b82f6"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Model prediction confidence
+          </p>
         </div>
       </div>
 
       {/* Model Information */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Model Details */}
         <div className="card p-6">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
             Model Information
           </h3>
           <div className="space-y-4">
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Current Version</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">{modelStatus.version}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Last Trained</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Algorithm</span>
               <span className="text-sm font-medium text-gray-900 dark:text-white">
-                {new Date(modelStatus.lastTrained).toLocaleDateString()}
+                Voting Ensemble (RF + GB)
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Training Data Size</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">1.2M samples</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Features</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                11 behavioral features
+              </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Model Type</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">Random Forest</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Classes</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                Human, Bot
+              </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Feature Count</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">47 features</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Model Loaded</span>
+              <span className={`text-sm font-medium ${mlHealth?.model_loaded ? 'text-green-600' : 'text-red-600'}`}>
+                {mlHealth?.model_loaded ? 'Yes' : 'No'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Last Updated</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                {mlHealth?.timestamp ? new Date(mlHealth.timestamp).toLocaleDateString() : 'Unknown'}
+              </span>
             </div>
           </div>
         </div>
 
+        {/* Detection Distribution */}
         <div className="card p-6">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-            Training Progress
+            Detection Distribution
           </h3>
           <div className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600 dark:text-gray-400">Data Collection</span>
-                <span className="text-green-600">Complete</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Human Users</span>
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div className="bg-green-600 h-2 rounded-full w-full"></div>
-              </div>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                {formatPercentage(humanRate)}
+              </span>
             </div>
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600 dark:text-gray-400">Feature Engineering</span>
-                <span className="text-green-600">Complete</span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div className="bg-green-600 h-2 rounded-full w-full"></div>
-              </div>
+            <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+              <div 
+                className="bg-green-500 h-2 rounded-full transition-all duration-300" 
+                style={{width: `${humanRate * 100}%`}}
+              ></div>
             </div>
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600 dark:text-gray-400">Model Training</span>
-                <span className="text-green-600">Complete</span>
+
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Bot Detected</span>
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div className="bg-green-600 h-2 rounded-full w-full"></div>
-              </div>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                {formatPercentage(botRate)}
+              </span>
             </div>
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600 dark:text-gray-400">Validation</span>
-                <span className="text-green-600">Complete</span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div className="bg-green-600 h-2 rounded-full w-full"></div>
-              </div>
+            <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+              <div 
+                className="bg-red-500 h-2 rounded-full transition-all duration-300" 
+                style={{width: `${botRate * 100}%`}}
+              ></div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Alert Section */}
-      {modelStatus.accuracy < 94 && (
-        <div className="card p-6 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
-          <div className="flex items-center">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mr-3" />
-            <div>
-              <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                Model Performance Alert
-              </h3>
-              <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                Model accuracy has dropped below the target threshold. Consider retraining the model.
-              </p>
-            </div>
+      {/* Recent Activity Chart */}
+      {recentActivity.length > 0 && (
+        <div className="card p-6">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            Recent Detection Activity (Last 24 Hours)
+          </h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={recentActivity}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis 
+                  dataKey="time" 
+                  className="text-xs"
+                  stroke="currentColor"
+                />
+                <YAxis 
+                  className="text-xs"
+                  stroke="currentColor"
+                />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: 'var(--bg-color)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="confidence" 
+                  stroke="#3B82F6" 
+                  strokeWidth={2}
+                  dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4 }}
+                  name="Confidence"
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
       )}
+
+      {/* System Components Status */}
+      <div className="card p-6">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          System Components
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div className="flex items-center">
+              <Database className="h-5 w-5 text-blue-500 mr-2" />
+              <span className="text-sm text-gray-900 dark:text-white">Database</span>
+            </div>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          </div>
+          
+          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div className="flex items-center">
+              <Cpu className="h-5 w-5 text-purple-500 mr-2" />
+              <span className="text-sm text-gray-900 dark:text-white">ML Model</span>
+            </div>
+            {mlHealth?.model_loaded ? 
+              <CheckCircle className="h-4 w-4 text-green-500" /> :
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            }
+          </div>
+          
+          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div className="flex items-center">
+              <Activity className="h-5 w-5 text-green-500 mr-2" />
+              <span className="text-sm text-gray-900 dark:text-white">API Server</span>
+            </div>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

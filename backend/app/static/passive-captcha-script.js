@@ -885,20 +885,24 @@
         sendViaPrototypeAPI(payload);
     }
     
-    // Send via prototype API endpoint
+    // Send via internal API endpoint (same-origin)
     function sendViaPrototypeAPI(payload) {
-        var endpoint = '/prototype/api/verify';
-        
+        var endpoint = (CONFIG.apiEndpoint || '').replace(/\/$/, '') + '/api/script/collect';
+        var body = utils.stringifyJSON({
+            website_url: CONFIG.websiteUrl || (window.location.origin),
+            session_id: state.sessionId,
+            data: buildBehavioralDataPayload()
+        });
+
         // Try modern methods first
         if (window.fetch) {
             fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Passive-Captcha-Token': CONFIG.scriptToken || '',
-                    'X-Website-URL': CONFIG.websiteUrl || ''
+                    'X-Script-Token': CONFIG.scriptToken || ''
                 },
-                body: utils.stringifyJSON(payload),
+                body: body,
                 credentials: 'same-origin'
             }).then(function(response) {
                 if (response.ok) {
@@ -909,25 +913,24 @@
                 handleVerificationResult(result);
             }).catch(function(error) {
                 if (CONFIG.debugMode) console.error('Fetch error:', error);
-                sendViaXHRFallback(payload);
+                sendViaXHRFallback(body);
             });
         } else {
             // Fallback to XHR
-            sendViaXHRFallback(payload);
+            sendViaXHRFallback(body);
         }
     }
     
     // XHR fallback for older browsers
-    function sendViaXHRFallback(payload) {
+    function sendViaXHRFallback(body) {
         try {
             var xhr = utils.createXHR();
             if (!xhr) return;
             
-            xhr.open('POST', '/prototype/api/verify', true);
+            var endpoint = (CONFIG.apiEndpoint || '').replace(/\/$/, '') + '/api/script/collect';
+            xhr.open('POST', endpoint, true);
             xhr.setRequestHeader('Content-Type', 'application/json');
-            if (CONFIG.scriptToken) {
-                xhr.setRequestHeader('X-Passive-Captcha-Token', CONFIG.scriptToken);
-            }
+            if (CONFIG.scriptToken) xhr.setRequestHeader('X-Script-Token', CONFIG.scriptToken);
             
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4) {
@@ -944,11 +947,55 @@
                 }
             };
             
-            xhr.send(utils.stringifyJSON(payload));
+            xhr.send(body);
             
         } catch (error) {
             if (CONFIG.debugMode) console.error('XHR fallback error:', error);
         }
+    }
+
+    // Build behavioral data payload matching backend expectations
+    function buildBehavioralDataPayload() {
+        return {
+            mouse: {
+                movementCount: state.mouseData.movements.length,
+                clickCount: state.mouseData.clicks.length,
+                avgVelocity: average(state.mouseData.velocity),
+                avgAcceleration: average(state.mouseData.acceleration),
+                entropy: state.behaviorMetrics.mouseEntropy || 0
+            },
+            keyboard: {
+                keystrokeCount: state.keyboardData.keystrokes.length,
+                avgTypingSpeed: average(state.keyboardData.typingSpeed),
+                rhythm: state.behaviorMetrics.keyboardRhythm || 0
+            },
+            scroll: {
+                scrollEventCount: state.scrollData.scrollEvents.length,
+                avgVelocity: average(state.scrollData.scrollVelocity),
+                consistency: state.behaviorMetrics.scrollConsistency || 0
+            },
+            timing: {
+                pageLoadTime: state.timingData.pageLoadTime || 0,
+                domReadyTime: state.timingData.domReadyTime || 0,
+                firstInteractionTime: state.timingData.firstInteractionTime || 0,
+                sessionDuration: state.timingData.sessionDuration || 0
+            },
+            device: {
+                screenResolution: state.deviceInfo ? state.deviceInfo.screenResolution : {},
+                viewport: state.deviceInfo ? state.deviceInfo.viewport : {},
+                colorDepth: state.deviceInfo && state.deviceInfo.screenResolution ? (state.deviceInfo.screenResolution.colorDepth || 0) : 0,
+                timezoneOffset: new Date().getTimezoneOffset(),
+                touchSupport: 'ontouchstart' in window,
+                deviceMemory: navigator.deviceMemory || 0,
+                hardwareConcurrency: navigator.hardwareConcurrency || 0,
+                fonts: state.deviceInfo ? state.deviceInfo.fonts : [],
+                plugins: state.deviceInfo ? state.deviceInfo.plugins : []
+            }
+        };
+    }
+
+    function average(arr) {
+        return (arr && arr.length) ? (arr.reduce(function(a,b){return a+b;}, 0) / arr.length) : 0;
     }
     
     // Handle verification result

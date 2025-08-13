@@ -296,6 +296,15 @@ def create_robust_app(env: str = None) -> Tuple[Flask, Optional[SocketIO]]:
     # Create SocketIO
     socketio = create_socketio(app, config, config.allowed_origins)
     app.socketio = socketio
+
+    # Initialize logs pipeline if websocket and redis are available
+    try:
+        if socketio and redis_client:
+            from app.logs_pipeline import init_logs_pipeline
+            init_logs_pipeline(app, socketio, redis_client)
+            app.logger.info("Logs pipeline initialized")
+    except Exception as e:
+        app.logger.warning(f"Logs pipeline init failed: {e}")
     
     # Create rate limiter
     limiter = create_rate_limiter(app, config, redis_client)

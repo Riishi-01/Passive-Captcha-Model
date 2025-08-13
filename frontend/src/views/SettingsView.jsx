@@ -156,16 +156,28 @@ export default function SettingsView() {
         description: `Hosted domain: ${domain}`
       })
 
-      if (response.success) {
-        const website = response.data.website
+      if (response.success || response.data) {
+        const website = response.data?.website || response.data
         const token = website.token || website.api_key
         
-        setGeneratedToken(token)
-        setGeneratedScript(generateScript(domain, token))
-        
+        if (token) {
+          setGeneratedToken(token)
+          setGeneratedScript(generateScript(domain, token))
+          
+          addNotification({
+            type: 'success',
+            message: 'Domain registered and script generated successfully!'
+          })
+        } else {
+          addNotification({
+            type: 'warning',
+            message: 'Website created but no token generated. Please try again.'
+          })
+        }
+      } else {
         addNotification({
-          type: 'success',
-          message: 'Domain registered and script generated successfully!'
+          type: 'error',
+          message: 'Failed to create website - unexpected response format'
         })
       }
     } catch (error) {
