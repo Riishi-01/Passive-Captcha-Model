@@ -259,7 +259,13 @@ class WebsiteService:
         """
         session = get_db_session()
         try:
-            website = session.query(Website).filter(Website.website_id == website_id).first()
+            website = session.query(Website).filter(
+                or_(
+                    Website.website_id == website_id,
+                    Website.id == website_id,
+                    Website.domain == website_id
+                )
+            ).first()
             if not website:
                 return False
 
@@ -295,7 +301,13 @@ class WebsiteService:
         """
         session = get_db_session()
         try:
-            website = session.query(Website).filter(Website.website_id == website_id).first()
+            website = session.query(Website).filter(
+                or_(
+                    Website.website_id == website_id,
+                    Website.id == website_id,
+                    Website.domain == website_id
+                )
+            ).first()
             if not website:
                 return False
 
@@ -329,7 +341,13 @@ class WebsiteService:
         """
         session = get_db_session()
         try:
-            website = session.query(Website).filter(Website.website_id == website_id).first()
+            website = session.query(Website).filter(
+                or_(
+                    Website.website_id == website_id,
+                    Website.id == website_id,
+                    Website.domain == website_id
+                )
+            ).first()
             if not website:
                 return None
 
@@ -359,7 +377,13 @@ class WebsiteService:
         """
         session = get_db_session()
         try:
-            website = session.query(Website).filter(Website.website_id == website_id).first()
+            website = session.query(Website).filter(
+                or_(
+                    Website.website_id == website_id,
+                    Website.id == website_id,
+                    Website.domain == website_id
+                )
+            ).first()
             if not website:
                 return False
 

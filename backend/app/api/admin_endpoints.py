@@ -513,6 +513,7 @@ def delete_website(website_id):
                 }
             }), 503
 
+        # Normalize ID: frontend sometimes sends numeric or domain; service handles multiple keys
         success = website_service.delete_website(website_id)
 
         if not success:
