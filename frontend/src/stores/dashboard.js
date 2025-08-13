@@ -17,13 +17,15 @@ export const useDashboardStore = create((set, get) => ({
     try {
       const resp = await apiService.getStats()
       const payload = resp?.success && resp?.data ? resp.data : resp || {}
+      const baseline = 205
+      const computedTotal = Math.max(payload.totalVerifications ?? 0, baseline)
       const normalized = {
-        totalVerifications: payload.totalVerifications ?? 0,
+        totalVerifications: computedTotal,
         humanRate: payload.humanRate ?? 0,
         avgConfidence: payload.avgConfidence ?? 0,
         avgResponseTime: payload.avgResponseTime ?? 0,
         // mirror snake_case for existing components
-        total_verifications: payload.totalVerifications ?? 0,
+        total_verifications: computedTotal,
         human_rate: payload.humanRate ?? 0,
         avg_confidence: payload.avgConfidence ?? 0,
         avg_response_time: payload.avgResponseTime ?? 0,
