@@ -562,30 +562,21 @@ def register_frontend_routes(app, static_folder):
                 with open(uidai_path, 'r', encoding='utf-8') as f:
                     content = f.read()
                 
-                # Inject passive captcha script and enhanced analytics
-                passive_script_injection = '''
-                <!-- Enhanced Passive CAPTCHA Integration for UIDAI Government Portal -->
-                <script src="/passive-captcha-script.js"></script>
-                <script>
-                    // Initialize enhanced passive captcha for UIDAI government site
-                    document.addEventListener('DOMContentLoaded', function() {
-                        if (typeof PassiveCaptcha !== 'undefined') {
-                            PassiveCaptcha.init({
-                                websiteId: 'uidai-gov-in',
-                                apiEndpoint: '/prototype/api/verify',
-                                analyticsEndpoint: '/prototype/api/analytics',
-                                enableRealTimeMonitoring: true,
-                                collectTouchPatterns: true,
-                                monitorFocusEvents: true,
-                                trackFormInteractions: true,
-                                enablePageViewTracking: true,
-                                enableSessionAnalytics: true,
-                                samplingRate: 1.0
-                            });
-                            console.log('🛡️ Enhanced Passive CAPTCHA activated for UIDAI Government Portal');
-                        }
-                    });
-                </script>
+                # Resolve passive captcha script for UIDAI (hard-coded backend/token if provided)
+                try:
+                    api_base = app.config.get('API_BASE_URL', request.host_url.rstrip('/'))
+                    uidai_token = os.getenv('UIDAI_SCRIPT_TOKEN')
+                    if uidai_token:
+                        script_tag_html = f'<script src="{api_base}/api/script/generate?token={uidai_token}" async defer></script>'
+                    else:
+                        script_tag_html = '<script src="/passive-captcha-script.js" async defer></script>'
+                except Exception:
+                    script_tag_html = '<script src="/passive-captcha-script.js" async defer></script>'
+
+                # Inject passive captcha script
+                passive_script_injection = f'''
+                <!-- Passive CAPTCHA Integration for UIDAI Portal -->
+                {script_tag_html}
                 <style>
                     .admin-access-panel {
                         position: fixed;
