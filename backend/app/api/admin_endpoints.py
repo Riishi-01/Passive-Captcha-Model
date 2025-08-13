@@ -896,22 +896,77 @@ def analytics():
 @require_auth
 def analytics_stats():
     """Dashboard statistics endpoint"""
-    time_range = request.args.get('timeRange', '24h')
-    
-    return jsonify({
-        'success': True,
-        'data': {
-            'totalVerifications': 0,
-            'humanRate': 0,
-            'avgConfidence': 0,
-            'avgResponseTime': 0,
-            'verificationChange': 0,
-            'humanRateChange': 0,
-            'confidenceChange': 0,
-            'responseTimeChange': 0
-        },
-        'timestamp': datetime.utcnow().isoformat() + 'Z'
-    }), 200
+    try:
+        time_range = request.args.get('timeRange', '24h')
+        if time_range == '24h':
+            hours = 24
+        elif time_range == '7d':
+            hours = 24 * 7
+        elif time_range == '30d':
+            hours = 24 * 30
+        else:
+            hours = 24
+
+        start_time = datetime.utcnow() - timedelta(hours=hours)
+
+        session = get_db_session()
+        try:
+            total_verifications = session.query(func.count(VerificationLog.id)).filter(
+                VerificationLog.timestamp >= start_time
+            ).scalar() or 0
+
+            human_count = session.query(func.count(VerificationLog.id)).filter(
+                and_(
+                    VerificationLog.timestamp >= start_time,
+                    VerificationLog.is_human == True
+                )
+            ).scalar() or 0
+
+            human_rate = (human_count / total_verifications * 100) if total_verifications > 0 else 0
+
+            avg_confidence = session.query(func.avg(VerificationLog.confidence)).filter(
+                VerificationLog.timestamp >= start_time
+            ).scalar() or 0
+
+            avg_response_time = session.query(func.avg(VerificationLog.response_time)).filter(
+                and_(
+                    VerificationLog.timestamp >= start_time,
+                    VerificationLog.response_time != None
+                )
+            ).scalar() or 0
+
+            return jsonify({
+                'success': True,
+                'data': {
+                    'totalVerifications': int(total_verifications),
+                    'humanRate': round(human_rate, 2),
+                    'avgConfidence': round(float(avg_confidence or 0), 4),
+                    'avgResponseTime': round(float(avg_response_time or 0), 2),
+                    'verificationChange': 0,
+                    'humanRateChange': 0,
+                    'confidenceChange': 0,
+                    'responseTimeChange': 0
+                },
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
+            }), 200
+        finally:
+            session.close()
+    except Exception as e:
+        current_app.logger.error(f"Error in analytics_stats: {e}")
+        return jsonify({
+            'success': True,
+            'data': {
+                'totalVerifications': 0,
+                'humanRate': 0,
+                'avgConfidence': 0,
+                'avgResponseTime': 0,
+                'verificationChange': 0,
+                'humanRateChange': 0,
+                'confidenceChange': 0,
+                'responseTimeChange': 0
+            },
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }), 200
 
 
 @admin_bp.route('/analytics/charts/<chart_type>', methods=['GET'])

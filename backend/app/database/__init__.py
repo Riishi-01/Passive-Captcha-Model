@@ -5,9 +5,9 @@ Handles verification logs, analytics, and data persistence
 
 import os
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, func, Index
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 from flask import current_app
 import json
@@ -28,7 +28,7 @@ class Website(Base):
     id = Column(String(36), primary_key=True)  # UUID primary key (renamed from website_id)
     domain = Column(String(500), nullable=False, unique=True)  # Domain name (renamed from website_url)
     token = Column(String(255), unique=True, nullable=False)  # Unique token for the domain
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     status = Column(String(20), default='active')  # active/inactive
     
     # Additional fields for compatibility
@@ -93,7 +93,7 @@ class Verification(Base):
     user_agent = Column(Text, nullable=True)
     is_human = Column(Boolean, nullable=False)
     confidence = Column(Float, nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {
@@ -117,7 +117,7 @@ class CaptchaLog(Base):
     website_id = Column(String(36), nullable=False, index=True)  # Foreign key to websites.id
     ip_address = Column(String(45), nullable=False)
     status = Column(String(10), nullable=False)  # 'pass' or 'fail'
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     
     # Additional fields for enhanced tracking
     user_agent = Column(Text, nullable=True)
@@ -254,26 +254,32 @@ def init_db(database_url=None):
         if database_url.startswith('postgres://'):
             database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
-        # Configure engine with appropriate settings for production
+        # Base engine kwargs
         engine_kwargs = {
             'echo': False,
-            'pool_pre_ping': True,  # Verify connections before use
-            'pool_recycle': 3600,   # Recycle connections every hour
         }
 
-        # Add SQLite-specific settings
+        # SQLite-specific settings
         if database_url.startswith('sqlite:'):
             engine_kwargs.update({
-                'pool_timeout': 20,
-                'pool_recycle': -1,
                 'connect_args': {'check_same_thread': False}
             })
+
+            # Use StaticPool for in-memory SQLite to avoid unsupported pool args
+            if database_url.endswith(':memory:'):
+                try:
+                    from sqlalchemy.pool import StaticPool
+                    engine_kwargs['poolclass'] = StaticPool
+                except Exception:
+                    pass
         # Add PostgreSQL-specific settings
         elif 'postgresql://' in database_url:
             engine_kwargs.update({
                 'pool_size': 5,
                 'max_overflow': 10,
                 'pool_timeout': 30,
+                'pool_pre_ping': True,
+                'pool_recycle': 3600,
             })
 
         engine = create_engine(database_url, **engine_kwargs)

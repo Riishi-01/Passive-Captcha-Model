@@ -522,7 +522,7 @@ def collect_data():
                 }
             )
 
-        # Respond with verification result
+        # Respond with verification result (timezone-aware timestamp)
         return jsonify({
             'success': True,
             'data': {
@@ -537,7 +537,7 @@ def collect_data():
                     'country': country_code,
                     'response_time_ms': response_time,
                     'features_analyzed': len(features),
-                    'timestamp': datetime.utcnow().isoformat()
+                    'timestamp': __import__('app.core.config', fromlist=['now_tz']).now_tz().isoformat()
                 }
             },
             'timestamp': datetime.utcnow().isoformat()

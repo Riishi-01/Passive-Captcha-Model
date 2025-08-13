@@ -222,7 +222,10 @@ def create_app(config_name='production'):
             except:
                 app.logger.info("Rate limiting using in-memory backend (Redis unavailable)")
         else:
-            app.logger.info("Rate limiting using in-memory backend (development mode)")
+            # Use explicit storage URI to avoid flask-limiter warnings
+            storage_uri = os.getenv('RATELIMIT_STORAGE_URI', 'memory://')
+            limiter_config['storage_uri'] = storage_uri
+            app.logger.info(f"Rate limiting using in-memory backend ({storage_uri})")
         
         limiter = Limiter(**limiter_config)
         limiter.init_app(app)
@@ -299,6 +302,15 @@ def create_app(config_name='production'):
         app.logger.info("Admin API endpoints registered")
     except Exception as e:
         app.logger.error(f"Failed to register admin API: {e}")
+
+    # Register script API blueprint (passive script delivery & collection)
+    try:
+        from app.api.script_endpoints import script_bp
+        # script_bp already includes '/api/script' url_prefix
+        app.register_blueprint(script_bp)
+        app.logger.info("Script API endpoints registered")
+    except Exception as e:
+        app.logger.error(f"Failed to register script API: {e}")
 
     # Note: Analytics and monitoring endpoints are now consolidated in the unified admin_bp
     # No need to register separate analytics blueprints to avoid conflicts

@@ -7,6 +7,11 @@ import os
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 from enum import Enum
+from datetime import datetime
+try:
+    from zoneinfo import ZoneInfo
+except Exception:
+    ZoneInfo = None
 
 
 class Environment(Enum):
@@ -193,3 +198,19 @@ class AppConfig:
 def get_config(env: str = None) -> AppConfig:
     """Get application configuration"""
     return AppConfig.from_environment(env)
+
+
+# Timezone helpers (default IST)
+def get_timezone():
+    tz_name = os.getenv('TIMEZONE', 'Asia/Kolkata')
+    if ZoneInfo is None:
+        return None
+    try:
+        return ZoneInfo(tz_name)
+    except Exception:
+        return ZoneInfo('Asia/Kolkata')
+
+
+def now_tz():
+    tz = get_timezone()
+    return datetime.now(tz) if tz else datetime.utcnow()

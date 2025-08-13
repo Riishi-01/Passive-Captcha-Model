@@ -12,7 +12,7 @@ import time
 import bcrypt
 import redis
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Any, List
 from dataclasses import dataclass
 from enum import Enum
@@ -262,7 +262,7 @@ class AuthService:
             email=user_email,
             name="Administrator",
             role=UserRole.ADMIN,
-            last_login=datetime.utcnow(),
+            last_login=datetime.now(timezone.utc),
             login_count=1
         )
         
@@ -271,7 +271,7 @@ class AuthService:
     
     def _create_secure_session(self, user: AuthenticatedUser, remember_me: bool, ip_address: str) -> Dict[str, Any]:
         """Create secure session with JWT token"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         session_id = secrets.token_urlsafe(32)
         
         # Set token expiration
@@ -385,7 +385,7 @@ class AuthService:
                 
                 # Check expiration
                 exp_timestamp = payload.get('exp')
-                if exp_timestamp and datetime.utcnow().timestamp() > exp_timestamp:
+                if exp_timestamp and datetime.now(timezone.utc).timestamp() > exp_timestamp:
                     return None
                 
                 # Create user from payload
@@ -394,7 +394,7 @@ class AuthService:
                     email=payload['email'],
                     name="Administrator",
                     role=UserRole(payload['role']),
-                    last_login=datetime.utcnow()
+                    last_login=datetime.now(timezone.utc)
                 )
                 
             except jwt.ExpiredSignatureError:

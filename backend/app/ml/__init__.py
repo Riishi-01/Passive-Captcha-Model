@@ -15,6 +15,7 @@ import json
 import time
 from datetime import datetime
 from flask import current_app
+from app.core.config import now_tz
 
 # Global variables for ensemble model and scaler
 ensemble_model = None
@@ -128,7 +129,7 @@ def create_default_ensemble_model():
             'precision': float(precision_score(y_test, y_pred)),
             'recall': float(recall_score(y_test, y_pred)),
             'f1_score': float(f1_score(y_test, y_pred)),
-            'last_trained': datetime.now().isoformat()
+            'last_trained': now_tz().isoformat()
         }
 
         print(f"Model Performance:")
