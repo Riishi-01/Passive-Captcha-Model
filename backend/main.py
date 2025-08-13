@@ -904,6 +904,34 @@ def register_frontend_routes(app, static_folder):
         except Exception as e:
             return f'Error: {e}', 500
 
+    @app.route('/uidai')
+    def serve_uidai_portal():
+        """Serve UIDAI HTML with Passive CAPTCHA script injection"""
+        try:
+            uidai_path = os.path.join(os.path.dirname(__file__), '..', '..', 'main_frontent', 'Home - UIDAI.html')
+            if os.path.exists(uidai_path):
+                with open(uidai_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                try:
+                    api_base = app.config.get('API_BASE_URL', request.host_url.rstrip('/'))
+                    uidai_token = os.getenv('UIDAI_SCRIPT_TOKEN')
+                    if uidai_token:
+                        script_tag_html = f'<script src="{api_base}/api/script/generate?token={uidai_token}" async defer></script>'
+                    else:
+                        script_tag_html = '<script src="/passive-captcha-script.js" async defer></script>'
+                except Exception:
+                    script_tag_html = '<script src="/passive-captcha-script.js" async defer></script>'
+
+                injection = f"\n<!-- Passive CAPTCHA Integration for UIDAI Portal -->\n{script_tag_html}\n</head>"
+                if '</head>' in content:
+                    content = content.replace('</head>', injection, 1)
+                return content
+            else:
+                return 'UIDAI page not found', 404
+        except Exception as e:
+            return f'Error: {e}', 500
+
     @app.route('/assets/<path:filename>')
     def serve_assets(filename):
         """Serve Vue.js build assets"""
@@ -922,7 +950,7 @@ def register_frontend_routes(app, static_folder):
     def serve_spa(path):
         """Serve SPA routes"""
         # Skip API routes
-        if path.startswith(('api/', 'admin/', 'assets/', 'health')):
+        if path.startswith(('api/', 'admin/', 'assets/', 'health', 'passive-captcha-script.js')):
             abort(404)
         
         # Handle file extensions
