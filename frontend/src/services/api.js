@@ -2,10 +2,14 @@ import axios from 'axios'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '')
 
+// Default to same-origin in dev if not provided
+// When running vite dev on 5700 with proxy to 5600, keep baseURL empty for relative paths
+const resolvedBaseURL = API_BASE_URL || ''
+
 class ApiService {
   constructor() {
     this.client = axios.create({
-      baseURL: API_BASE_URL,
+      baseURL: resolvedBaseURL,
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',
