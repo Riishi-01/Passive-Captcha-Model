@@ -10,7 +10,10 @@ import hashlib
 import secrets
 import time
 import bcrypt
-import redis
+try:
+    import redis as _redis
+except ImportError:  # pragma: no cover
+    _redis = None
 import json
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Any, List
@@ -67,7 +70,7 @@ class AuthenticatedUser:
 class AuthService:
     """Unified authentication service with comprehensive security"""
     
-    def __init__(self, redis_client: Optional[redis.Redis] = None):
+    def __init__(self, redis_client: Optional[Any] = None):
         self.redis = redis_client
         self.session_prefix = "session:"
         self.token_prefix = "token:"
@@ -82,9 +85,12 @@ class AuthService:
         self.rate_limit_window = 60  # seconds
         
         # JWT configuration
-        self.jwt_secret = os.getenv('JWT_SECRET_KEY', 
-                                   os.getenv('JWT_SECRET', 
-                                            self._generate_jwt_secret()))
+        # Stable JWT secret across restarts: prefer explicit JWT secrets, else fallback to ADMIN_SECRET
+        self.jwt_secret = (
+            os.getenv('JWT_SECRET_KEY')
+            or os.getenv('JWT_SECRET')
+            or os.getenv('ADMIN_SECRET', 'admin123')
+        )
         self.jwt_algorithm = 'HS256'
         
         # Admin credentials - CRITICAL: This fixes the missing admin_secret issue
@@ -519,7 +525,7 @@ RobustAuthService = AuthService
 auth_service = None
 
 
-def init_auth_service(redis_client: Optional[redis.Redis] = None) -> AuthService:
+    def init_auth_service(redis_client: Optional[Any] = None) -> AuthService:
     """Initialize the authentication service"""
     global auth_service
     auth_service = AuthService(redis_client)

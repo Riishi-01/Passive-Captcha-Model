@@ -9,7 +9,11 @@ import os
 # Do not hard-require env vars here; services provide secure defaults if missing
     
 import sys
-import redis
+# Optional Redis dependency; app should run without it
+try:
+    import redis as _redis
+except ImportError:  # pragma: no cover
+    _redis = None
 from flask import Flask, request, jsonify, abort, send_from_directory
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -186,7 +190,9 @@ def create_app(config_name='production'):
     # Initialize Redis client (optional)
     redis_client = None
     try:
-        redis_client = redis.Redis.from_url(app.config['REDIS_URL'], decode_responses=True)
+        if _redis is None:
+            raise ImportError("redis library not installed")
+        redis_client = _redis.Redis.from_url(app.config['REDIS_URL'], decode_responses=True)
         redis_client.ping()
         app.logger.info("Redis connection established successfully")
     except Exception as e:
