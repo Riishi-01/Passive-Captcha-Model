@@ -15,14 +15,28 @@ export const useDashboardStore = create((set, get) => ({
   fetchStats: async () => {
     set({ loading: true, error: null })
     try {
-      const stats = await apiService.getStats()
+      const resp = await apiService.getStats()
+      const payload = resp?.success && resp?.data ? resp.data : resp || {}
+      const normalized = {
+        totalVerifications: payload.totalVerifications ?? 0,
+        humanRate: payload.humanRate ?? 0,
+        avgConfidence: payload.avgConfidence ?? 0,
+        avgResponseTime: payload.avgResponseTime ?? 0,
+        // mirror snake_case for existing components
+        total_verifications: payload.totalVerifications ?? 0,
+        human_rate: payload.humanRate ?? 0,
+        avg_confidence: payload.avgConfidence ?? 0,
+        avg_response_time: payload.avgResponseTime ?? 0,
+        protected_sites: payload.protectedSites ?? payload.protected_sites ?? null,
+        model_accuracy: payload.modelAccuracy ?? null,
+      }
       set({ 
-        stats, 
+        stats: normalized, 
         loading: false,
         lastUpdated: new Date(),
         error: null 
       })
-      return stats
+      return normalized
     } catch (error) {
       const errorMessage = error.response?.data?.detail || 'Failed to fetch stats'
       set({ 

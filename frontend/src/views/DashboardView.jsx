@@ -73,31 +73,31 @@ export default function DashboardView() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPICard
           title="Total Verifications"
-          value={stats?.total_verifications || '12,847'}
-          change={stats?.verifications_change || 8.2}
+          value={stats?.total_verifications ?? 0}
+          change={stats?.verificationChange ?? 0}
           icon={Shield}
-          trend="up"
+          trend={(stats?.verificationChange ?? 0) >= 0 ? 'up' : 'down'}
         />
         <KPICard
           title="Detection Rate"
-          value={stats?.detection_rate || '94.8%'}
-          change={stats?.detection_change || 2.1}
+          value={`${stats?.human_rate ?? 0}%`}
+          change={stats?.humanRateChange ?? 0}
           icon={Eye}
-          trend="up"
+          trend={(stats?.humanRateChange ?? 0) >= 0 ? 'up' : 'down'}
         />
         <KPICard
           title="Model Accuracy"
-          value={stats?.model_accuracy || '95.2%'}
-          change={stats?.accuracy_change || -0.3}
+          value={stats?.model_accuracy ? `${stats.model_accuracy}` : 'N/A'}
+          change={stats?.confidenceChange ?? 0}
           icon={Brain}
-          trend="down"
+          trend={(stats?.confidenceChange ?? 0) >= 0 ? 'up' : 'down'}
         />
         <KPICard
           title="Protected Sites"
-          value={stats?.protected_sites || '18'}
-          change={stats?.sites_change || 12.5}
+          value={stats?.protected_sites ?? 0}
+          change={stats?.sites_change ?? 0}
           icon={Globe}
-          trend="up"
+          trend={(stats?.sites_change ?? 0) >= 0 ? 'up' : 'down'}
         />
       </div>
 

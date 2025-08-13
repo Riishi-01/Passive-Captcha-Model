@@ -89,22 +89,35 @@ class WebsiteService:
             token_manager = get_script_token_manager()
 
             for website in websites:
+                site_id = getattr(website, 'id', None) or getattr(website, 'website_id', None)
+                site_name = getattr(website, 'name', None) or getattr(website, 'website_name', None)
+                site_url = getattr(website, 'domain', None) or getattr(website, 'website_url', None)
+                site_status = getattr(website, 'status', 'active') or 'active'
+                site_created_at = getattr(website, 'created_at', None) or datetime.utcnow()
+
                 # Get analytics data if requested
                 analytics = {}
-                if include_analytics:
-                    analytics = self._get_website_analytics(website.website_id, session)
+                if include_analytics and site_id:
+                    analytics = self._get_website_analytics(site_id, session)
 
                 # Get integration status
-                integration_data = self._get_integration_status(website.website_id, token_manager)
+                if site_id:
+                    integration_data = self._get_integration_status(site_id, token_manager)
+                else:
+                    integration_data = {
+                        'status': IntegrationStatus.NOT_INTEGRATED,
+                        'has_token': False,
+                        'token_info': None
+                    }
 
                 website_data.append(WebsiteData(
-                    id=website.id or website.website_id,  # Use new id or fallback to legacy
-                    name=website.name or website.website_name,
-                    url=website.domain or website.website_url,  # Use new domain or fallback to legacy
-                    status=WebsiteStatus(website.status or 'active'),
-                    created_at=website.created_at,
-                    updated_at=website.created_at,  # Use created_at since updated_at doesn't exist
-                    description=website.description,
+                    id=site_id or str(uuid.uuid4()),
+                    name=site_name or 'Website',
+                    url=site_url or '',
+                    status=WebsiteStatus(site_status),
+                    created_at=site_created_at,
+                    updated_at=site_created_at,
+                    description=getattr(website, 'description', None),
 
                     # Analytics
                     total_verifications=analytics.get('total_verifications', 0),
@@ -129,7 +142,9 @@ class WebsiteService:
         """
         session = get_db_session()
         try:
-            website = session.query(Website).filter(Website.website_id == website_id).first()
+            website = session.query(Website).filter(
+                (Website.website_id == website_id) | (Website.id == website_id)
+            ).first()
             if not website:
                 return None
 
