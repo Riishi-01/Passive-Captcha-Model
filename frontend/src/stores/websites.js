@@ -44,6 +44,11 @@ export const useWebsitesStore = create((set, get) => ({
       })
       return websites
     } catch (error) {
+      // If unauthorized, let global redirect handle it without noisy error UI
+      if (error.response?.status === 401) {
+        set({ loading: false, error: null })
+        return []
+      }
       let errorMessage = 'Failed to retrieve websites. Please ensure you are logged in and try again.'
       if (error.response?.data) {
         const errorData = error.response.data

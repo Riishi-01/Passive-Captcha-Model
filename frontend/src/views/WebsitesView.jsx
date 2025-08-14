@@ -195,6 +195,7 @@ export default function WebsitesView() {
                 >
                   Retry
                 </button>
+                <a href="/login" className="text-sm text-gray-600 dark:text-gray-400">Login</a>
               </div>
             </div>
           </div>

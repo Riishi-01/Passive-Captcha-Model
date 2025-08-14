@@ -40,6 +40,11 @@ export const useDashboardStore = create((set, get) => ({
       })
       return normalized
     } catch (error) {
+      // Suppress auth errors; allow global redirect to login
+      if (error.response?.status === 401) {
+        set({ loading: false, error: null })
+        return null
+      }
       const errorMessage = error.response?.data?.detail || 'Failed to fetch stats'
       set({ 
         loading: false, 
