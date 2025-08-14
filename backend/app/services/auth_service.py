@@ -78,9 +78,14 @@ class AuthService:
         self.blocked_ip_prefix = "blocked_ip:"
         
         # Security settings
-        self.session_ttl = 86400  # 24 hours
-        self.max_login_attempts = 5
-        self.lockout_duration = 900  # 15 minutes
+        # Prefer Flask config if available, else environment, else sane defaults
+        try:
+            cfg = current_app.config if has_app_context() else {}
+        except Exception:
+            cfg = {}
+        self.session_ttl = int(os.getenv('SESSION_TIMEOUT', cfg.get('SESSION_TIMEOUT', 86400)))
+        self.max_login_attempts = int(os.getenv('MAX_LOGIN_ATTEMPTS', cfg.get('MAX_LOGIN_ATTEMPTS', 5)))
+        self.lockout_duration = int(os.getenv('LOCKOUT_DURATION', cfg.get('LOCKOUT_DURATION', 900)))
         self.rate_limit_requests = 10  # requests per minute
         self.rate_limit_window = 60  # seconds
         

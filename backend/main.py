@@ -322,9 +322,11 @@ def create_app(config_name='production'):
     # No need to register separate analytics blueprints to avoid conflicts
     app.logger.info("Using unified admin endpoints instead of separate analytics blueprints")
 
-    # Test fresh auth service creation
+    # Test fresh auth service creation (disabled in production)
     @app.route('/debug/fresh-auth', methods=['POST'])
     def debug_fresh_auth():
+        if app.config.get('DEBUG') is False and app.config.get('TESTING') is False:
+            return jsonify({'error': 'Not available'}), 404
         """Test creating a fresh AuthService within request context"""
         try:
             data = request.get_json()
@@ -354,9 +356,11 @@ def create_app(config_name='production'):
                 'traceback': traceback.format_exc()
             }), 500
 
-    # Debug admin login endpoint
+    # Debug admin login endpoint (disabled in production)
     @app.route('/debug/login', methods=['POST'])
     def debug_login():
+        if app.config.get('DEBUG') is False and app.config.get('TESTING') is False:
+            return jsonify({'error': 'Not available'}), 404
         """Debug endpoint to test admin login directly"""
         try:
             data = request.get_json()
@@ -401,9 +405,11 @@ def create_app(config_name='production'):
                 'traceback': traceback.format_exc()
             }), 500
 
-    # Debug endpoint for environment variables (temporary)
+    # Debug endpoint for environment variables (disabled in production)
     @app.route('/debug/env')
     def debug_env():
+        if app.config.get('DEBUG') is False and app.config.get('TESTING') is False:
+            return jsonify({'error': 'Not available'}), 404
         """Debug endpoint to check environment variables"""
         config_files_status = {}
         for config_path in ['config.env.production', './config.env.production', 'backend/config.env.production', '../config.env.production']:
