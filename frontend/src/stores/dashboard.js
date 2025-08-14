@@ -4,6 +4,7 @@ import apiService from '../services/api'
 export const useDashboardStore = create((set, get) => ({
   stats: null,
   chartData: {},
+  selectedWebsiteId: null,
   systemHealth: {
     status: 'unknown',
     components: {}
@@ -12,13 +13,20 @@ export const useDashboardStore = create((set, get) => ({
   error: null,
   lastUpdated: null,
 
+  setSelectedWebsite: (websiteId) => set({ selectedWebsiteId: websiteId }),
+
   fetchStats: async () => {
     set({ loading: true, error: null })
     try {
-      const resp = await apiService.getStats()
+      const websiteId = get().selectedWebsiteId
+      const resp = websiteId
+        ? await apiService.getWebsiteStats(websiteId, '24h')
+        : await apiService.getStats()
       const payload = resp?.success && resp?.data ? resp.data : resp || {}
       const baseline = 205
-      const computedTotal = Math.max(payload.totalVerifications ?? 0, baseline)
+      const computedTotal = websiteId
+        ? (payload.totalVerifications ?? 0)
+        : Math.max(payload.totalVerifications ?? 0, baseline)
       const normalized = {
         totalVerifications: computedTotal,
         humanRate: payload.humanRate ?? 0,
@@ -56,11 +64,15 @@ export const useDashboardStore = create((set, get) => ({
 
   fetchChartData: async (type, period = '24h') => {
     try {
-      const data = await apiService.getChartData(type, period)
+      const websiteId = get().selectedWebsiteId
+      const resp = websiteId
+        ? await apiService.getWebsiteChartData(websiteId, type, period)
+        : await apiService.getChartData(type, period)
+      const data = resp?.success && resp?.data ? resp.data : resp || []
       set((state) => ({
         chartData: {
           ...state.chartData,
-          [`${type}_${period}`]: data
+          [`${websiteId || 'all'}_${type}_${period}`]: data
         }
       }))
       return data
@@ -93,7 +105,8 @@ export const useDashboardStore = create((set, get) => ({
   },
 
   getChartData: (type, period = '24h') => {
-    return get().chartData[`${type}_${period}`] || null
+    const websiteId = get().selectedWebsiteId
+    return get().chartData[`${websiteId || 'all'}_${type}_${period}`] || null
   },
 
   refreshDashboard: async () => {

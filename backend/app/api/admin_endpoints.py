@@ -317,6 +317,50 @@ def get_websites():
         }), 500
 
 
+@admin_bp.route('/websites/<website_id>', methods=['GET'])
+@require_auth
+def get_website_by_id(website_id):
+    """Get a single website by ID"""
+    try:
+        website_service = get_website_service()
+        if not website_service:
+            return jsonify({
+                'success': False,
+                'error': {
+                    'code': 'SERVICE_UNAVAILABLE',
+                    'message': 'Website service unavailable'
+                }
+            }), 503
+
+        website = website_service.get_website(website_id)
+        if not website:
+            return jsonify({
+                'success': False,
+                'error': {
+                    'code': 'WEBSITE_NOT_FOUND',
+                    'message': 'Website not found'
+                }
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'website': website.to_dict()
+            },
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error getting website {website_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'INTERNAL_ERROR',
+                'message': 'Failed to retrieve website'
+            }
+        }), 500
+
+
 @admin_bp.route('/websites', methods=['POST'])
 @require_auth
 def create_website():
@@ -970,6 +1014,91 @@ def analytics_stats():
         }), 200
 
 
+@admin_bp.route('/websites/<website_id>/analytics/stats', methods=['GET'])
+@require_auth
+def website_analytics_stats(website_id):
+    """Per-website dashboard statistics endpoint (same shape as global)"""
+    try:
+        time_range = request.args.get('timeRange', '24h')
+        if time_range == '24h':
+            hours = 24
+        elif time_range == '7d':
+            hours = 24 * 7
+        elif time_range == '30d':
+            hours = 24 * 30
+        else:
+            hours = 24
+
+        start_time = datetime.utcnow() - timedelta(hours=hours)
+
+        session = get_db_session()
+        try:
+            total_verifications = session.query(func.count(VerificationLog.id)).filter(
+                and_(
+                    VerificationLog.timestamp >= start_time,
+                    VerificationLog.website_id == website_id
+                )
+            ).scalar() or 0
+
+            human_count = session.query(func.count(VerificationLog.id)).filter(
+                and_(
+                    VerificationLog.timestamp >= start_time,
+                    VerificationLog.website_id == website_id,
+                    VerificationLog.is_human == True
+                )
+            ).scalar() or 0
+
+            human_rate = (human_count / total_verifications * 100) if total_verifications > 0 else 0
+
+            avg_confidence = session.query(func.avg(VerificationLog.confidence)).filter(
+                and_(
+                    VerificationLog.timestamp >= start_time,
+                    VerificationLog.website_id == website_id
+                )
+            ).scalar() or 0
+
+            avg_response_time = session.query(func.avg(VerificationLog.response_time)).filter(
+                and_(
+                    VerificationLog.timestamp >= start_time,
+                    VerificationLog.website_id == website_id,
+                    VerificationLog.response_time != None
+                )
+            ).scalar() or 0
+
+            return jsonify({
+                'success': True,
+                'data': {
+                    'totalVerifications': int(total_verifications),
+                    'humanRate': round(human_rate, 2),
+                    'avgConfidence': round(float(avg_confidence or 0), 4),
+                    'avgResponseTime': round(float(avg_response_time or 0), 2),
+                    'verificationChange': 0,
+                    'humanRateChange': 0,
+                    'confidenceChange': 0,
+                    'responseTimeChange': 0
+                },
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
+            }), 200
+        finally:
+            session.close()
+    except Exception as e:
+        current_app.logger.error(f"Error in website_analytics_stats: {e}")
+        return jsonify({
+            'success': True,
+            'data': {
+                'totalVerifications': 0,
+                'humanRate': 0,
+                'avgConfidence': 0,
+                'avgResponseTime': 0,
+                'verificationChange': 0,
+                'humanRateChange': 0,
+                'confidenceChange': 0,
+                'responseTimeChange': 0
+            },
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }), 200
+
+
 @admin_bp.route('/analytics/charts/<chart_type>', methods=['GET'])
 @require_auth
 def analytics_charts(chart_type):
@@ -1070,6 +1199,91 @@ def analytics_charts(chart_type):
             
     except Exception as e:
         current_app.logger.error(f"Error getting chart data for {chart_type}: {e}")
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'CHART_DATA_ERROR',
+                'message': f'Failed to retrieve {chart_type} chart data'
+            }
+        }), 500
+
+
+@admin_bp.route('/websites/<website_id>/analytics/charts/<chart_type>', methods=['GET'])
+@require_auth
+def website_analytics_charts(website_id, chart_type):
+    """Per-website chart data endpoint (same shape as global)"""
+    try:
+        period = request.args.get('period', '24h')
+        if period == '24h':
+            hours = 24
+        elif period == '7d':
+            hours = 168
+        elif period == '30d':
+            hours = 720
+        else:
+            hours = 24
+
+        start_time = datetime.utcnow() - timedelta(hours=hours)
+        session = get_db_session()
+        try:
+            if chart_type == 'verifications':
+                data = []
+                for i in range(hours):
+                    hour_start = start_time + timedelta(hours=i)
+                    hour_end = hour_start + timedelta(hours=1)
+                    count = session.query(func.count(VerificationLog.id)).filter(
+                        and_(
+                            VerificationLog.timestamp >= hour_start,
+                            VerificationLog.timestamp < hour_end,
+                            VerificationLog.website_id == website_id
+                        )
+                    ).scalar() or 0
+                    data.append({ 'timestamp': hour_start.isoformat() + 'Z', 'value': count })
+            elif chart_type == 'confidence':
+                confidence_ranges = [
+                    {'min': 0.0, 'max': 0.2, 'label': '0-20%'},
+                    {'min': 0.2, 'max': 0.4, 'label': '20-40%'},
+                    {'min': 0.4, 'max': 0.6, 'label': '40-60%'},
+                    {'min': 0.6, 'max': 0.8, 'label': '60-80%'},
+                    {'min': 0.8, 'max': 1.0, 'label': '80-100%'}
+                ]
+                data = []
+                for range_info in confidence_ranges:
+                    count = session.query(func.count(VerificationLog.id)).filter(
+                        and_(
+                            VerificationLog.timestamp >= start_time,
+                            VerificationLog.confidence >= range_info['min'],
+                            VerificationLog.confidence < range_info['max'],
+                            VerificationLog.website_id == website_id
+                        )
+                    ).scalar() or 0
+                    data.append({ 'label': range_info['label'], 'value': count })
+            elif chart_type == 'response_time':
+                data = []
+                for i in range(hours):
+                    hour_start = start_time + timedelta(hours=i)
+                    avg_response_time = session.query(func.avg(VerificationLog.response_time)).filter(
+                        and_(
+                            VerificationLog.timestamp >= hour_start,
+                            VerificationLog.timestamp < hour_start + timedelta(hours=1),
+                            VerificationLog.website_id == website_id
+                        )
+                    ).scalar() or 0
+                    data.append({ 'timestamp': hour_start.isoformat() + 'Z', 'value': round(avg_response_time, 2) if avg_response_time else 0 })
+            else:
+                data = []
+
+            return jsonify({
+                'success': True,
+                'data': data,
+                'chart_type': chart_type,
+                'period': period,
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
+            }), 200
+        finally:
+            session.close()
+    except Exception as e:
+        current_app.logger.error(f"Error getting website chart data for {chart_type}: {e}")
         return jsonify({
             'success': False,
             'error': {

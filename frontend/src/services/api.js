@@ -69,6 +69,21 @@ class ApiService {
     return response.data
   }
 
+  // Website-scoped analytics
+  async getWebsiteStats(websiteId, period = '24h') {
+    const response = await this.client.get(`/admin/websites/${websiteId}/analytics/stats`, {
+      params: { timeRange: period === '24h' ? '24h' : period === '7d' ? '7d' : '30d' }
+    })
+    return response.data
+  }
+
+  async getWebsiteChartData(websiteId, type, period = '24h') {
+    const response = await this.client.get(`/admin/websites/${websiteId}/analytics/charts/${type}`, {
+      params: { period }
+    })
+    return response.data
+  }
+
   // Website endpoints
   async getWebsites() {
     const response = await this.client.get('/admin/websites')
