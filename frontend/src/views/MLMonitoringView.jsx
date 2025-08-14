@@ -1,23 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '../stores/app'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Brain, RefreshCw, AlertTriangle, CheckCircle, Activity, Database, Cpu, TrendingUp, Users, Shield } from 'lucide-react'
 import apiService from '../services/api'
 
 export default function MLMonitoringView() {
   const [loading, setLoading] = useState(false)
   const [mlHealth, setMlHealth] = useState(null)
-  const [mlMetrics, setMlMetrics] = useState(null)
   const [recentActivity, setRecentActivity] = useState([])
   const [stats, setStats] = useState(null)
   const { addNotification } = useAppStore()
 
   useEffect(() => {
     loadMLData()
-    // Refresh data every 30 seconds
     const interval = setInterval(loadMLData, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [loadMLData])
 
   const loadMLData = async () => {
     setLoading(true)

@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react'
-import { useDashboardStore } from '../stores/dashboard'
+import { useState } from 'react'
 import { useAppStore } from '../stores/app'
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { Calendar, Download, RefreshCw, TrendingUp } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { Download, RefreshCw, TrendingUp } from 'lucide-react'
 
 const mockVerificationData = [
   { date: '2024-01-01', verifications: 1247, blocked: 89, passed: 1158 },

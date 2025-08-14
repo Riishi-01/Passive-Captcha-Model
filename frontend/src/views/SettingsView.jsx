@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAppStore } from '../stores/app'
-import { Save, Copy, Check, ExternalLink, Globe, Shield, Code } from 'lucide-react'
+import { Save, Copy, Check, Globe, Shield, Code } from 'lucide-react'
 import apiService from '../services/api'
 
 export default function SettingsView() {

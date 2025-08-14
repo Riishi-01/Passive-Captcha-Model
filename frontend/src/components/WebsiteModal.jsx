@@ -44,8 +44,12 @@ export default function WebsiteModal() {
     
     if (!formData.url.trim()) {
       newErrors.url = 'URL is required'
-    } else if (!/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.\-~:]*)*\/?(\?[;&a-z\d%_.~+=-]*)?(\#[-a-z\d_]*)?$/i.test(formData.url)) {
-      newErrors.url = 'Please enter a valid URL (e.g., https://example.com)'
+    } else {
+      // Simple, lint-friendly URL validation
+      const urlPattern = /^(https?:\/\/)?([\w.-]+)\.([a-z]{2,})([\w\-._~:/?#[\]@!$&'()*+,;=.]+)?$/i
+      if (!urlPattern.test(formData.url)) {
+        newErrors.url = 'Please enter a valid URL (e.g., https://example.com)'
+      }
     }
 
     setErrors(newErrors)

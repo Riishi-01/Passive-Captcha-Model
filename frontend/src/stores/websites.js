@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import apiService from '../services/api'
 
-export const useWebsitesStore = create((set, get) => ({
+export const useWebsitesStore = create((set) => ({
   websites: [],
   selectedWebsite: null,
   loading: false,

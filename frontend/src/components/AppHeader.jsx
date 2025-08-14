@@ -4,7 +4,6 @@ import { Menu, Sun, Moon, Bell, LogOut } from 'lucide-react'
 import { useAuthStore } from '../stores/auth'
 import { useWebsitesStore } from '../stores/websites'
 import { useDashboardStore } from '../stores/dashboard'
-import RealTimeClock from './RealTimeClock'
 
 export default function AppHeader() {
   const { theme, toggleTheme, toggleSidebar } = useAppStore()

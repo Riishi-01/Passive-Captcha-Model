@@ -1,18 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAppStore } from '../stores/app'
-import { 
-  FileText, 
-  Download, 
-  RefreshCw, 
-  Search, 
-  Filter,
-  Calendar,
-  Clock,
-  User,
-  Globe,
-  Shield,
-  AlertTriangle
-} from 'lucide-react'
+import { FileText, Download, RefreshCw, Search, Clock, Globe, AlertTriangle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 const mockLogs = [
@@ -74,7 +62,7 @@ const mockLogs = [
 ]
 
 export default function LogsView() {
-  const [logs, setLogs] = useState(mockLogs)
+  const [logs] = useState(mockLogs)
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [levelFilter, setLevelFilter] = useState('all')

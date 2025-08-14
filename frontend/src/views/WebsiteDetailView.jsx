@@ -209,7 +209,7 @@ export default function WebsiteDetailView() {
           <div className="space-y-6">
             <div className="card p-6">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Today's Stats
+                Today&apos;s Stats
               </h3>
               <div className="space-y-4">
                 <div>
@@ -259,7 +259,7 @@ export default function WebsiteDetailView() {
               Integration Code
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Add this script to your website's HTML to enable Passive CAPTCHA protection.
+              Add this script to your website&apos;s HTML to enable Passive CAPTCHA protection.
             </p>
             
             <div className="relative">
@@ -280,7 +280,7 @@ export default function WebsiteDetailView() {
               </h4>
               <ol className="text-sm text-blue-800 dark:text-blue-300 space-y-1 list-decimal list-inside">
                 <li>Copy the script code above</li>
-                <li>Paste it in your website's HTML before the closing &lt;/head&gt; tag</li>
+                <li>Paste it in your website&apos;s HTML before the closing &lt;/head&gt; tag</li>
                 <li>The script will automatically start protecting your website</li>
                 <li>Monitor the results in your dashboard</li>
               </ol>
