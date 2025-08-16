@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "description": "Passive CAPTCHA prototype with React frontend and Python backend",
   "scripts": {
-    "build": "./build.sh",
+    "install": "cd frontend && npm ci && cd .. && python -m pip install --upgrade pip && python -m pip install -r backend/requirements.txt",
+    "build": "cd frontend && npm run build",
     "start": "cd backend && python main.py --port $PORT"
   },
   "engines": {
     "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+    "npm": ">=8.0.0",
+    "python": ">=3.11.0"
   }
 }
