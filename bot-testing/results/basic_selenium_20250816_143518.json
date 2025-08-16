@@ -1,0 +1,126 @@
+{
+  "bot_type": "selenium_basic",
+  "start_time": "2025-08-16T14:35:03.163669",
+  "actions": [
+    {
+      "timestamp": "2025-08-16T14:35:11.235957",
+      "action": "navigate",
+      "details": {
+        "url": "https://captcha-prototype-production.up.railway.app/"
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:14.878006",
+      "action": "get_title",
+      "details": {
+        "title": "Home - Unique Identification Authority of India | Government of India"
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:14.899149",
+      "action": "found_clickable",
+      "details": {
+        "count": 243
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:14.908195",
+      "action": "click_error",
+      "details": {
+        "element_index": 0,
+        "error": "Message: element not interactable\n  (Session info: chrome=138.0.7204.184); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementnotinteractableexception\nStacktrace:\n0   chromedriver                        0x0000000104d1cb38 cxxbridge1$str$ptr + 2722088\n1   chromedriver                        0x0000000104d14aa8 cxxbridge1$str$ptr + 2689176\n2   chromedriver                        0x00000001048661b0 cxxbridge1$string$len + 90252\n3   chromedriver                        0x00000001048ae4b8 cxxbridge1$string$len + 385940\n4   chromedriver                        0x00000001048a32a8 cxxbridge1$string$len + 340356\n5   chromedriver                        0x00000001048a2d34 cxxbridge1$string$len + 338960\n6   chromedriver                        0x00000001048ee880 cxxbridge1$string$len + 649052\n7   chromedriver                        0x00000001048a1784 cxxbridge1$string$len + 333408\n8   chromedriver                        0x0000000104cdfeb4 cxxbridge1$str$ptr + 2473124\n9   chromedriver                        0x0000000104ce3120 cxxbridge1$str$ptr + 2486032\n10  chromedriver                        0x0000000104cc16b4 cxxbridge1$str$ptr + 2348196\n11  chromedriver                        0x0000000104ce39dc cxxbridge1$str$ptr + 2488268\n12  chromedriver                        0x0000000104cb2730 cxxbridge1$str$ptr + 2286880\n13  chromedriver                        0x0000000104d035f8 cxxbridge1$str$ptr + 2618344\n14  chromedriver                        0x0000000104d03784 cxxbridge1$str$ptr + 2618740\n15  chromedriver                        0x0000000104d146e4 cxxbridge1$str$ptr + 2688212\n16  libsystem_pthread.dylib             0x00000001a01d2c0c _pthread_start + 136\n17  libsystem_pthread.dylib             0x00000001a01cdb80 thread_start + 8\n"
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:14.915508",
+      "action": "click_error",
+      "details": {
+        "element_index": 1,
+        "error": "Message: element not interactable\n  (Session info: chrome=138.0.7204.184); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementnotinteractableexception\nStacktrace:\n0   chromedriver                        0x0000000104d1cb38 cxxbridge1$str$ptr + 2722088\n1   chromedriver                        0x0000000104d14aa8 cxxbridge1$str$ptr + 2689176\n2   chromedriver                        0x00000001048661b0 cxxbridge1$string$len + 90252\n3   chromedriver                        0x00000001048ae4b8 cxxbridge1$string$len + 385940\n4   chromedriver                        0x00000001048a32a8 cxxbridge1$string$len + 340356\n5   chromedriver                        0x00000001048a2d34 cxxbridge1$string$len + 338960\n6   chromedriver                        0x00000001048ee880 cxxbridge1$string$len + 649052\n7   chromedriver                        0x00000001048a1784 cxxbridge1$string$len + 333408\n8   chromedriver                        0x0000000104cdfeb4 cxxbridge1$str$ptr + 2473124\n9   chromedriver                        0x0000000104ce3120 cxxbridge1$str$ptr + 2486032\n10  chromedriver                        0x0000000104cc16b4 cxxbridge1$str$ptr + 2348196\n11  chromedriver                        0x0000000104ce39dc cxxbridge1$str$ptr + 2488268\n12  chromedriver                        0x0000000104cb2730 cxxbridge1$str$ptr + 2286880\n13  chromedriver                        0x0000000104d035f8 cxxbridge1$str$ptr + 2618344\n14  chromedriver                        0x0000000104d03784 cxxbridge1$str$ptr + 2618740\n15  chromedriver                        0x0000000104d146e4 cxxbridge1$str$ptr + 2688212\n16  libsystem_pthread.dylib             0x00000001a01d2c0c _pthread_start + 136\n17  libsystem_pthread.dylib             0x00000001a01cdb80 thread_start + 8\n"
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:14.919917",
+      "action": "click_error",
+      "details": {
+        "element_index": 2,
+        "error": "Message: element not interactable\n  (Session info: chrome=138.0.7204.184); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementnotinteractableexception\nStacktrace:\n0   chromedriver                        0x0000000104d1cb38 cxxbridge1$str$ptr + 2722088\n1   chromedriver                        0x0000000104d14aa8 cxxbridge1$str$ptr + 2689176\n2   chromedriver                        0x00000001048661b0 cxxbridge1$string$len + 90252\n3   chromedriver                        0x00000001048ae4b8 cxxbridge1$string$len + 385940\n4   chromedriver                        0x00000001048a32a8 cxxbridge1$string$len + 340356\n5   chromedriver                        0x00000001048a2d34 cxxbridge1$string$len + 338960\n6   chromedriver                        0x00000001048ee880 cxxbridge1$string$len + 649052\n7   chromedriver                        0x00000001048a1784 cxxbridge1$string$len + 333408\n8   chromedriver                        0x0000000104cdfeb4 cxxbridge1$str$ptr + 2473124\n9   chromedriver                        0x0000000104ce3120 cxxbridge1$str$ptr + 2486032\n10  chromedriver                        0x0000000104cc16b4 cxxbridge1$str$ptr + 2348196\n11  chromedriver                        0x0000000104ce39dc cxxbridge1$str$ptr + 2488268\n12  chromedriver                        0x0000000104cb2730 cxxbridge1$str$ptr + 2286880\n13  chromedriver                        0x0000000104d035f8 cxxbridge1$str$ptr + 2618344\n14  chromedriver                        0x0000000104d03784 cxxbridge1$str$ptr + 2618740\n15  chromedriver                        0x0000000104d146e4 cxxbridge1$str$ptr + 2688212\n16  libsystem_pthread.dylib             0x00000001a01d2c0c _pthread_start + 136\n17  libsystem_pthread.dylib             0x00000001a01cdb80 thread_start + 8\n"
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:14.924179",
+      "action": "click_error",
+      "details": {
+        "element_index": 3,
+        "error": "Message: element not interactable\n  (Session info: chrome=138.0.7204.184); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementnotinteractableexception\nStacktrace:\n0   chromedriver                        0x0000000104d1cb38 cxxbridge1$str$ptr + 2722088\n1   chromedriver                        0x0000000104d14aa8 cxxbridge1$str$ptr + 2689176\n2   chromedriver                        0x00000001048661b0 cxxbridge1$string$len + 90252\n3   chromedriver                        0x00000001048ae4b8 cxxbridge1$string$len + 385940\n4   chromedriver                        0x00000001048a32a8 cxxbridge1$string$len + 340356\n5   chromedriver                        0x00000001048a2d34 cxxbridge1$string$len + 338960\n6   chromedriver                        0x00000001048ee880 cxxbridge1$string$len + 649052\n7   chromedriver                        0x00000001048a1784 cxxbridge1$string$len + 333408\n8   chromedriver                        0x0000000104cdfeb4 cxxbridge1$str$ptr + 2473124\n9   chromedriver                        0x0000000104ce3120 cxxbridge1$str$ptr + 2486032\n10  chromedriver                        0x0000000104cc16b4 cxxbridge1$str$ptr + 2348196\n11  chromedriver                        0x0000000104ce39dc cxxbridge1$str$ptr + 2488268\n12  chromedriver                        0x0000000104cb2730 cxxbridge1$str$ptr + 2286880\n13  chromedriver                        0x0000000104d035f8 cxxbridge1$str$ptr + 2618344\n14  chromedriver                        0x0000000104d03784 cxxbridge1$str$ptr + 2618740\n15  chromedriver                        0x0000000104d146e4 cxxbridge1$str$ptr + 2688212\n16  libsystem_pthread.dylib             0x00000001a01d2c0c _pthread_start + 136\n17  libsystem_pthread.dylib             0x00000001a01cdb80 thread_start + 8\n"
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:14.928434",
+      "action": "click_error",
+      "details": {
+        "element_index": 4,
+        "error": "Message: element not interactable\n  (Session info: chrome=138.0.7204.184); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementnotinteractableexception\nStacktrace:\n0   chromedriver                        0x0000000104d1cb38 cxxbridge1$str$ptr + 2722088\n1   chromedriver                        0x0000000104d14aa8 cxxbridge1$str$ptr + 2689176\n2   chromedriver                        0x00000001048661b0 cxxbridge1$string$len + 90252\n3   chromedriver                        0x00000001048ae4b8 cxxbridge1$string$len + 385940\n4   chromedriver                        0x00000001048a32a8 cxxbridge1$string$len + 340356\n5   chromedriver                        0x00000001048a2d34 cxxbridge1$string$len + 338960\n6   chromedriver                        0x00000001048ee880 cxxbridge1$string$len + 649052\n7   chromedriver                        0x00000001048a1784 cxxbridge1$string$len + 333408\n8   chromedriver                        0x0000000104cdfeb4 cxxbridge1$str$ptr + 2473124\n9   chromedriver                        0x0000000104ce3120 cxxbridge1$str$ptr + 2486032\n10  chromedriver                        0x0000000104cc16b4 cxxbridge1$str$ptr + 2348196\n11  chromedriver                        0x0000000104ce39dc cxxbridge1$str$ptr + 2488268\n12  chromedriver                        0x0000000104cb2730 cxxbridge1$str$ptr + 2286880\n13  chromedriver                        0x0000000104d035f8 cxxbridge1$str$ptr + 2618344\n14  chromedriver                        0x0000000104d03784 cxxbridge1$str$ptr + 2618740\n15  chromedriver                        0x0000000104d146e4 cxxbridge1$str$ptr + 2688212\n16  libsystem_pthread.dylib             0x00000001a01d2c0c _pthread_start + 136\n17  libsystem_pthread.dylib             0x00000001a01cdb80 thread_start + 8\n"
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:14.943705",
+      "action": "scroll",
+      "details": {
+        "position": 100
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:14.958106",
+      "action": "scroll",
+      "details": {
+        "position": 300
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:14.972410",
+      "action": "scroll",
+      "details": {
+        "position": 500
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:14.985011",
+      "action": "scroll",
+      "details": {
+        "position": 800
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:14.999386",
+      "action": "scroll",
+      "details": {
+        "position": 1000
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:15.124711",
+      "action": "form_input",
+      "details": {
+        "type": "search"
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:15.124746",
+      "action": "navigate",
+      "details": {
+        "url": "https://captcha-prototype-production.up.railway.app/admin"
+      }
+    },
+    {
+      "timestamp": "2025-08-16T14:35:17.099088",
+      "action": "login_error",
+      "details": {
+        "error": "Message: no such element: Unable to locate element: {\"method\":\"css selector\",\"selector\":\"input[type=\"text\"], input[type=\"email\"], input[name*=\"user\"], input[name*=\"login\"]\"}\n  (Session info: chrome=138.0.7204.184); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#nosuchelementexception\nStacktrace:\n0   chromedriver                        0x0000000104d1cb38 cxxbridge1$str$ptr + 2722088\n1   chromedriver                        0x0000000104d14aa8 cxxbridge1$str$ptr + 2689176\n2   chromedriver                        0x000000010486633c cxxbridge1$string$len + 90648\n3   chromedriver                        0x00000001048ad494 cxxbridge1$string$len + 381808\n4   chromedriver                        0x00000001048ee880 cxxbridge1$string$len + 649052\n5   chromedriver                        0x00000001048a1784 cxxbridge1$string$len + 333408\n6   chromedriver                        0x0000000104cdfeb4 cxxbridge1$str$ptr + 2473124\n7   chromedriver                        0x0000000104ce3120 cxxbridge1$str$ptr + 2486032\n8   chromedriver                        0x0000000104cc16b4 cxxbridge1$str$ptr + 2348196\n9   chromedriver                        0x0000000104ce39dc cxxbridge1$str$ptr + 2488268\n10  chromedriver                        0x0000000104cb2730 cxxbridge1$str$ptr + 2286880\n11  chromedriver                        0x0000000104d035f8 cxxbridge1$str$ptr + 2618344\n12  chromedriver                        0x0000000104d03784 cxxbridge1$str$ptr + 2618740\n13  chromedriver                        0x0000000104d146e4 cxxbridge1$str$ptr + 2688212\n14  libsystem_pthread.dylib             0x00000001a01d2c0c _pthread_start + 136\n15  libsystem_pthread.dylib             0x00000001a01cdb80 thread_start + 8\n"
+      }
+    }
+  ],
+  "detections": [],
+  "errors": [],
+  "end_time": "2025-08-16T14:35:18.185932"
+}

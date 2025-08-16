@@ -1,0 +1,183 @@
+{
+  "bot_type": "http_requests",
+  "start_time": "2025-08-16T15:31:36.611305",
+  "requests": [
+    {
+      "timestamp": "2025-08-16T15:31:38.492886",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/",
+      "status_code": 200,
+      "response_time_ms": 1867.36,
+      "details": {
+        "content_length": 1827508,
+        "content_type": "text/html; charset=utf-8",
+        "has_captcha_script": false
+      }
+    },
+    {
+      "timestamp": "2025-08-16T15:31:38.997950",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/health",
+      "status_code": 200,
+      "response_time_ms": 496.34,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T15:31:39.509646",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/api/health",
+      "status_code": 404,
+      "response_time_ms": 456.42,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T15:31:40.025575",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/robots.txt",
+      "status_code": 404,
+      "response_time_ms": 460.73,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T15:31:40.502355",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/favicon.ico",
+      "status_code": 404,
+      "response_time_ms": 424.86,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T15:31:40.976685",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/sitemap.xml",
+      "status_code": 404,
+      "response_time_ms": 423.52,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T15:31:41.948975",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/admin",
+      "status_code": 200,
+      "response_time_ms": 418.4,
+      "details": {
+        "content_length": 711,
+        "has_login_form": false
+      }
+    },
+    {
+      "timestamp": "2025-08-16T15:31:42.364046",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/admin/login",
+      "status_code": 405,
+      "response_time_ms": 414.9,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T15:31:42.806801",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/admin/dashboard",
+      "status_code": 404,
+      "response_time_ms": 417.54,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T15:31:43.249596",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/admin/api",
+      "status_code": 404,
+      "response_time_ms": 422.08,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T15:31:43.696315",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/admin/users",
+      "status_code": 404,
+      "response_time_ms": 421.54,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T15:31:44.137053",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/admin/settings",
+      "status_code": 401,
+      "response_time_ms": 415.64,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T15:31:44.708552",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/login",
+      "status_code": 404,
+      "response_time_ms": 546.3,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T15:31:45.243900",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/dashboard",
+      "status_code": 404,
+      "response_time_ms": 510.24,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T15:31:46.268749",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/api/health",
+      "status_code": 404,
+      "response_time_ms": 494.55,
+      "details": {
+        "is_api": true,
+        "response_length": 207
+      }
+    },
+    {
+      "timestamp": "2025-08-16T15:31:46.757276",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/api/captcha/verify",
+      "status_code": 404,
+      "response_time_ms": 476.17,
+      "details": {
+        "is_api": true,
+        "response_length": 207
+      }
+    },
+    {
+      "timestamp": "2025-08-16T15:31:47.182050",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/api/admin/stats",
+      "status_code": 404,
+      "response_time_ms": 412.82,
+      "details": {
+        "is_api": true,
+        "response_length": 207
+      }
+    },
+    {
+      "timestamp": "2025-08-16T15:31:47.617620",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/api/websites",
+      "status_code": 200,
+      "response_time_ms": 423.5,
+      "details": {
+        "is_api": true,
+        "response_length": 66
+      }
+    },
+    {
+      "timestamp": "2025-08-16T15:31:48.043189",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/health",
+      "status_code": 200,
+      "response_time_ms": 413.03,
+      "details": {
+        "is_api": true,
+        "response_length": 271
+      }
+    }
+  ],
+  "detections": [],
+  "errors": [],
+  "end_time": "2025-08-16T15:31:48.054475"
+}

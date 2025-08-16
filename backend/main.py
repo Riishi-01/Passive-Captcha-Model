@@ -313,6 +313,15 @@ def create_app(config_name='production'):
     except Exception as e:
         app.logger.error(f"Failed to register admin API: {e}")
 
+    # Register admin dashboard blueprint (with HTML dashboard)
+    try:
+        from app.admin import admin_bp as admin_dashboard_bp
+        # Register with /admin prefix to serve dashboard
+        app.register_blueprint(admin_dashboard_bp, url_prefix='/admin')
+        app.logger.info("Admin dashboard registered")
+    except Exception as e:
+        app.logger.error(f"Failed to register admin dashboard: {e}")
+
     # Register script API blueprint (passive script delivery & collection)
     try:
         from app.api.script_endpoints import script_bp
@@ -711,12 +720,16 @@ def register_frontend_routes(app, static_folder):
                 # For browsers without tokens, require them after initial load
                 if 'mozilla' in user_agent.lower() or 'chrome' in user_agent.lower():
                     # Allow first request to load CAPTCHA script, but log as suspicious
-                    log_detection_event('browser_no_token', {
-                        'user_agent': user_agent,
-                        'ip_address': request.remote_addr,
-                        'result': 'browser_missing_token',
-                        'confidence': 0.3
-                    })
+                    try:
+                        from app.ml import log_detection_event
+                        log_detection_event('browser_no_token', {
+                            'user_agent': user_agent,
+                            'ip_address': request.remote_addr,
+                            'result': 'browser_missing_token',
+                            'confidence': 0.3
+                        })
+                    except:
+                        pass
                 
         return None
 

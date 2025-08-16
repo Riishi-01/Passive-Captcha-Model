@@ -1063,12 +1063,165 @@
         init();
     }
     
+    // Detect browser automation indicators
+    function detectAutomation() {
+        let automationScore = 0;
+        const indicators = [];
+        
+        // Check for webdriver property
+        if (navigator.webdriver === true) {
+            automationScore += 0.8;
+            indicators.push('webdriver_detected');
+        }
+        
+        // Check for missing chrome object in Chrome browsers
+        if (navigator.userAgent.includes('Chrome') && !window.chrome) {
+            automationScore += 0.6;
+            indicators.push('chrome_object_missing');
+        }
+        
+        // Check for automation-specific properties
+        if (window.callPhantom || window._phantom || window.phantom) {
+            automationScore += 0.9;
+            indicators.push('phantom_detected');
+        }
+        
+        // Check for selenium indicators
+        if (window.document.documentElement.getAttribute('selenium') || 
+            window.document.documentElement.getAttribute('webdriver') ||
+            window.document.documentElement.getAttribute('driver')) {
+            automationScore += 0.9;
+            indicators.push('selenium_attributes');
+        }
+        
+        // Check for headless indicators
+        if (navigator.webdriver === undefined && 
+            navigator.languages && navigator.languages.length === 0) {
+            automationScore += 0.5;
+            indicators.push('headless_languages');
+        }
+        
+        // Check for missing plugins in non-mobile environments
+        if (navigator.plugins && navigator.plugins.length === 0 && 
+            !navigator.userAgent.includes('Mobile')) {
+            automationScore += 0.4;
+            indicators.push('no_plugins');
+        }
+        
+        return {
+            score: Math.min(automationScore, 1.0),
+            indicators: indicators
+        };
+    }
+    
+    // Generate behavioral token for server-side validation
+    function generateBehavioralToken() {
+        const metrics = state.behaviorMetrics;
+        const automation = detectAutomation();
+        
+        const tokenData = {
+            sessionId: state.sessionId,
+            timestamp: Date.now(),
+            mouseEvents: metrics.mouseEvents.length,
+            keyEvents: metrics.keyEvents.length,
+            scrollEvents: metrics.scrollEvents.length,
+            sessionDuration: metrics.sessionDuration,
+            humanScore: calculateHumanScore(),
+            automationScore: automation.score,
+            automationIndicators: automation.indicators
+        };
+        
+        // Simple token encoding (in production, use proper JWT)
+        return btoa(JSON.stringify(tokenData));
+    }
+    
+    // Calculate human-like behavior score
+    function calculateHumanScore() {
+        const metrics = state.behaviorMetrics;
+        const automation = detectAutomation();
+        let score = 0.5; // Base score
+        
+        // Reduce score significantly if automation detected
+        if (automation.score > 0.7) {
+            score = Math.max(0.1, score - automation.score);
+        } else if (automation.score > 0.3) {
+            score = Math.max(0.2, score - automation.score * 0.5);
+        }
+        
+        // Mouse movement patterns
+        if (metrics.mouseEvents.length > 10) score += 0.2;
+        if (metrics.mouseVelocity > 0.1) score += 0.1;
+        
+        // Keyboard patterns
+        if (metrics.keyEvents.length > 5) score += 0.1;
+        if (metrics.typingRhythm > 0.1) score += 0.1;
+        
+        // Time-based patterns
+        if (metrics.sessionDuration > 3000) score += 0.1;
+        
+        // Penalize very mechanical patterns
+        if (metrics.mouseEvents.length > 0) {
+            const velocityVariance = calculateVelocityVariance();
+            if (velocityVariance < 0.1) score -= 0.2; // Too consistent movement
+        }
+        
+        return Math.max(0.0, Math.min(score, 1.0));
+    }
+    
+    // Calculate variance in mouse movement velocity
+    function calculateVelocityVariance() {
+        const events = state.behaviorMetrics.mouseEvents;
+        if (events.length < 3) return 0.5;
+        
+        const velocities = [];
+        for (let i = 1; i < events.length; i++) {
+            const dx = events[i].x - events[i-1].x;
+            const dy = events[i].y - events[i-1].y;
+            const dt = events[i].timestamp - events[i-1].timestamp;
+            if (dt > 0) {
+                velocities.push(Math.sqrt(dx*dx + dy*dy) / dt);
+            }
+        }
+        
+        if (velocities.length < 2) return 0.5;
+        
+        const mean = velocities.reduce((a, b) => a + b) / velocities.length;
+        const variance = velocities.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / velocities.length;
+        
+        return Math.sqrt(variance);
+    }
+    
+    // Add behavioral token to requests
+    function addTokenToRequests() {
+        const token = generateBehavioralToken();
+        
+        // Add to all future requests
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options = {}) {
+            options.headers = options.headers || {};
+            options.headers['X-Behavioral-Token'] = token;
+            return originalFetch(url, options);
+        };
+        
+        // Add to XMLHttpRequest
+        const originalXHR = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function() {
+            originalXHR.apply(this, arguments);
+            this.setRequestHeader('X-Behavioral-Token', token);
+        };
+    }
+    
+    // Initialize token system after collecting initial data
+    setTimeout(addTokenToRequests, 2000);
+    
     // Expose minimal API for external access
     window.PassiveCAPTCHA = {
         getSessionId: function() { return state.sessionId; },
         getMetrics: function() { return state.behaviorMetrics; },
         sendData: sendCollectedData,
-        isInitialized: function() { return state.isInitialized; }
+        isInitialized: function() { return state.isInitialized; },
+        getToken: generateBehavioralToken,
+        getHumanScore: calculateHumanScore
     };
     
 })();
