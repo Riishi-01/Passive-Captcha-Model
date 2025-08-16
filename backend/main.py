@@ -573,33 +573,29 @@ def register_frontend_routes(app, static_folder):
         """Enhanced server-side validation middleware using security module"""
         from flask import request
         
-        try:
-            from app.security import get_security_validator
+        # Skip validation for certain paths and methods
+        skip_paths = ['/admin', '/api/', '/health', '/static/', '/assets/', '/favicon.ico', '/robots.txt']
+        if request.method == 'OPTIONS' or any(request.path.startswith(path) for path in skip_paths):
+            return None
             
-            # Skip validation for certain paths and methods
-            security_validator = get_security_validator()
-            if security_validator.should_skip_validation(request.path, request.method):
-                return None
-                
-            # Main page validation with comprehensive security checks
-            if request.path == '/' and request.method == 'GET':
-                # Extract request data
-                behavioral_token = request.headers.get('X-Behavioral-Token')
-                user_agent = request.headers.get('User-Agent', '')
-                ip_address = request.remote_addr
-                
-                # Use centralized security validation
-                validation_result = security_validator.validate_request(user_agent, ip_address, behavioral_token)
-                if validation_result:
-                    return validation_result
-                    
-        except Exception as e:
-            app.logger.error(f"Security module error: {e}")
-            # Fallback to basic bot detection
+        # Main page validation with basic bot detection
+        if request.path == '/' and request.method == 'GET':
             user_agent = request.headers.get('User-Agent', '')
+            
+            # Basic bot detection for immediate deployment
             if any(bot in user_agent.lower() for bot in ['python', 'requests', 'curl', 'wget', 'bot']):
-                app.logger.warning(f"Fallback: Blocked bot request: {user_agent}")
+                app.logger.warning(f"Blocked bot request: {user_agent}")
                 return jsonify({'error': 'Access denied - automated traffic detected'}), 403
+            
+            # TODO: Re-enable advanced security module after debugging deployment
+            # try:
+            #     from app.security import get_security_validator
+            #     security_validator = get_security_validator()
+            #     validation_result = security_validator.validate_request(user_agent, request.remote_addr, request.headers.get('X-Behavioral-Token'))
+            #     if validation_result:
+            #         return validation_result
+            # except Exception as e:
+            #     app.logger.error(f"Security module error: {e}")
                 
         return None
 
