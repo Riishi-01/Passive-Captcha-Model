@@ -570,160 +570,26 @@ def register_frontend_routes(app, static_folder):
 
     @app.before_request
     def validate_behavioral_token():
-        """Server-side validation middleware for bot detection"""
-        from flask import request, jsonify
+        """Enhanced server-side validation middleware using security module"""
+        from flask import request
+        from app.security import get_security_validator
         
-        # Skip validation for admin, API, static files, and initial page loads
-        skip_paths = ['/admin', '/api/', '/health', '/static/', '/assets/', '/favicon.ico', '/robots.txt']
-        if any(request.path.startswith(path) for path in skip_paths):
+        # Skip validation for certain paths and methods
+        security_validator = get_security_validator()
+        if security_validator.should_skip_validation(request.path, request.method):
             return None
             
-        # Skip validation for preflight requests
-        if request.method == 'OPTIONS':
-            return None
-            
-        # Allow initial page load to inject CAPTCHA script
+        # Main page validation with comprehensive security checks
         if request.path == '/' and request.method == 'GET':
-            # Check if this is a subsequent request (has behavioral data)
+            # Extract request data
             behavioral_token = request.headers.get('X-Behavioral-Token')
             user_agent = request.headers.get('User-Agent', '')
+            ip_address = request.remote_addr
             
-            # Block obvious bot patterns and validate tokens
-            if (not behavioral_token and 
-                ('python' in user_agent.lower() or 
-                 'requests' in user_agent.lower() or
-                 'bot' in user_agent.lower() or
-                 'curl' in user_agent.lower() or
-                 'wget' in user_agent.lower())):
-                
-                # Log the detection event
-                try:
-                    from app.ml import log_detection_event
-                    log_detection_event('bot_blocked', {
-                        'user_agent': user_agent,
-                        'ip_address': request.remote_addr,
-                        'result': 'blocked_user_agent',
-                        'confidence': 1.0
-                    })
-                except:
-                    pass
-                
-                app.logger.warning(f"Blocked bot request: {user_agent}")
-                return jsonify({'error': 'Access denied - automated traffic detected'}), 403
-            
-            # Validate behavioral token if present and run ML prediction
-            if behavioral_token:
-                try:
-                    from app.ml import validate_behavioral_token, log_detection_event, extract_features, predict_human_probability
-                    import base64
-                    import json
-                    
-                    validation = validate_behavioral_token(behavioral_token)
-                    
-                    if not validation['valid']:
-                        log_detection_event('token_invalid', {
-                            'user_agent': user_agent,
-                            'ip_address': request.remote_addr,
-                            'result': validation['reason'],
-                            'confidence': 0.8
-                        })
-                        app.logger.warning(f"Invalid behavioral token: {validation['reason']}")
-                        return jsonify({'error': 'Invalid behavioral validation'}), 403
-                    
-                    # Extract and analyze behavioral data with ML model
-                    try:
-                        token_data = json.loads(base64.b64decode(behavioral_token).decode())
-                        
-                        # Create request data structure for ML analysis
-                        request_data = {
-                            'mouseMovements': [{'x': i*10, 'y': i*5, 'timestamp': i*100} for i in range(token_data.get('mouseEvents', 0))],
-                            'keystrokes': [{'timestamp': i*200} for i in range(token_data.get('keyEvents', 0))],
-                            'scrollEvents': [{'y': i*50} for i in range(token_data.get('scrollEvents', 0))],
-                            'sessionDuration': token_data.get('sessionDuration', 0),
-                            'fingerprint': {
-                                'userAgent': user_agent,
-                                'hardwareConcurrency': 4,
-                                'screenWidth': 1920,
-                                'screenHeight': 1080
-                            }
-                        }
-                        
-                        # Run ML prediction
-                        features = extract_features(request_data)
-                        ml_prediction = predict_human_probability(features)
-                        
-                        # Check for automation indicators from client
-                        automation_score = token_data.get('automationScore', 0)
-                        automation_indicators = token_data.get('automationIndicators', [])
-                        
-                        # Block if automation detected with high confidence
-                        if automation_score > 0.7:
-                            log_detection_event('automation_blocked', {
-                                'user_agent': user_agent,
-                                'ip_address': request.remote_addr,
-                                'result': f'automation_detected_{"|".join(automation_indicators)}',
-                                'confidence': automation_score
-                            })
-                            app.logger.warning(f"Automation blocked: {automation_indicators}, score {automation_score}")
-                            return jsonify({'error': 'Access denied - browser automation detected'}), 403
-                        
-                        # Block if ML predicts bot with high confidence
-                        if not ml_prediction['isHuman'] or ml_prediction['confidence'] < 0.6:
-                            log_detection_event('ml_blocked', {
-                                'user_agent': user_agent,
-                                'ip_address': request.remote_addr,
-                                'result': 'ml_prediction_bot',
-                                'confidence': ml_prediction['confidence']
-                            })
-                            app.logger.warning(f"ML blocked request: confidence {ml_prediction['confidence']}")
-                            return jsonify({'error': 'Access denied - automated behavior detected'}), 403
-                        
-                        # Additional check: Block if automation + low human score
-                        human_score = token_data.get('humanScore', 0)
-                        if automation_score > 0.3 and human_score < 0.4:
-                            log_detection_event('combined_blocked', {
-                                'user_agent': user_agent,
-                                'ip_address': request.remote_addr,
-                                'result': f'automation_{automation_score}_human_{human_score}',
-                                'confidence': 0.8
-                            })
-                            app.logger.warning(f"Combined detection blocked: automation {automation_score}, human {human_score}")
-                            return jsonify({'error': 'Access denied - suspicious behavioral patterns'}), 403
-                        
-                        # Log successful human verification
-                        log_detection_event('human_verified', {
-                            'user_agent': user_agent,
-                            'ip_address': request.remote_addr,
-                            'result': 'ml_prediction_human',
-                            'confidence': ml_prediction['confidence']
-                        })
-                        
-                    except Exception as ml_error:
-                        app.logger.error(f"ML prediction error: {ml_error}")
-                        # Fall back to basic token validation
-                        log_detection_event('human_verified', {
-                            'user_agent': user_agent,
-                            'ip_address': request.remote_addr,
-                            'result': 'token_valid_ml_error',
-                            'confidence': validation['score']
-                        })
-                        
-                except Exception as e:
-                    app.logger.error(f"Token validation error: {e}")
-            else:
-                # For browsers without tokens, require them after initial load
-                if 'mozilla' in user_agent.lower() or 'chrome' in user_agent.lower():
-                    # Allow first request to load CAPTCHA script, but log as suspicious
-                    try:
-                        from app.ml import log_detection_event
-                        log_detection_event('browser_no_token', {
-                            'user_agent': user_agent,
-                            'ip_address': request.remote_addr,
-                            'result': 'browser_missing_token',
-                            'confidence': 0.3
-                        })
-                    except:
-                        pass
+            # Use centralized security validation
+            validation_result = security_validator.validate_request(user_agent, ip_address, behavioral_token)
+            if validation_result:
+                return validation_result
                 
         return None
 
