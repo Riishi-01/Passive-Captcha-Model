@@ -69,14 +69,9 @@ export const useWebsitesStore = create((set) => ({
   },
 
   fetchWebsite: async (id) => {
-    try {
-      const website = await apiService.getWebsite(id)
-      set({ selectedWebsite: website })
-      return website
-    } catch (error) {
-      console.error('Failed to fetch website:', error)
-      throw error
-    }
+    const website = await apiService.getWebsite(id)
+    set({ selectedWebsite: website })
+    return website
   },
 
   createWebsite: async (data) => {

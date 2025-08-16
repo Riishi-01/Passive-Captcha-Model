@@ -69,12 +69,16 @@ def create_app(config_name='production'):
         print(f"   Primary static path: {static_folder}")
         print(f"   Primary path exists: {os.path.exists(static_folder)}")
 
-        # Check for alternative static folder locations (Render-optimized)
+        # Check for alternative static folder locations (Railway + Render optimized)
         if not os.path.exists(static_folder):
             alternative_paths = [
-                # Render build process copies here
+                # Railway deployment paths
+                '/app/frontend/dist',
+                '/app/backend/static',
+                os.path.join('/app', 'frontend', 'dist'),
+                os.path.join('/app', 'backend', 'static'),
+                # Local development paths
                 os.path.join(backend_dir, 'static'),
-                # Alternative project structures
                 os.path.join(project_root, 'frontend', 'dist'),
                 os.path.join(os.getcwd(), 'static'),
                 os.path.join(os.getcwd(), 'frontend', 'dist'),
@@ -566,7 +570,7 @@ def register_frontend_routes(app, static_folder):
         """Serve the actual UIDAI Government HTML as main homepage"""
         try:
             # Force serving UIDAI HTML file as the main page (not Vue.js dashboard)
-            uidai_path = os.path.join(os.path.dirname(__file__), '..', '..', 'main_frontent', 'Home - UIDAI.html')
+            uidai_path = os.path.join(os.path.dirname(__file__), 'app', 'static', 'uidai-portal.html')
             app.logger.info(f"Force serving UIDAI HTML from: {uidai_path}")
             
             # Always try to serve UIDAI first, ignore Vue.js dashboard
@@ -590,7 +594,7 @@ def register_frontend_routes(app, static_folder):
                 <!-- Passive CAPTCHA Integration for UIDAI Portal -->
                 {script_tag_html}
                 <style>
-                    .admin-access-panel {
+                    .admin-access-panel {{
                         position: fixed;
                         top: 20px;
                         right: 20px;
@@ -603,14 +607,14 @@ def register_frontend_routes(app, static_folder):
                         font-family: Arial, sans-serif;
                         font-size: 14px;
                         min-width: 200px;
-                    }
-                    .admin-access-panel h4 {
+                    }}
+                    .admin-access-panel h4 {{
                         margin: 0 0 10px 0;
                         font-size: 16px;
                         border-bottom: 1px solid rgba(255,255,255,0.3);
                         padding-bottom: 8px;
-                    }
-                    .admin-access-panel a {
+                    }}
+                    .admin-access-panel a {{
                         color: #1cb5e0;
                         text-decoration: none;
                         display: inline-block;
@@ -619,11 +623,11 @@ def register_frontend_routes(app, static_folder):
                         border: 1px solid #1cb5e0;
                         border-radius: 4px;
                         transition: all 0.3s;
-                    }
-                    .admin-access-panel a:hover {
+                    }}
+                    .admin-access-panel a:hover {{
                         background: #1cb5e0;
                         color: white;
-                    }
+                    }}
                 </style>
                 </head>'''
                 
@@ -890,124 +894,7 @@ def get_wsgi_app():
     
 
 
-def register_frontend_routes(app, static_folder):
-    """Register frontend routes for serving Vue.js application"""
-    
-    @app.route('/')
-    def serve_index():
-        """Serve main index page"""
-        try:
-            index_path = os.path.join(static_folder, 'index.html')
-            if os.path.exists(index_path):
-                from flask import send_from_directory
-                return send_from_directory(static_folder, 'index.html')
-            else:
-                return '''
-                <!DOCTYPE html>
-                <html>
-                <head><title>Passive CAPTCHA Dashboard</title></head>
-                <body>
-                    <h1>🛡️ Passive CAPTCHA Dashboard</h1>
-                    <p>System is running with fixed authentication</p>
-                    <a href="/health">System Health</a>
-                </body>
-                </html>
-                '''
-        except Exception as e:
-            return f'Error: {e}', 500
 
-    @app.route('/uidai')
-    def serve_uidai_portal():
-        """Serve UIDAI HTML with Passive CAPTCHA script injection"""
-        try:
-            uidai_path = os.path.join(os.path.dirname(__file__), '..', '..', 'main_frontent', 'Home - UIDAI.html')
-            if os.path.exists(uidai_path):
-                with open(uidai_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-
-                try:
-                    api_base = app.config.get('API_BASE_URL', request.host_url.rstrip('/'))
-                    uidai_token = os.getenv('UIDAI_SCRIPT_TOKEN')
-                    if uidai_token:
-                        script_tag_html = f'<script src="{api_base}/api/script/generate?token={uidai_token}" async defer></script>'
-                    else:
-                        script_tag_html = '<script src="/passive-captcha-script.js" async defer></script>'
-                except Exception:
-                    script_tag_html = '<script src="/passive-captcha-script.js" async defer></script>'
-
-                injection = f"\n<!-- Passive CAPTCHA Integration for UIDAI Portal -->\n{script_tag_html}\n</head>"
-                if '</head>' in content:
-                    content = content.replace('</head>', injection, 1)
-                return content
-            else:
-                return 'UIDAI page not found', 404
-        except Exception as e:
-            return f'Error: {e}', 500
-
-    @app.route('/assets/<path:filename>')
-    def serve_assets(filename):
-        """Serve Vue.js build assets"""
-        try:
-            from flask import send_from_directory
-            asset_path = os.path.join(static_folder, 'assets', filename)
-            if os.path.exists(asset_path):
-                return send_from_directory(os.path.join(static_folder, 'assets'), filename)
-            else:
-                abort(404)
-        except Exception as e:
-            app.logger.error(f"Error serving asset {filename}: {e}")
-            abort(500)
-
-    @app.route('/<path:path>')
-    def serve_spa(path):
-        """Serve SPA routes"""
-        # Skip API routes
-        if path.startswith(('api/', 'admin/', 'assets/', 'health', 'passive-captcha-script.js')):
-            abort(404)
-        
-        # Handle file extensions
-        if path.endswith(('.js', '.css', '.png', '.jpg', '.ico', '.map')):
-            try:
-                from flask import send_from_directory
-                return send_from_directory(static_folder, path)
-            except Exception:
-                abort(404)
-        
-        # Serve index.html for SPA routes
-        return serve_index()
-
-
-def setup_logging(app):
-    """Setup logging for the application"""
-    if app.config.get('DEBUG'):
-        return  # Use default logging in debug mode
-
-    # Create logs directory
-    log_dir = os.path.dirname(app.config['LOG_FILE'])
-    if log_dir and not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-
-    # Set log level
-    log_level = getattr(logging, app.config['LOG_LEVEL'].upper(), logging.INFO)
-    app.logger.setLevel(log_level)
-
-    # File handler with rotation
-    try:
-        file_handler = RotatingFileHandler(
-            app.config['LOG_FILE'],
-            maxBytes=app.config['LOG_MAX_SIZE'],
-            backupCount=app.config['LOG_BACKUP_COUNT']
-        )
-
-        file_handler.setLevel(log_level)
-        formatter = logging.Formatter(
-            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-        )
-        file_handler.setFormatter(formatter)
-        app.logger.addHandler(file_handler)
-
-    except Exception as e:
-        print(f"Warning: Could not setup file logging: {e}")
 
 
 def get_wsgi_app():
@@ -1044,7 +931,7 @@ def get_wsgi_app():
 def run_app(host='0.0.0.0', port=None, debug=False):
     """Run the application"""
     if port is None:
-        port = int(os.getenv('PORT', 5002))
+        port = int(os.getenv('PORT', 5003))
 
     app, socketio = create_app('development' if debug else 'production')
 
@@ -1074,7 +961,7 @@ if __name__ == '__main__':
         # Use gunicorn for production
         import subprocess
         import sys
-        port = args.port or int(os.getenv('PORT', 5002))
+        port = args.port or int(os.getenv('PORT', 5003))
         cmd = [
             'gunicorn',
             '--worker-class', 'eventlet',

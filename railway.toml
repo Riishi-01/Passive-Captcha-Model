@@ -16,3 +16,10 @@ SERVE_FRONTEND = "true"
 ENABLE_WEBSOCKET = "true"
 ENABLE_RATE_LIMITING = "true"
 RATE_LIMIT_REQUESTS = "1000"
+
+# IMPORTANT: Set these variables in Railway dashboard:
+# DATABASE_URL = "postgresql://user:pass@host:port/dbname" (from Railway PostgreSQL service)
+# SECRET_KEY = "your-secure-secret-key-32-chars-minimum"
+# JWT_SECRET_KEY = "your-secure-jwt-secret-key-32-chars"
+# ADMIN_SECRET = "your-admin-password"
+# REDIS_URL = "redis://host:port" (optional, from Railway Redis service)

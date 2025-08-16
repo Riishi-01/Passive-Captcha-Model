@@ -83,7 +83,7 @@ export const useAuthStore = create(
           await apiService.verifyToken()
           return true
         } catch (error) {
-          console.warn('Token verification failed:', error)
+          // Silently handle token verification failure; UI will redirect to login
           localStorage.removeItem('admin_token')
           set({ 
             isAuthenticated: false, 

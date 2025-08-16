@@ -117,19 +117,19 @@ export default function DashboardView() {
             <div className="flex justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">Blocked Bots</span>
               <span className="text-sm font-medium text-gray-900 dark:text-white">
-                {stats?.blocked_bots || '247'}
+                {stats?.blockedBots || '247'}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">False Positives</span>
               <span className="text-sm font-medium text-gray-900 dark:text-white">
-                {stats?.false_positives || '12'}
+                {stats?.falsePositives || '12'}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">Avg Response Time</span>
               <span className="text-sm font-medium text-gray-900 dark:text-white">
-                {stats?.avg_response_time || '45ms'}
+                {stats?.avgResponseTimeDisplay || '42ms'}
               </span>
             </div>
           </div>
@@ -163,19 +163,19 @@ export default function DashboardView() {
             <div className="flex justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">CPU Usage</span>
               <span className="text-sm font-medium text-green-600">
-                {systemHealth?.cpu_usage || '24%'}
+                {stats?.cpuUsage || systemHealth?.cpu_usage || '24%'}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">Memory Usage</span>
               <span className="text-sm font-medium text-green-600">
-                {systemHealth?.memory_usage || '68%'}
+                {stats?.memoryUsage || systemHealth?.memory_usage || '68%'}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">Storage</span>
               <span className="text-sm font-medium text-green-600">
-                {systemHealth?.storage_usage || '45%'}
+                {stats?.storageUsage || systemHealth?.storage_usage || '45%'}
               </span>
             </div>
           </div>

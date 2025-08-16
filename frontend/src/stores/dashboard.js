@@ -63,23 +63,18 @@ export const useDashboardStore = create((set, get) => ({
   },
 
   fetchChartData: async (type, period = '24h') => {
-    try {
-      const websiteId = get().selectedWebsiteId
-      const resp = websiteId
-        ? await apiService.getWebsiteChartData(websiteId, type, period)
-        : await apiService.getChartData(type, period)
-      const data = resp?.success && resp?.data ? resp.data : resp || []
-      set((state) => ({
-        chartData: {
-          ...state.chartData,
-          [`${websiteId || 'all'}_${type}_${period}`]: data
-        }
-      }))
-      return data
-    } catch (error) {
-      console.error(`Failed to fetch chart data for ${type}:`, error)
-      throw error
-    }
+    const websiteId = get().selectedWebsiteId
+    const resp = websiteId
+      ? await apiService.getWebsiteChartData(websiteId, type, period)
+      : await apiService.getChartData(type, period)
+    const data = resp?.success && resp?.data ? resp.data : resp || []
+    set((state) => ({
+      chartData: {
+        ...state.chartData,
+        [`${websiteId || 'all'}_${type}_${period}`]: data
+      }
+    }))
+    return data
   },
 
   fetchSystemHealth: async () => {
@@ -88,7 +83,7 @@ export const useDashboardStore = create((set, get) => ({
       set({ systemHealth: health || { status: 'unknown', components: {} } })
       return health
     } catch (error) {
-      console.error('Failed to fetch system health:', error)
+      // In production, surface via caller/notification system rather than console
       // Set default system health on error
       set({ 
         systemHealth: { 
@@ -110,14 +105,10 @@ export const useDashboardStore = create((set, get) => ({
   },
 
   refreshDashboard: async () => {
-    try {
-      await Promise.all([
-        get().fetchStats(),
-        get().fetchSystemHealth(),
-      ])
-    } catch (error) {
-      console.error('Failed to refresh dashboard:', error)
-    }
+    await Promise.all([
+      get().fetchStats(),
+      get().fetchSystemHealth(),
+    ])
   },
 
   clearError: () => set({ error: null }),

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAppStore } from '../stores/app'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Brain, RefreshCw, AlertTriangle, CheckCircle, Activity, Database, Cpu, TrendingUp, Users, Shield } from 'lucide-react'
@@ -10,14 +10,7 @@ export default function MLMonitoringView() {
   const [recentActivity, setRecentActivity] = useState([])
   const [stats, setStats] = useState(null)
   const { addNotification } = useAppStore()
-
-  useEffect(() => {
-    loadMLData()
-    const interval = setInterval(loadMLData, 30000)
-    return () => clearInterval(interval)
-  }, [loadMLData])
-
-  const loadMLData = async () => {
+  const loadMLData = useCallback(async () => {
     setLoading(true)
     try {
       // Load ML health
@@ -25,7 +18,6 @@ export default function MLMonitoringView() {
         const healthResponse = await apiService.getMLHealth()
         setMlHealth(healthResponse)
       } catch (error) {
-        console.warn('ML Health endpoint issues:', error)
         setMlHealth({
           status: 'degraded',
           message: 'Health check unavailable',
@@ -44,7 +36,6 @@ export default function MLMonitoringView() {
       }
 
     } catch (error) {
-      console.error('Failed to load ML data:', error)
       addNotification({
         type: 'error',
         message: 'Failed to load ML monitoring data'
@@ -52,7 +43,13 @@ export default function MLMonitoringView() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [addNotification])
+
+  useEffect(() => {
+    loadMLData()
+    const interval = setInterval(loadMLData, 30000)
+    return () => clearInterval(interval)
+  }, [loadMLData])
 
   const refreshMetrics = async () => {
     await loadMLData()

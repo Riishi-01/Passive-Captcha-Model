@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { useDashboardStore } from '../stores/dashboard'
 
-const mockData = [
+const fallbackData = [
   { time: '00:00', accuracy: 94.2 },
   { time: '04:00', accuracy: 95.1 },
   { time: '08:00', accuracy: 93.8 },
@@ -10,7 +12,35 @@ const mockData = [
   { time: '24:00', accuracy: 95.2 },
 ]
 
-export default function ModelAccuracyChart({ data = mockData }) {
+export default function ModelAccuracyChart({ period = '24h' }) {
+  const [chartData, setChartData] = useState(fallbackData)
+  const [loading, setLoading] = useState(false)
+  const { fetchChartData } = useDashboardStore()
+
+  useEffect(() => {
+    const loadChartData = async () => {
+      setLoading(true)
+      try {
+        const data = await fetchChartData('accuracy', period)
+        if (data && data.length > 0) {
+          setChartData(data)
+        }
+      } catch (error) {
+        // Keep fallback data on error
+        console.warn('Failed to load chart data, using fallback')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadChartData()
+  }, [period, fetchChartData])
+  const periodLabels = {
+    '24h': 'Last 24 hours',
+    '7d': 'Last 7 days', 
+    '30d': 'Last 30 days'
+  }
+
   return (
     <div className="card p-6">
       <div className="mb-4">
@@ -18,13 +48,18 @@ export default function ModelAccuracyChart({ data = mockData }) {
           Model Accuracy Trend
         </h3>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Last 24 hours
+          {periodLabels[period] || 'Last 24 hours'}
         </p>
       </div>
       
-      <div className="h-64">
+      <div className="h-64 relative">
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-800/50">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+          </div>
+        )}
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
+          <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
             <XAxis 
               dataKey="time" 
