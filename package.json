@@ -1,0 +1,13 @@
+{
+  "name": "passive-captcha-prototype",
+  "version": "1.0.0",
+  "description": "Passive CAPTCHA prototype with React frontend and Python backend",
+  "scripts": {
+    "build": "./build.sh",
+    "start": "cd backend && python main.py --port $PORT"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
