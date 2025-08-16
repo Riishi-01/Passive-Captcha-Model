@@ -1,14 +1,13 @@
-[providers]
-nodejs = "*"
-python = "*"
+providers = ["nodejs", "python"]
 
 [phases.setup]
-nixPkgs = ["...", "python311", "python311Packages.pip"]
+nixPkgs = ["python311", "python311Packages.pip"]
 
 [phases.install] 
 cmds = [
     "npm ci --prefix frontend",
-    "pip install -r backend/requirements.txt"
+    "python -m pip install --upgrade pip",
+    "python -m pip install -r backend/requirements.txt"
 ]
 
 [phases.build]
