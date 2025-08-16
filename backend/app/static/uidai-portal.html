@@ -1,168 +1,82 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UIDAI Portal - Aadhaar Services</title>
+    <title>Passive CAPTCHA Test Page</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            line-height: 1.6;
+            color: #333;
+            background: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .feature-list {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #28a745;
+            color: white;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
-
-<div class="uidai-portal">
-    <header>
-        <h1>UIDAI Portal</h1>
-        <p>Unique Identification Authority of India</p>
-    </header>
-    
-    <main>
-        <section class="services">
-            <h2>Aadhaar Services</h2>
-            <div class="service-grid">
-                <div class="service-card">
-                    <h3>Download Aadhaar</h3>
-                    <p>Download your Aadhaar card online</p>
-                </div>
-                <div class="service-card">
-                    <h3>Update Aadhaar</h3>
-                    <p>Update your Aadhaar information</p>
-                </div>
-                <div class="service-card">
-                    <h3>Verify Aadhaar</h3>
-                    <p>Verify Aadhaar details online</p>
-                </div>
-            </div>
-        </section>
+    <div class="container">
+        <h1>🛡️ Passive CAPTCHA Test Page</h1>
         
-        <section class="stats">
-            <h2>Aadhaar in Numbers</h2>
-            <div class="stats-grid">
-                <div class="stat">
-                    <span class="number">133+ Crore</span>
-                    <span class="label">Aadhaar Generated</span>
-                </div>
-                <div class="stat">
-                    <span class="number">58,000+ Crore</span>
-                    <span class="label">Authentication Done</span>
-                </div>
-            </div>
-        </section>
-    </main>
-
+        <p>This page demonstrates passive CAPTCHA technology that protects websites from automated bots without user interaction.</p>
+        
+        <div class="feature-list">
+            <h3>How it works:</h3>
+            <ul>
+                <li><strong>Invisible Protection:</strong> No visible CAPTCHA challenges</li>
+                <li><strong>Behavioral Analysis:</strong> Analyzes mouse movements, typing patterns, and browser fingerprints</li>
+                <li><strong>Machine Learning:</strong> Uses AI to distinguish humans from bots</li>
+                <li><strong>Real-time Detection:</strong> Blocks suspicious traffic automatically</li>
+            </ul>
+        </div>
+        
+        <p>Move your mouse around and interact with this page naturally. The system is learning your behavioral patterns to verify you're human.</p>
+        
+        <div class="status">
+            ✅ Protected by Passive CAPTCHA
+        </div>
+    </div>
+    
     <footer>
-        <p>&copy; 2025 Unique Identification Authority of India</p>
+        <p>Passive CAPTCHA Technology Demo</p>
     </footer>
-</div>
-
-<style>
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #f5f5f5;
-}
-
-.uidai-portal {
-    max-width: 1200px;
-    margin: 0 auto;
-    background: white;
-    min-height: 100vh;
-}
-
-header {
-    background: linear-gradient(135deg, #ff6b35, #f7941d);
-    color: white;
-    padding: 2rem;
-    text-align: center;
-}
-
-header h1 {
-    margin: 0;
-    font-size: 2.5rem;
-}
-
-header p {
-    margin: 0.5rem 0 0 0;
-    font-size: 1.2rem;
-}
-
-main {
-    padding: 2rem;
-}
-
-.services {
-    margin-bottom: 3rem;
-}
-
-.service-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1.5rem;
-}
-
-.service-card {
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: transform 0.2s;
-}
-
-.service-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-.service-card h3 {
-    color: #ff6b35;
-    margin: 0 0 1rem 0;
-}
-
-.stats {
-    background: #f8f9fa;
-    padding: 2rem;
-    border-radius: 8px;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 2rem;
-    margin-top: 1.5rem;
-}
-
-.stat {
-    text-align: center;
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.stat .number {
-    display: block;
-    font-size: 2.5rem;
-    font-weight: bold;
-    color: #ff6b35;
-}
-
-.stat .label {
-    display: block;
-    margin-top: 0.5rem;
-    color: #666;
-}
-
-footer {
-    background: #333;
-    color: white;
-    text-align: center;
-    padding: 1rem;
-}
-</style>
-
-<script>
-console.log('UIDAI Portal Loaded Successfully');
-</script>
-
+    
+    <script>
+        console.log('🛡️ Passive CAPTCHA Test Page Loaded');
+        console.log('🤖 Bot detection running in background...');
+    </script>
 </body>
 </html>
