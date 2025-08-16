@@ -8,6 +8,7 @@ npm run build
 cd ..
 
 echo "Installing Python dependencies..."
-pip install -r backend/requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r backend/requirements.txt
 
 echo "Build completed successfully!"
