@@ -313,14 +313,8 @@ def create_app(config_name='production'):
     except Exception as e:
         app.logger.error(f"Failed to register admin API: {e}")
 
-    # Register admin dashboard blueprint (with HTML dashboard)
-    try:
-        from app.admin import admin_bp as admin_dashboard_bp
-        # Register with /admin prefix to serve dashboard
-        app.register_blueprint(admin_dashboard_bp, url_prefix='/admin')
-        app.logger.info("Admin dashboard registered")
-    except Exception as e:
-        app.logger.error(f"Failed to register admin dashboard: {e}")
+    # Note: Admin dashboard now served by React frontend at /admin
+    # Removed conflicting HTML dashboard blueprint to fix routing
 
     # Register script API blueprint (passive script delivery & collection)
     try:
@@ -817,15 +811,56 @@ def register_frontend_routes(app, static_folder):
             </body></html>
             '''
 
+    # Removed fake /dashboard redirect - React frontend handles its own routing
+
+    @app.route('/login')
+    @app.route('/login/')
+    def serve_login():
+        """Serve React frontend for login (React router handles /login internally)"""
+        return serve_admin_dashboard()
+
+    @app.route('/api/autologin', methods=['POST', 'GET'])
+    def development_autologin():
+        """Development autologin - automatically authenticate admin user"""
+        try:
+            from app.services import get_auth_service
+            auth_service = get_auth_service()
+            
+            if not auth_service:
+                return jsonify({'success': False, 'error': 'Auth service unavailable'}), 503
+            
+            # Create auto-login token for development
+            token_data = auth_service.create_token({
+                'id': 'auto-admin',
+                'email': 'admin@passive-captcha.com',
+                'role': 'admin'
+            })
+            
+            app.logger.info("Development autologin successful")
+            return jsonify({
+                'success': True,
+                'token': token_data.get('token'),
+                'user': {
+                    'id': 'auto-admin',
+                    'email': 'admin@passive-captcha.com', 
+                    'role': 'admin'
+                }
+            })
+            
+        except Exception as e:
+            app.logger.error(f"Autologin error: {e}")
+            return jsonify({'success': False, 'error': 'Autologin failed'}), 500
+
     @app.route('/dashboard')
     @app.route('/dashboard/')
-    def redirect_dashboard():
-        """Redirect /dashboard to /admin/dashboard"""
-        from flask import redirect
-        return redirect('/admin/dashboard', code=302)
+    @app.route('/dashboard/<path:path>')
+    def serve_dashboard():
+        """Serve React frontend for dashboard routes (React router handles /dashboard/* internally)"""
+        return serve_admin_dashboard()
 
     @app.route('/admin')
     @app.route('/admin/')
+    @app.route('/admin/<path:path>')
     def serve_admin_dashboard():
         """Serve Vue.js admin dashboard at /admin route"""
         try:
