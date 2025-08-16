@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, current_app, render_template_string
 import jwt
 
-from app.database import get_analytics_data, cleanup_old_data, get_db_session, VerificationLog
+from app.database import get_analytics_data, cleanup_old_data, get_db_session, VerificationLog, DetectionLog
 
 # Create admin blueprint
 admin_bp = Blueprint('admin', __name__)
@@ -281,6 +281,77 @@ def get_system_stats():
         }), 500
 
 
+@admin_bp.route('/detections', methods=['GET'])
+@require_admin_auth
+def get_detection_events():
+    """
+    Get recent detection events for real-time dashboard
+    """
+    try:
+        # Query parameters
+        limit = min(int(request.args.get('limit', 20)), 100)
+        hours = int(request.args.get('hours', 1))  # Default to last hour
+        event_type = request.args.get('event_type')  # Filter by event type
+
+        # Build query
+        session = get_db_session()
+        query = session.query(DetectionLog)
+
+        # Apply time filter
+        since = datetime.utcnow() - timedelta(hours=hours)
+        query = query.filter(DetectionLog.timestamp >= since)
+
+        # Filter by event type if specified
+        if event_type:
+            query = query.filter(DetectionLog.event_type == event_type)
+
+        # Get recent events ordered by timestamp
+        events = query.order_by(DetectionLog.timestamp.desc()).limit(limit).all()
+
+        # Convert to dictionaries
+        events_data = [event.to_dict() for event in events]
+
+        # Get summary stats
+        total_events = query.count()
+        blocked_events = query.filter(DetectionLog.event_type.like('%blocked%')).count()
+        human_events = query.filter(DetectionLog.event_type == 'human_verified').count()
+
+        session.close()
+
+        return jsonify({
+            'events': events_data,
+            'summary': {
+                'total_events': total_events,
+                'blocked_events': blocked_events,
+                'human_events': human_events,
+                'block_rate': (blocked_events / total_events * 100) if total_events > 0 else 0
+            },
+            'filters': {
+                'hours': hours,
+                'limit': limit,
+                'event_type': event_type
+            },
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }), 200
+
+    except ValueError as e:
+        return jsonify({
+            'error': {
+                'code': 'INVALID_PARAMETER',
+                'message': f'Invalid parameter: {str(e)}'
+            }
+        }), 400
+
+    except Exception as e:
+        print(f"Error in get_detection_events: {e}")
+        return jsonify({
+            'error': {
+                'code': 'INTERNAL_ERROR',
+                'message': 'Error retrieving detection events'
+            }
+        }), 500
+
+
 @admin_bp.route('/cleanup', methods=['POST'])
 @require_admin_auth
 def cleanup_data():
@@ -391,6 +462,16 @@ def admin_dashboard():
             </div>
 
             <div class="card">
+                <h3>🚨 Real-Time Detection Events</h3>
+                <div id="detection-summary" style="margin-bottom: 1rem; padding: 0.5rem; background: #f8f9fa; border-radius: 4px;">
+                    <!-- Detection summary will be loaded here -->
+                </div>
+                <div id="detections-container" style="margin-top: 1rem; max-height: 300px; overflow-y: auto;">
+                    <!-- Real-time detections will be loaded here -->
+                </div>
+            </div>
+
+            <div class="card">
                 <h3>Recent Verification Logs</h3>
                 <button onclick="loadLogs()" class="btn">Refresh Logs</button>
                 <div id="logs-container" style="margin-top: 1rem;">
@@ -437,7 +518,7 @@ def admin_dashboard():
         }
 
         async function loadDashboard() {
-            await Promise.all([loadStats(), loadAnalytics(), loadLogs()]);
+            await Promise.all([loadStats(), loadAnalytics(), loadDetections(), loadLogs()]);
         }
 
         async function loadStats() {
@@ -487,6 +568,62 @@ def admin_dashboard():
             }
         }
 
+        async function loadDetections() {
+            try {
+                const response = await fetch('/admin/detections?limit=10&hours=1', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await response.json();
+
+                // Update summary
+                const summaryContainer = document.getElementById('detection-summary');
+                const summary = data.summary;
+                summaryContainer.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                        <span><strong>Total Events:</strong> ${summary.total_events}</span>
+                        <span><strong>Blocked:</strong> ${summary.blocked_events}</span>
+                        <span><strong>Human:</strong> ${summary.human_events}</span>
+                        <span><strong>Block Rate:</strong> ${summary.block_rate.toFixed(1)}%</span>
+                    </div>
+                `;
+
+                // Update events list
+                const detectionsContainer = document.getElementById('detections-container');
+                const events = data.events.map(event => {
+                    const eventTypeColor = event.event_type.includes('blocked') ? '#dc2626' : 
+                                          event.event_type.includes('human') ? '#059669' : '#6b7280';
+                    const eventIcon = event.event_type.includes('blocked') ? '🚫' : 
+                                     event.event_type.includes('human') ? '✅' : 'ℹ️';
+                    
+                    return `
+                        <div style="border-left: 3px solid ${eventTypeColor}; padding: 0.5rem; margin-bottom: 0.5rem; background: #f9fafb; border-radius: 0 4px 4px 0;">
+                            <div style="display: flex; justify-content: between; align-items: center;">
+                                <span style="font-weight: bold; color: ${eventTypeColor};">
+                                    ${eventIcon} ${event.event_type.replace('_', ' ').toUpperCase()}
+                                </span>
+                                <span style="font-size: 0.8rem; color: #6b7280; margin-left: auto;">
+                                    ${new Date(event.timestamp).toLocaleTimeString()}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.8rem; color: #374151; margin-top: 0.25rem;">
+                                ${event.detection_result || 'No details'}
+                                ${event.confidence_score ? ` (${(event.confidence_score * 100).toFixed(1)}% confidence)` : ''}
+                            </div>
+                            <div style="font-size: 0.7rem; color: #9ca3af; margin-top: 0.25rem;">
+                                IP: ${event.ip_address || 'Unknown'} | UA: ${(event.user_agent || 'Unknown').substring(0, 50)}...
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                detectionsContainer.innerHTML = events || '<p style="color: #6b7280; font-style: italic;">No recent detections found.</p>';
+            } catch (error) {
+                console.error('Failed to load detections:', error);
+                document.getElementById('detections-container').innerHTML = 
+                    '<p style="color: #dc2626;">Failed to load detection events.</p>';
+            }
+        }
+
         async function loadLogs() {
             try {
                 const response = await fetch('/admin/logs?limit=10', {
@@ -510,12 +647,12 @@ def admin_dashboard():
             }
         }
 
-        // Auto-refresh every 30 seconds
+        // Auto-refresh every 5 seconds for real-time monitoring
         setInterval(() => {
             if (authToken && document.getElementById('dashboard').style.display !== 'none') {
                 loadDashboard();
             }
-        }, 30000);
+        }, 5000);
     </script>
 </body>
 </html>

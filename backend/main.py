@@ -565,6 +565,161 @@ def create_app(config_name='production'):
 def register_frontend_routes(app, static_folder):
     """Register integrated routing architecture with existing dashboard"""
 
+    @app.before_request
+    def validate_behavioral_token():
+        """Server-side validation middleware for bot detection"""
+        from flask import request, jsonify
+        
+        # Skip validation for admin, API, static files, and initial page loads
+        skip_paths = ['/admin', '/api/', '/health', '/static/', '/assets/', '/favicon.ico', '/robots.txt']
+        if any(request.path.startswith(path) for path in skip_paths):
+            return None
+            
+        # Skip validation for preflight requests
+        if request.method == 'OPTIONS':
+            return None
+            
+        # Allow initial page load to inject CAPTCHA script
+        if request.path == '/' and request.method == 'GET':
+            # Check if this is a subsequent request (has behavioral data)
+            behavioral_token = request.headers.get('X-Behavioral-Token')
+            user_agent = request.headers.get('User-Agent', '')
+            
+            # Block obvious bot patterns and validate tokens
+            if (not behavioral_token and 
+                ('python' in user_agent.lower() or 
+                 'requests' in user_agent.lower() or
+                 'bot' in user_agent.lower() or
+                 'curl' in user_agent.lower() or
+                 'wget' in user_agent.lower())):
+                
+                # Log the detection event
+                try:
+                    from app.ml import log_detection_event
+                    log_detection_event('bot_blocked', {
+                        'user_agent': user_agent,
+                        'ip_address': request.remote_addr,
+                        'result': 'blocked_user_agent',
+                        'confidence': 1.0
+                    })
+                except:
+                    pass
+                
+                app.logger.warning(f"Blocked bot request: {user_agent}")
+                return jsonify({'error': 'Access denied - automated traffic detected'}), 403
+            
+            # Validate behavioral token if present and run ML prediction
+            if behavioral_token:
+                try:
+                    from app.ml import validate_behavioral_token, log_detection_event, extract_features, predict_human_probability
+                    import base64
+                    import json
+                    
+                    validation = validate_behavioral_token(behavioral_token)
+                    
+                    if not validation['valid']:
+                        log_detection_event('token_invalid', {
+                            'user_agent': user_agent,
+                            'ip_address': request.remote_addr,
+                            'result': validation['reason'],
+                            'confidence': 0.8
+                        })
+                        app.logger.warning(f"Invalid behavioral token: {validation['reason']}")
+                        return jsonify({'error': 'Invalid behavioral validation'}), 403
+                    
+                    # Extract and analyze behavioral data with ML model
+                    try:
+                        token_data = json.loads(base64.b64decode(behavioral_token).decode())
+                        
+                        # Create request data structure for ML analysis
+                        request_data = {
+                            'mouseMovements': [{'x': i*10, 'y': i*5, 'timestamp': i*100} for i in range(token_data.get('mouseEvents', 0))],
+                            'keystrokes': [{'timestamp': i*200} for i in range(token_data.get('keyEvents', 0))],
+                            'scrollEvents': [{'y': i*50} for i in range(token_data.get('scrollEvents', 0))],
+                            'sessionDuration': token_data.get('sessionDuration', 0),
+                            'fingerprint': {
+                                'userAgent': user_agent,
+                                'hardwareConcurrency': 4,
+                                'screenWidth': 1920,
+                                'screenHeight': 1080
+                            }
+                        }
+                        
+                        # Run ML prediction
+                        features = extract_features(request_data)
+                        ml_prediction = predict_human_probability(features)
+                        
+                        # Check for automation indicators from client
+                        automation_score = token_data.get('automationScore', 0)
+                        automation_indicators = token_data.get('automationIndicators', [])
+                        
+                        # Block if automation detected with high confidence
+                        if automation_score > 0.7:
+                            log_detection_event('automation_blocked', {
+                                'user_agent': user_agent,
+                                'ip_address': request.remote_addr,
+                                'result': f'automation_detected_{"|".join(automation_indicators)}',
+                                'confidence': automation_score
+                            })
+                            app.logger.warning(f"Automation blocked: {automation_indicators}, score {automation_score}")
+                            return jsonify({'error': 'Access denied - browser automation detected'}), 403
+                        
+                        # Block if ML predicts bot with high confidence
+                        if not ml_prediction['isHuman'] or ml_prediction['confidence'] < 0.6:
+                            log_detection_event('ml_blocked', {
+                                'user_agent': user_agent,
+                                'ip_address': request.remote_addr,
+                                'result': 'ml_prediction_bot',
+                                'confidence': ml_prediction['confidence']
+                            })
+                            app.logger.warning(f"ML blocked request: confidence {ml_prediction['confidence']}")
+                            return jsonify({'error': 'Access denied - automated behavior detected'}), 403
+                        
+                        # Additional check: Block if automation + low human score
+                        human_score = token_data.get('humanScore', 0)
+                        if automation_score > 0.3 and human_score < 0.4:
+                            log_detection_event('combined_blocked', {
+                                'user_agent': user_agent,
+                                'ip_address': request.remote_addr,
+                                'result': f'automation_{automation_score}_human_{human_score}',
+                                'confidence': 0.8
+                            })
+                            app.logger.warning(f"Combined detection blocked: automation {automation_score}, human {human_score}")
+                            return jsonify({'error': 'Access denied - suspicious behavioral patterns'}), 403
+                        
+                        # Log successful human verification
+                        log_detection_event('human_verified', {
+                            'user_agent': user_agent,
+                            'ip_address': request.remote_addr,
+                            'result': 'ml_prediction_human',
+                            'confidence': ml_prediction['confidence']
+                        })
+                        
+                    except Exception as ml_error:
+                        app.logger.error(f"ML prediction error: {ml_error}")
+                        # Fall back to basic token validation
+                        log_detection_event('human_verified', {
+                            'user_agent': user_agent,
+                            'ip_address': request.remote_addr,
+                            'result': 'token_valid_ml_error',
+                            'confidence': validation['score']
+                        })
+                        
+                except Exception as e:
+                    app.logger.error(f"Token validation error: {e}")
+            else:
+                # For browsers without tokens, require them after initial load
+                if 'mozilla' in user_agent.lower() or 'chrome' in user_agent.lower():
+                    # Allow first request to load CAPTCHA script, but log as suspicious
+                    log_detection_event('browser_no_token', {
+                        'user_agent': user_agent,
+                        'ip_address': request.remote_addr,
+                        'result': 'browser_missing_token',
+                        'confidence': 0.3
+                    })
+                
+        return None
+
     @app.route('/')
     def serve_uidai_government_portal():
         """Serve the actual UIDAI Government HTML as main homepage"""
@@ -702,6 +857,13 @@ def register_frontend_routes(app, static_folder):
             </body></html>
             '''
 
+    @app.route('/dashboard')
+    @app.route('/dashboard/')
+    def redirect_dashboard():
+        """Redirect /dashboard to /admin/dashboard"""
+        from flask import redirect
+        return redirect('/admin/dashboard', code=302)
+
     @app.route('/admin')
     @app.route('/admin/')
     def serve_admin_dashboard():
@@ -752,27 +914,27 @@ def register_frontend_routes(app, static_folder):
                     
                     <div class="metrics-grid">
                         <div class="metric">
-                            <div class="metric-value">847</div>
+                            <div class="metric-value" id="total-verifications">0</div>
                             <div class="metric-label">Total Verifications</div>
                         </div>
                         <div class="metric">
-                            <div class="metric-value">793</div>
-                            <div class="metric-label">Verified Users</div>
+                            <div class="metric-value" id="verified-humans">0</div>
+                            <div class="metric-label">Verified Humans</div>
                         </div>
                         <div class="metric">
-                            <div class="metric-value">54</div>
-                            <div class="metric-label">Blocked Attempts</div>
+                            <div class="metric-value" id="blocked-bots">0</div>
+                            <div class="metric-label">Blocked Bots</div>
                         </div>
                         <div class="metric">
-                            <div class="metric-value">93.6%</div>
+                            <div class="metric-value" id="detection-rate">0%</div>
                             <div class="metric-label">Detection Rate</div>
                         </div>
                         <div class="metric">
-                            <div class="metric-value">156</div>
+                            <div class="metric-value" id="active-sessions">0</div>
                             <div class="metric-label">Active Sessions</div>
                         </div>
                         <div class="metric">
-                            <div class="metric-value">728</div>
+                            <div class="metric-value" id="page-views">0</div>
                             <div class="metric-label">Page Views Today</div>
                         </div>
                     </div>
@@ -787,6 +949,35 @@ def register_frontend_routes(app, static_folder):
                         ✅ All systems operational | Real-time monitoring active
                     </div>
                 </div>
+                
+                <script>
+                // Load real-time metrics from database
+                async function loadMetrics() {
+                    try {
+                        const response = await fetch('/api/admin/stats');
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            document.getElementById('total-verifications').textContent = data.stats.total_requests || 0;
+                            document.getElementById('verified-humans').textContent = data.stats.verified_humans || 0;
+                            document.getElementById('blocked-bots').textContent = data.stats.blocked_bots || 0;
+                            document.getElementById('active-sessions').textContent = data.stats.active_sessions || 0;
+                            document.getElementById('page-views').textContent = data.stats.page_views || 0;
+                            
+                            const total = (data.stats.verified_humans || 0) + (data.stats.blocked_bots || 0);
+                            const rate = total > 0 ? ((data.stats.blocked_bots || 0) / total * 100).toFixed(1) : 0;
+                            document.getElementById('detection-rate').textContent = rate + '%';
+                        }
+                    } catch (error) {
+                        console.warn('Could not load real-time metrics:', error);
+                        // Keep showing zeros if API unavailable
+                    }
+                }
+                
+                // Load metrics on page load and refresh every 5 seconds
+                loadMetrics();
+                setInterval(loadMetrics, 5000);
+                </script>
             </body>
             </html>
             '''

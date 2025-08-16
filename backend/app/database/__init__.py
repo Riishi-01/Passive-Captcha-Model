@@ -228,6 +228,53 @@ class VerificationLog(Base):
         }
 
 
+class DetectionLog(Base):
+    """
+    Table for storing real-time detection events for dashboard metering
+    """
+    __tablename__ = 'detection_logs'
+
+    id = Column(Integer, primary_key=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    event_type = Column(String(50), nullable=False, index=True)  # 'bot_blocked', 'automation_blocked', etc.
+    user_agent = Column(Text, nullable=True)
+    ip_address = Column(String(45), nullable=True, index=True)
+    detection_result = Column(String(500), nullable=True)  # Human-readable result
+    confidence_score = Column(Float, nullable=True)  # ML confidence score
+    
+    # Additional context fields
+    session_id = Column(String(255), nullable=True)
+    website_id = Column(String(36), nullable=True, index=True)
+    request_path = Column(String(500), nullable=True)
+    
+    # Performance tracking
+    processing_time_ms = Column(Float, nullable=True)
+    
+    # Indexes for fast dashboard queries
+    __table_args__ = (
+        Index('idx_detection_logs_timestamp_event', 'timestamp', 'event_type'),
+        Index('idx_detection_logs_event_timestamp', 'event_type', 'timestamp'),
+        Index('idx_detection_logs_ip_timestamp', 'ip_address', 'timestamp'),
+        Index('idx_detection_logs_website_timestamp', 'website_id', 'timestamp'),
+    )
+
+    def to_dict(self):
+        """Convert to dictionary for JSON serialization"""
+        return {
+            'id': self.id,
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
+            'event_type': self.event_type,
+            'user_agent': self.user_agent,
+            'ip_address': self.ip_address,
+            'detection_result': self.detection_result,
+            'confidence_score': self.confidence_score,
+            'session_id': self.session_id,
+            'website_id': self.website_id,
+            'request_path': self.request_path,
+            'processing_time_ms': self.processing_time_ms
+        }
+
+
 def init_db(database_url=None):
     """
     Initialize database connection and create tables

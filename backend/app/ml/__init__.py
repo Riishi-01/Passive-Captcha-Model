@@ -560,6 +560,105 @@ def is_model_loaded():
     return model_loaded and ensemble_model is not None
 
 
+def validate_behavioral_token(token_string):
+    """Validate behavioral token from client-side"""
+    import base64
+    import json
+    
+    try:
+        if not token_string:
+            return {'valid': False, 'reason': 'No token provided'}
+        
+        # Decode token
+        token_data = json.loads(base64.b64decode(token_string).decode())
+        
+        # Basic validation
+        current_time = time.time() * 1000
+        token_age = current_time - token_data.get('timestamp', 0)
+        
+        # Token should not be too old (5 minutes max)
+        if token_age > 300000:
+            return {'valid': False, 'reason': 'Token expired'}
+        
+        # Check for reasonable behavioral data
+        mouse_events = token_data.get('mouseEvents', 0)
+        key_events = token_data.get('keyEvents', 0)
+        human_score = token_data.get('humanScore', 0)
+        
+        # Stricter behavioral validation
+        automation_score = token_data.get('automationScore', 0)
+        automation_indicators = token_data.get('automationIndicators', [])
+        
+        # Block if automation indicators detected
+        if automation_score > 0.5:
+            return {'valid': False, 'reason': f'Automation detected: {", ".join(automation_indicators)}'}
+        
+        # Require more behavioral data for validation
+        if mouse_events < 8 and key_events < 3:
+            return {'valid': False, 'reason': 'Insufficient behavioral interaction'}
+        
+        # Higher threshold for human behavior score
+        if human_score < 0.4:
+            return {'valid': False, 'reason': 'Low human behavior score'}
+        
+        # Additional validation: session duration
+        session_duration = token_data.get('sessionDuration', 0)
+        if session_duration < 2000:  # Less than 2 seconds
+            return {'valid': False, 'reason': 'Session too short for validation'}
+        
+        return {
+            'valid': True,
+            'score': human_score,
+            'events': mouse_events + key_events,
+            'age_seconds': token_age / 1000
+        }
+        
+    except Exception as e:
+        return {'valid': False, 'reason': f'Token validation error: {str(e)}'}
+
+
+def log_detection_event(event_type, details=None):
+    """Log detection events for admin dashboard metrics"""
+    try:
+        from app.database import get_db_session, DetectionLog
+        from app.core.config import now_tz
+        from datetime import datetime, timezone
+        
+        # Get database session
+        session = get_db_session()
+        
+        # Create log entry with enhanced details
+        log_entry = DetectionLog(
+            timestamp=datetime.now(timezone.utc),
+            event_type=event_type,
+            user_agent=details.get('user_agent', '') if details else '',
+            ip_address=details.get('ip_address', '') if details else '',
+            detection_result=details.get('result', '') if details else '',
+            confidence_score=details.get('confidence', 0.0) if details else 0.0,
+            session_id=details.get('session_id', '') if details else '',
+            website_id=details.get('website_id', '') if details else '',
+            request_path=details.get('request_path', '') if details else '',
+            processing_time_ms=details.get('processing_time_ms', 0.0) if details else 0.0
+        )
+        
+        # Add and commit
+        session.add(log_entry)
+        session.commit()
+        session.close()
+        
+        print(f"✅ Logged detection event: {event_type} - {details.get('result', 'No details') if details else 'No details'}")
+        
+    except Exception as e:
+        print(f"❌ Error logging detection event {event_type}: {e}")
+        # Try to close session if it exists
+        try:
+            if 'session' in locals():
+                session.rollback()
+                session.close()
+        except:
+            pass
+
+
 def get_model_info():
     """Get information about the loaded model"""
     if not model_loaded or ensemble_model is None:
