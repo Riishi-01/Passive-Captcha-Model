@@ -757,68 +757,15 @@ def register_frontend_routes(app, static_folder):
                 except Exception:
                     script_tag_html = '<script src="/passive-captcha-script.js" async defer></script>'
 
-                # Inject passive captcha script
+                # Inject passive captcha script only (no admin panel)
                 passive_script_injection = f'''
                 <!-- Passive CAPTCHA Integration for UIDAI Portal -->
                 {script_tag_html}
-                <style>
-                    .admin-access-panel {{
-                        position: fixed;
-                        top: 20px;
-                        right: 20px;
-                        background: rgba(0, 0, 70, 0.95);
-                        color: white;
-                        padding: 15px;
-                        border-radius: 8px;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                        z-index: 9999;
-                        font-family: Arial, sans-serif;
-                        font-size: 14px;
-                        min-width: 200px;
-                    }}
-                    .admin-access-panel h4 {{
-                        margin: 0 0 10px 0;
-                        font-size: 16px;
-                        border-bottom: 1px solid rgba(255,255,255,0.3);
-                        padding-bottom: 8px;
-                    }}
-                    .admin-access-panel a {{
-                        color: #1cb5e0;
-                        text-decoration: none;
-                        display: inline-block;
-                        margin: 5px 10px 5px 0;
-                        padding: 5px 10px;
-                        border: 1px solid #1cb5e0;
-                        border-radius: 4px;
-                        transition: all 0.3s;
-                    }}
-                    .admin-access-panel a:hover {{
-                        background: #1cb5e0;
-                        color: white;
-                    }}
-                </style>
                 </head>'''
                 
-                # Add admin access panel before closing body tag
-                admin_panel = '''
-                <!-- UIDAI Admin Access Panel -->
-                <div class="admin-access-panel">
-                    <h4>🏛️ UIDAI Admin Portal</h4>
-                    <div>
-                        <a href="/admin">📊 Dashboard</a>
-                        <a href="/prototype/api/analytics">📈 Analytics</a>
-                    </div>
-                    <div style="margin-top: 10px; font-size: 12px; opacity: 0.8;">
-                        Protected by Passive CAPTCHA
-                    </div>
-                </div>
-                </body>'''
-                
-                # Inject the script before </head> and admin panel before </body>
+                # Inject only the CAPTCHA script before </head> (clean integration)
                 if '</head>' in content:
                     content = content.replace('</head>', passive_script_injection, 1)
-                if '</body>' in content:
-                    content = content.replace('</body>', admin_panel, 1)
                 
                 return content
             else:
