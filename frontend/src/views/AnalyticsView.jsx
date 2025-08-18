@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAppStore } from '../stores/app'
+import { useDashboardStore } from '../stores/dashboard'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { Download, RefreshCw, TrendingUp } from 'lucide-react'
+import { Download, RefreshCw, TrendingUp, Globe } from 'lucide-react'
 
 const mockVerificationData = [
   { date: '2024-01-01', verifications: 1247, blocked: 89, passed: 1158 },
@@ -23,12 +24,25 @@ export default function AnalyticsView() {
   const [timePeriod, setTimePeriod] = useState('7d')
   const [loading, setLoading] = useState(false)
   const { addNotification } = useAppStore()
+  const { 
+    stats, 
+    selectedWebsiteId, 
+    availableSites, 
+    setSelectedWebsite, 
+    fetchStats, 
+    loading: dashboardLoading 
+  } = useDashboardStore()
+
+  useEffect(() => {
+    if (!stats) {
+      fetchStats()
+    }
+  }, [stats, fetchStats])
 
   const refreshData = async () => {
     setLoading(true)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await fetchStats()
       addNotification({
         type: 'success',
         message: 'Analytics data refreshed'
@@ -62,6 +76,15 @@ export default function AnalyticsView() {
         </div>
         <div className="flex items-center space-x-3">
           <select
+            value={selectedWebsiteId}
+            onChange={(e) => setSelectedWebsite(e.target.value)}
+            className="input py-2 pr-8"
+          >
+            {availableSites.map(site => (
+              <option key={site.id} value={site.id}>{site.name}</option>
+            ))}
+          </select>
+          <select
             value={timePeriod}
             onChange={(e) => setTimePeriod(e.target.value)}
             className="input py-2 pr-8"
@@ -73,10 +96,10 @@ export default function AnalyticsView() {
           </select>
           <button
             onClick={refreshData}
-            disabled={loading}
+            disabled={loading || dashboardLoading}
             className="btn btn-secondary flex items-center"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading || dashboardLoading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
           <button
@@ -100,7 +123,9 @@ export default function AnalyticsView() {
             </div>
             <div className="ml-4">
               <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Verifications</h3>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">9,491</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {stats?.totalVerifications?.toLocaleString() || '0'}
+              </p>
               <p className="text-sm text-green-600">+12.5% from last period</p>
             </div>
           </div>
@@ -115,7 +140,9 @@ export default function AnalyticsView() {
             </div>
             <div className="ml-4">
               <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Blocked Threats</h3>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">681</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {stats?.blockedThreats?.toLocaleString() || '0'}
+              </p>
               <p className="text-sm text-green-600">+8.2% from last period</p>
             </div>
           </div>
@@ -130,7 +157,9 @@ export default function AnalyticsView() {
             </div>
             <div className="ml-4">
               <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Success Rate</h3>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">94.8%</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {stats?.successRate ? `${stats.successRate.toFixed(1)}%` : '0%'}
+              </p>
               <p className="text-sm text-green-600">+2.1% from last period</p>
             </div>
           </div>
@@ -145,7 +174,9 @@ export default function AnalyticsView() {
             </div>
             <div className="ml-4">
               <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Avg Response Time</h3>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">42ms</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {stats?.avgResponseTime ? `${stats.avgResponseTime}ms` : '0ms'}
+              </p>
               <p className="text-sm text-green-600">-5.2% from last period</p>
             </div>
           </div>
