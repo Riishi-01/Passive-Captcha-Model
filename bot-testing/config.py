@@ -1,9 +1,10 @@
+
 """
 Bot Testing Configuration
 """
 
 # Target URLs - Railway deployment
-BASE_URL = "https://captcha-prototype-production.up.railway.app"
+BASE_URL = "https://passive-captcha.up.railway.app"
 UIDAI_URL = f"{BASE_URL}/"
 ADMIN_URL = f"{BASE_URL}/admin"
 HEALTH_URL = f"{BASE_URL}/health"

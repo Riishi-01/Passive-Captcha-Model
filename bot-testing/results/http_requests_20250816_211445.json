@@ -1,0 +1,143 @@
+{
+  "bot_type": "http_requests",
+  "start_time": "2025-08-16T21:14:38.535959",
+  "requests": [
+    {
+      "timestamp": "2025-08-16T21:14:39.275823",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/",
+      "status_code": 403,
+      "response_time_ms": 739.83,
+      "details": {
+        "content_length": 55,
+        "content_type": "application/json",
+        "has_captcha_script": false
+      }
+    },
+    {
+      "timestamp": "2025-08-16T21:14:40.190199",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/admin",
+      "status_code": 200,
+      "response_time_ms": 409.21,
+      "details": {
+        "content_length": 711,
+        "has_login_form": false
+      }
+    },
+    {
+      "timestamp": "2025-08-16T21:14:40.601906",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/admin/login",
+      "status_code": 200,
+      "response_time_ms": 411.66,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T21:14:41.033653",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/admin/dashboard",
+      "status_code": 200,
+      "response_time_ms": 410.47,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T21:14:41.521487",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/admin/api",
+      "status_code": 200,
+      "response_time_ms": 464.74,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T21:14:42.039749",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/admin/users",
+      "status_code": 200,
+      "response_time_ms": 493.56,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T21:14:42.470198",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/admin/settings",
+      "status_code": 401,
+      "response_time_ms": 405.22,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T21:14:42.908357",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/login",
+      "status_code": 200,
+      "response_time_ms": 412.97,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T21:14:43.371328",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/dashboard",
+      "status_code": 200,
+      "response_time_ms": 437.8,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-16T21:14:44.305780",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/api/health",
+      "status_code": 404,
+      "response_time_ms": 408.77,
+      "details": {
+        "is_api": true,
+        "response_length": 207
+      }
+    },
+    {
+      "timestamp": "2025-08-16T21:14:44.724212",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/api/captcha/verify",
+      "status_code": 404,
+      "response_time_ms": 405.74,
+      "details": {
+        "is_api": true,
+        "response_length": 207
+      }
+    },
+    {
+      "timestamp": "2025-08-16T21:14:45.140526",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/api/admin/stats",
+      "status_code": 404,
+      "response_time_ms": 403.77,
+      "details": {
+        "is_api": true,
+        "response_length": 207
+      }
+    },
+    {
+      "timestamp": "2025-08-16T21:14:45.563663",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/api/websites",
+      "status_code": 200,
+      "response_time_ms": 412.37,
+      "details": {
+        "is_api": true,
+        "response_length": 66
+      }
+    },
+    {
+      "timestamp": "2025-08-16T21:14:45.981637",
+      "method": "GET",
+      "url": "https://captcha-prototype-production.up.railway.app/health",
+      "status_code": 200,
+      "response_time_ms": 405.32,
+      "details": {
+        "is_api": true,
+        "response_length": 268
+      }
+    }
+  ],
+  "detections": [],
+  "errors": [],
+  "end_time": "2025-08-16T21:14:45.994235"
+}

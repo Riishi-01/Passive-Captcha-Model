@@ -1,0 +1,48 @@
+{
+  "bot_type": "playwright_advanced",
+  "start_time": "2025-08-18T08:04:39.727794",
+  "actions": [
+    {
+      "timestamp": "2025-08-18T08:04:40.576038",
+      "action": "navigate",
+      "details": {
+        "url": "https://gallant-rejoicing-production.up.railway.app/"
+      }
+    },
+    {
+      "timestamp": "2025-08-18T08:04:47.126450",
+      "action": "get_title",
+      "details": {
+        "title": "Home - Unique Identification Authority of India | Government of India"
+      }
+    },
+    {
+      "timestamp": "2025-08-18T08:04:47.126513",
+      "action": "error",
+      "details": {
+        "message": "'dict' object is not callable"
+      }
+    },
+    {
+      "timestamp": "2025-08-18T08:04:56.418566",
+      "action": "navigate",
+      "details": {
+        "url": "https://gallant-rejoicing-production.up.railway.app/admin"
+      }
+    },
+    {
+      "timestamp": "2025-08-18T08:05:01.701753",
+      "action": "error",
+      "details": {
+        "message": "'dict' object is not callable"
+      }
+    }
+  ],
+  "detections": [],
+  "errors": [
+    "'dict' object is not callable",
+    "'dict' object is not callable"
+  ],
+  "human_simulation": true,
+  "end_time": "2025-08-18T08:05:06.994963"
+}

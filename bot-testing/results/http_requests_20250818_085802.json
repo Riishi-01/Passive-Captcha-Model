@@ -1,0 +1,143 @@
+{
+  "bot_type": "http_requests",
+  "start_time": "2025-08-18T08:57:59.432939",
+  "requests": [
+    {
+      "timestamp": "2025-08-18T08:58:00.159631",
+      "method": "GET",
+      "url": "https://gallant-rejoicing-production.up.railway.app/",
+      "status_code": 404,
+      "response_time_ms": 726.62,
+      "details": {
+        "content_length": 4482,
+        "content_type": "text/html",
+        "has_captcha_script": false
+      }
+    },
+    {
+      "timestamp": "2025-08-18T08:58:00.773126",
+      "method": "GET",
+      "url": "https://gallant-rejoicing-production.up.railway.app/admin",
+      "status_code": 404,
+      "response_time_ms": 108.7,
+      "details": {
+        "content_length": 4482,
+        "has_login_form": false
+      }
+    },
+    {
+      "timestamp": "2025-08-18T08:58:00.876167",
+      "method": "GET",
+      "url": "https://gallant-rejoicing-production.up.railway.app/admin/login",
+      "status_code": 404,
+      "response_time_ms": 102.89,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-18T08:58:01.002422",
+      "method": "GET",
+      "url": "https://gallant-rejoicing-production.up.railway.app/admin/dashboard",
+      "status_code": 404,
+      "response_time_ms": 100.86,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-18T08:58:01.206903",
+      "method": "GET",
+      "url": "https://gallant-rejoicing-production.up.railway.app/admin/api",
+      "status_code": 404,
+      "response_time_ms": 182.27,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-18T08:58:01.350786",
+      "method": "GET",
+      "url": "https://gallant-rejoicing-production.up.railway.app/admin/users",
+      "status_code": 404,
+      "response_time_ms": 119.73,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-18T08:58:01.477039",
+      "method": "GET",
+      "url": "https://gallant-rejoicing-production.up.railway.app/admin/settings",
+      "status_code": 404,
+      "response_time_ms": 102.31,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-18T08:58:01.602276",
+      "method": "GET",
+      "url": "https://gallant-rejoicing-production.up.railway.app/login",
+      "status_code": 404,
+      "response_time_ms": 100.73,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-18T08:58:01.732342",
+      "method": "GET",
+      "url": "https://gallant-rejoicing-production.up.railway.app/dashboard",
+      "status_code": 404,
+      "response_time_ms": 105.31,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-18T08:58:02.358169",
+      "method": "GET",
+      "url": "https://gallant-rejoicing-production.up.railway.app/api/health",
+      "status_code": 404,
+      "response_time_ms": 101.0,
+      "details": {
+        "is_api": true,
+        "response_length": 4482
+      }
+    },
+    {
+      "timestamp": "2025-08-18T08:58:02.470159",
+      "method": "GET",
+      "url": "https://gallant-rejoicing-production.up.railway.app/api/captcha/verify",
+      "status_code": 404,
+      "response_time_ms": 101.73,
+      "details": {
+        "is_api": true,
+        "response_length": 4482
+      }
+    },
+    {
+      "timestamp": "2025-08-18T08:58:02.582804",
+      "method": "GET",
+      "url": "https://gallant-rejoicing-production.up.railway.app/api/admin/stats",
+      "status_code": 404,
+      "response_time_ms": 101.63,
+      "details": {
+        "is_api": true,
+        "response_length": 4482
+      }
+    },
+    {
+      "timestamp": "2025-08-18T08:58:02.782398",
+      "method": "GET",
+      "url": "https://gallant-rejoicing-production.up.railway.app/api/websites",
+      "status_code": 404,
+      "response_time_ms": 186.87,
+      "details": {
+        "is_api": true,
+        "response_length": 4482
+      }
+    },
+    {
+      "timestamp": "2025-08-18T08:58:02.897353",
+      "method": "GET",
+      "url": "https://gallant-rejoicing-production.up.railway.app/health",
+      "status_code": 404,
+      "response_time_ms": 102.2,
+      "details": {
+        "is_api": true,
+        "response_length": 4482
+      }
+    }
+  ],
+  "detections": [],
+  "errors": [],
+  "end_time": "2025-08-18T08:58:02.908017"
+}

@@ -1,0 +1,48 @@
+{
+  "bot_type": "playwright_advanced",
+  "start_time": "2025-08-16T20:48:07.750619",
+  "actions": [
+    {
+      "timestamp": "2025-08-16T20:48:10.390564",
+      "action": "navigate",
+      "details": {
+        "url": "https://captcha-prototype-production.up.railway.app/"
+      }
+    },
+    {
+      "timestamp": "2025-08-16T20:48:16.695528",
+      "action": "get_title",
+      "details": {
+        "title": "Home - Unique Identification Authority of India | Government of India"
+      }
+    },
+    {
+      "timestamp": "2025-08-16T20:48:16.695723",
+      "action": "error",
+      "details": {
+        "message": "'dict' object is not callable"
+      }
+    },
+    {
+      "timestamp": "2025-08-16T20:48:24.432259",
+      "action": "navigate",
+      "details": {
+        "url": "https://captcha-prototype-production.up.railway.app/admin"
+      }
+    },
+    {
+      "timestamp": "2025-08-16T20:48:31.516278",
+      "action": "error",
+      "details": {
+        "message": "'dict' object is not callable"
+      }
+    }
+  ],
+  "detections": [],
+  "errors": [
+    "'dict' object is not callable",
+    "'dict' object is not callable"
+  ],
+  "human_simulation": true,
+  "end_time": "2025-08-16T20:48:35.849666"
+}

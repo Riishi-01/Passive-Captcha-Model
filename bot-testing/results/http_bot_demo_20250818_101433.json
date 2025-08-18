@@ -1,0 +1,61 @@
+{
+  "bot_type": "http_bot_demo",
+  "start_time": "2025-08-18T10:14:30.420257",
+  "requests": [
+    {
+      "timestamp": "2025-08-18T10:14:31.385665",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/",
+      "status_code": 403,
+      "response_time_ms": 965.27,
+      "details": {
+        "description": "Main UIDAI Portal",
+        "expected": "403 Forbidden",
+        "content_length": 55,
+        "error_message": "Access denied - automated traffic detected"
+      }
+    },
+    {
+      "timestamp": "2025-08-18T10:14:32.100889",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/api/health",
+      "status_code": 404,
+      "response_time_ms": 611.8,
+      "details": {
+        "description": "API Health Check",
+        "expected": "404 Not Found",
+        "content_length": 207,
+        "error_message": "Blocked by security system"
+      }
+    },
+    {
+      "timestamp": "2025-08-18T10:14:32.796672",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/api/captcha/verify",
+      "status_code": 404,
+      "response_time_ms": 591.59,
+      "details": {
+        "description": "CAPTCHA API Endpoint",
+        "expected": "404 Not Found",
+        "content_length": 207,
+        "error_message": "Blocked by security system"
+      }
+    },
+    {
+      "timestamp": "2025-08-18T10:14:33.486142",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/api/admin/stats",
+      "status_code": 404,
+      "response_time_ms": 587.66,
+      "details": {
+        "description": "Admin Statistics API",
+        "expected": "404 Not Found",
+        "content_length": 207,
+        "error_message": "Blocked by security system"
+      }
+    }
+  ],
+  "detections": [],
+  "errors": [],
+  "end_time": "2025-08-18T10:14:33.591317"
+}

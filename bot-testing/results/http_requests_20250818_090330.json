@@ -1,0 +1,143 @@
+{
+  "bot_type": "http_requests",
+  "start_time": "2025-08-18T09:03:22.412979",
+  "requests": [
+    {
+      "timestamp": "2025-08-18T09:03:23.325071",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/",
+      "status_code": 403,
+      "response_time_ms": 912.03,
+      "details": {
+        "content_length": 55,
+        "content_type": "application/json",
+        "has_captcha_script": false
+      }
+    },
+    {
+      "timestamp": "2025-08-18T09:03:24.289252",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/admin",
+      "status_code": 200,
+      "response_time_ms": 463.19,
+      "details": {
+        "content_length": 711,
+        "has_login_form": false
+      }
+    },
+    {
+      "timestamp": "2025-08-18T09:03:24.750728",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/admin/login",
+      "status_code": 200,
+      "response_time_ms": 461.42,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-18T09:03:25.264745",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/admin/dashboard",
+      "status_code": 200,
+      "response_time_ms": 488.96,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-18T09:03:25.783683",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/admin/api",
+      "status_code": 200,
+      "response_time_ms": 498.36,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-18T09:03:26.275489",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/admin/users",
+      "status_code": 200,
+      "response_time_ms": 470.79,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-18T09:03:26.758406",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/admin/settings",
+      "status_code": 401,
+      "response_time_ms": 459.07,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-18T09:03:27.244924",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/login",
+      "status_code": 200,
+      "response_time_ms": 461.44,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-18T09:03:27.728237",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/dashboard",
+      "status_code": 200,
+      "response_time_ms": 461.13,
+      "details": {}
+    },
+    {
+      "timestamp": "2025-08-18T09:03:28.723528",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/api/health",
+      "status_code": 404,
+      "response_time_ms": 472.04,
+      "details": {
+        "is_api": true,
+        "response_length": 207
+      }
+    },
+    {
+      "timestamp": "2025-08-18T09:03:29.263276",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/api/captcha/verify",
+      "status_code": 404,
+      "response_time_ms": 527.07,
+      "details": {
+        "is_api": true,
+        "response_length": 207
+      }
+    },
+    {
+      "timestamp": "2025-08-18T09:03:29.745700",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/api/admin/stats",
+      "status_code": 404,
+      "response_time_ms": 469.77,
+      "details": {
+        "is_api": true,
+        "response_length": 207
+      }
+    },
+    {
+      "timestamp": "2025-08-18T09:03:30.287887",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/api/websites",
+      "status_code": 200,
+      "response_time_ms": 531.61,
+      "details": {
+        "is_api": true,
+        "response_length": 66
+      }
+    },
+    {
+      "timestamp": "2025-08-18T09:03:30.763146",
+      "method": "GET",
+      "url": "https://passive-captcha.up.railway.app/health",
+      "status_code": 200,
+      "response_time_ms": 463.51,
+      "details": {
+        "is_api": true,
+        "response_length": 270
+      }
+    }
+  ],
+  "detections": [],
+  "errors": [],
+  "end_time": "2025-08-18T09:03:30.775783"
+}
