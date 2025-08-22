@@ -638,12 +638,11 @@ import api from '@/services/api'
 
 // Props
 interface Props {
-  website?: {
+  website: {
     id: string
     name: string
     url: string
   } | null
-  websiteId?: string
   isOpen?: boolean
 }
 
@@ -671,7 +670,7 @@ const successMessage = ref('')
 const activeIntegrationTab = ref('html')
 
 // Computed website ID
-const websiteId = computed(() => props.website?.id || props.websiteId)
+const websiteId = computed(() => props.website?.id)
 
 // Integration tabs for the script generator
 const integrationTabs = [
@@ -974,7 +973,7 @@ const exportTokenData = () => {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `token-data-${props.websiteId}-${new Date().toISOString().split('T')[0]}.json`
+  a.download = `token-data-${props.website?.id || 'website'}-${new Date().toISOString().split('T')[0]}.json`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
