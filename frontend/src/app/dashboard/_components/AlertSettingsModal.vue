@@ -1,8 +1,6 @@
 <template>
-  <!-- Modal Backdrop -->
   <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click="handleBackdropClick">
-    <!-- Modal Content -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl mx-4">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl mx-4 transform transition-all duration-300 scale-100">
       <!-- Header -->
       <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -19,168 +17,137 @@
       <!-- Content -->
       <div class="p-6 space-y-6">
         <!-- Email Notifications -->
-        <div>
-          <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4">Email Notifications</h4>
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <div>
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  High Bot Detection Rate
-                </label>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  Alert when bot detection exceeds threshold
-                </p>
-              </div>
-              <button
-                @click="settings.emailAlerts.highBotRate = !settings.emailAlerts.highBotRate"
-                :class="[
-                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                  settings.emailAlerts.highBotRate ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'
-                ]"
-              >
-                <span
-                  :class="[
-                    'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                    settings.emailAlerts.highBotRate ? 'translate-x-6' : 'translate-x-1'
-                  ]"
-                />
-              </button>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div>
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  System Downtime
-                </label>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  Alert when system components are offline
-                </p>
-              </div>
-              <button
-                @click="settings.emailAlerts.systemDown = !settings.emailAlerts.systemDown"
-                :class="[
-                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                  settings.emailAlerts.systemDown ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'
-                ]"
-              >
-                <span
-                  :class="[
-                    'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                    settings.emailAlerts.systemDown ? 'translate-x-6' : 'translate-x-1'
-                  ]"
-                />
-              </button>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div>
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  API Rate Limit Exceeded
-                </label>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  Alert when API rate limits are reached
-                </p>
-              </div>
-              <button
-                @click="settings.emailAlerts.rateLimitExceeded = !settings.emailAlerts.rateLimitExceeded"
-                :class="[
-                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                  settings.emailAlerts.rateLimitExceeded ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'
-                ]"
-              >
-                <span
-                  :class="[
-                    'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                    settings.emailAlerts.rateLimitExceeded ? 'translate-x-6' : 'translate-x-1'
-                  ]"
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Email Recipients -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Email Recipients
-          </label>
-          <div class="space-y-2">
-            <div v-for="(email, index) in settings.emailRecipients" :key="index" class="flex items-center space-x-2">
-              <input
-                v-model="settings.emailRecipients[index]"
-                type="email"
-                class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                placeholder="admin@example.com"
-              />
-              <button
-                @click="removeEmailRecipient(index)"
-                class="p-2 text-red-400 hover:text-red-600 transition-colors"
-              >
-                <TrashIcon class="h-4 w-4" />
-              </button>
+        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h4 class="text-sm font-medium text-gray-900 dark:text-white">Email Notifications</h4>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Receive alerts via email</p>
             </div>
             <button
-              @click="addEmailRecipient"
-              class="flex items-center space-x-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+              @click="settings.emailEnabled = !settings.emailEnabled"
+              :class="[
+                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                settings.emailEnabled ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'
+              ]"
             >
-              <PlusIcon class="h-4 w-4" />
-              <span>Add Email</span>
+              <span
+                :class="[
+                  'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                  settings.emailEnabled ? 'translate-x-6' : 'translate-x-1'
+                ]"
+              />
             </button>
+          </div>
+          
+          <div v-if="settings.emailEnabled" class="space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Email Address
+              </label>
+              <input
+                v-model="settings.email"
+                type="email"
+                class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                placeholder="admin@example.com"
+              />
+            </div>
           </div>
         </div>
 
-        <!-- Thresholds -->
-        <div>
-          <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4">Alert Thresholds</h4>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Alert Thresholds -->
+        <div class="space-y-4">
+          <h4 class="text-sm font-medium text-gray-900 dark:text-white">Alert Thresholds</h4>
+          
+          <!-- High Threat Detection -->
+          <div class="flex items-center justify-between">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Bot Detection Rate (%)
-              </label>
+              <label class="text-sm text-gray-700 dark:text-gray-300">High Threat Detection</label>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Alert when threat level exceeds threshold</p>
+            </div>
+            <div class="flex items-center space-x-2">
               <input
-                v-model.number="settings.thresholds.botDetectionRate"
+                v-model.number="settings.threatThreshold"
                 type="number"
                 min="0"
                 max="100"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                class="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
               />
+              <span class="text-sm text-gray-500">%</span>
             </div>
+          </div>
 
+          <!-- Failed Verification Rate -->
+          <div class="flex items-center justify-between">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Response Time (ms)
-              </label>
+              <label class="text-sm text-gray-700 dark:text-gray-300">Failed Verification Rate</label>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Alert when failure rate exceeds threshold</p>
+            </div>
+            <div class="flex items-center space-x-2">
               <input
-                v-model.number="settings.thresholds.responseTime"
+                v-model.number="settings.failureThreshold"
                 type="number"
                 min="0"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                max="100"
+                class="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
               />
+              <span class="text-sm text-gray-500">%</span>
+            </div>
+          </div>
+
+          <!-- System Resource Usage -->
+          <div class="flex items-center justify-between">
+            <div>
+              <label class="text-sm text-gray-700 dark:text-gray-300">System Resource Usage</label>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Alert when CPU/Memory usage exceeds threshold</p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <input
+                v-model.number="settings.resourceThreshold"
+                type="number"
+                min="0"
+                max="100"
+                class="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+              />
+              <span class="text-sm text-gray-500">%</span>
             </div>
           </div>
         </div>
 
+        <!-- Alert Frequency -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Alert Frequency
+          </label>
+          <select
+            v-model="settings.frequency"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+          >
+            <option value="immediate">Immediate</option>
+            <option value="hourly">Hourly</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        </div>
+
         <!-- Test Alert -->
-        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-          <div class="flex items-center justify-between">
-            <div>
-              <h4 class="text-sm font-medium text-gray-900 dark:text-white">Test Alert</h4>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Send a test notification to verify settings</p>
-            </div>
-            <button
-              @click="sendTestAlert"
-              :disabled="sendingTest"
-              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-lg transition-colors flex items-center space-x-2"
-            >
-              <span v-if="sendingTest" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
-              <span>{{ sendingTest ? 'Sending...' : 'Send Test' }}</span>
-            </button>
+        <div>
+          <button
+            @click="sendTestAlert"
+            :disabled="isSendingTest"
+            class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 rounded-lg transition-colors"
+          >
+            <span v-if="!isSendingTest">Send Test Alert</span>
+            <span v-else>Sending...</span>
+          </button>
+          
+          <div v-if="testStatus" class="mt-2 text-sm" :class="testStatus.success ? 'text-green-600' : 'text-red-600'">
+            {{ testStatus.message }}
           </div>
         </div>
       </div>
 
       <!-- Footer -->
-      <div class="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
+      <div class="flex justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
         <button
           @click="$emit('close')"
           class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
@@ -189,9 +156,11 @@
         </button>
         <button
           @click="saveSettings"
-          class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+          :disabled="isSaving"
+          class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 rounded-lg transition-colors"
         >
-          Save Settings
+          <span v-if="!isSaving">Save Settings</span>
+          <span v-else>Saving...</span>
         </button>
       </div>
     </div>
@@ -200,57 +169,70 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { XMarkIcon, TrashIcon, PlusIcon } from '@heroicons/vue/24/outline'
+import { XMarkIcon } from '@heroicons/vue/24/outline'
 
+// Emits
 defineEmits<{
   close: []
 }>()
 
 // State
-const sendingTest = ref(false)
+const isSaving = ref(false)
+const isSendingTest = ref(false)
+const testStatus = ref<{success: boolean, message: string} | null>(null)
 
 const settings = ref({
-  emailAlerts: {
-    highBotRate: true,
-    systemDown: true,
-    rateLimitExceeded: false
-  },
-  emailRecipients: ['admin@passivecaptcha.com'],
-  thresholds: {
-    botDetectionRate: 25,
-    responseTime: 500
-  }
+  emailEnabled: true,
+  email: 'admin@example.com',
+  threatThreshold: 75,
+  failureThreshold: 50,
+  resourceThreshold: 80,
+  frequency: 'immediate'
 })
 
 // Methods
 const handleBackdropClick = (event: Event) => {
   if (event.target === event.currentTarget) {
-    // Close modal when clicking on backdrop
+    emit('close')
   }
 }
 
-const addEmailRecipient = () => {
-  settings.value.emailRecipients.push('')
-}
-
-const removeEmailRecipient = (index: number) => {
-  settings.value.emailRecipients.splice(index, 1)
-}
-
 const sendTestAlert = async () => {
-  sendingTest.value = true
+  isSendingTest.value = true
+  testStatus.value = null
   
   try {
     // Simulate sending test alert
     await new Promise(resolve => setTimeout(resolve, 1000))
-    console.log('Test alert sent to:', settings.value.emailRecipients)
+    testStatus.value = {
+      success: true,
+      message: 'Test alert sent successfully!'
+    }
+  } catch (error) {
+    testStatus.value = {
+      success: false,
+      message: 'Failed to send test alert. Please check your settings.'
+    }
   } finally {
-    sendingTest.value = false
+    isSendingTest.value = false
   }
 }
 
-const saveSettings = () => {
-  console.log('Saving alert settings:', settings.value)
-  // Implement save functionality
+const saveSettings = async () => {
+  isSaving.value = true
+  
+  try {
+    // Simulate save operation
+    await new Promise(resolve => setTimeout(resolve, 500))
+    emit('close')
+  } catch (error) {
+    console.error('Failed to save alert settings:', error)
+  } finally {
+    isSaving.value = false
+  }
 }
+
+const emit = defineEmits<{
+  close: []
+}>()
 </script>

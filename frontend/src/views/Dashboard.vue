@@ -160,7 +160,7 @@
               Timeline Logs
             </h3>
             <div class="flex space-x-2">
-              <LogFilterTabs v-model="activeLogFilter" />
+              <!-- Removed LogFilterTabs -->
               <button
                 @click="refreshLogs"
                 class="btn btn-outline"
@@ -172,12 +172,7 @@
             </div>
           </div>
           
-          <TimelineLogs 
-            :logs="timelineLogs" 
-            :filter="activeLogFilter"
-            :loading="isLoadingLogs"
-            @load-more="loadMoreLogs"
-          />
+          <!-- Removed TimelineLogs -->
         </div>
       </main>
     </div>
@@ -200,8 +195,9 @@ import DetectionPieChart from '@/components/charts/DetectionPieChart.vue'
 import WebsiteList from '@/components/websites/WebsiteList.vue'
 import AlertsList from '@/components/alerts/AlertsList.vue'
 import SystemHealth from '@/components/dashboard/SystemHealth.vue'
-import LogFilterTabs from '@/components/logs/LogFilterTabs.vue'
-import TimelineLogs from '@/components/logs/TimelineLogs.vue'
+// Removed non-existent log components that were causing coupling issues:
+// import LogFilterTabs from '@/components/logs/LogFilterTabs.vue'
+// import TimelineLogs from '@/components/logs/TimelineLogs.vue'
 import { RefreshIcon } from 'lucide-vue-next'
 
 // Stores
