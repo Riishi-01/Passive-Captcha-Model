@@ -172,7 +172,7 @@ import { ref } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 
 // Emits
-defineEmits<{
+const emit = defineEmits<{
   close: []
 }>()
 
@@ -231,8 +231,4 @@ const saveSettings = async () => {
     isSaving.value = false
   }
 }
-
-const emit = defineEmits<{
-  close: []
-}>()
 </script>
